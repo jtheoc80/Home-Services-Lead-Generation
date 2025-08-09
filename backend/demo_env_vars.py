@@ -17,6 +17,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 from utils.export_control import get_export_controller, ExportType
 from utils.notifications import get_notification_service
 from utils.cache import get_cache_service
+from utils.launch_config import get_launch_manager
+from utils.pricing_config import get_pricing_manager
+from utils.schedule_config import get_schedule_manager
 
 # Configure logging
 logging.basicConfig(
@@ -156,7 +159,14 @@ def demo_environment_variables():
         'SENDGRID_API_KEY',
         'TWILIO_SID',
         'TWILIO_TOKEN',
-        'TWILIO_FROM'
+        'TWILIO_FROM',
+        'LAUNCH_SCOPE',
+        'DEFAULT_REGION',
+        'REGISTRY_PATH',
+        'CREDIT_OFFERS_JSON',
+        'CRON_SCRAPE_UTC',
+        'CRON_DIGEST_HOURLY',
+        'CRON_DIGEST_DAILY'
     ]
     
     for var in required_vars:
@@ -165,11 +175,102 @@ def demo_environment_variables():
             # Mask sensitive values
             if var in ['SENDGRID_API_KEY', 'TWILIO_TOKEN']:
                 display_value = value[:8] + '...' if len(value) > 8 else value
+            elif var == 'CREDIT_OFFERS_JSON':
+                # Show truncated JSON
+                display_value = value[:50] + '...' if len(value) > 50 else value
             else:
                 display_value = value
             print(f"{var:20} = {display_value}")
         else:
             print(f"{var:20} = ❌ NOT SET")
+
+
+def demo_launch_config():
+    """Demonstrate launch configuration functionality."""
+    print("\n" + "="*60)
+    print("LAUNCH CONFIGURATION DEMONSTRATION")
+    print("="*60)
+    
+    manager = get_launch_manager()
+    
+    print(f"Launch Scope: {manager.get_active_scope()}")
+    print(f"Default Region: {manager.get_default_region()}")
+    print(f"Registry Path: {manager.get_registry_path()}")
+    
+    # Test region processing
+    print("\nRegion Processing:")
+    test_regions = ['tx-houston', 'tx-harris', 'tx-dallas', 'tx-austin']
+    for region in test_regions:
+        should_process = manager.should_process_region(region)
+        status = "✅ PROCESS" if should_process else "❌ SKIP"
+        print(f"  {region:15} -> {status}")
+    
+    # Show launch info
+    info = manager.get_launch_info()
+    print(f"\nConfiguration Valid: {info['is_valid']}")
+
+
+def demo_pricing_config():
+    """Demonstrate pricing configuration functionality."""
+    print("\n" + "="*60)
+    print("PRICING CONFIGURATION DEMONSTRATION") 
+    print("="*60)
+    
+    manager = get_pricing_manager()
+    
+    # Show pricing summary
+    summary = manager.get_pricing_summary()
+    print(f"Available Tiers: {summary['total_tiers']}")
+    print(f"Tier Names: {', '.join(summary['available_tiers'])}")
+    
+    print("\nPricing Details:")
+    for tier, details in summary['offers'].items():
+        if details:  # Handle None values
+            print(f"  {tier.upper()}:")
+            print(f"    Cost: ${details['usd']}")
+            print(f"    Credits: {details['credits']}")
+            print(f"    Cost per Credit: ${details['cost_per_credit']:.2f}")
+            if details['savings_vs_oneoff'] > 0:
+                print(f"    Savings vs One-off: {details['savings_vs_oneoff']:.1f}%")
+    
+    # Test recommendation
+    print("\nRecommendation for 75 credits needed:")
+    recommendation = manager.recommend_plan(75)
+    print(f"Best Option: {recommendation['best_option']}")
+    print(f"Best Cost per Credit: ${recommendation['best_cost_per_credit']:.2f}")
+    
+    print("\nAll Options (by efficiency):")
+    for option in recommendation['all_options']:
+        print(f"  {option['tier']:10} - ${option['total_cost']:6} "
+              f"(efficiency: {option['efficiency_score']:.2f})")
+
+
+def demo_schedule_config():
+    """Demonstrate schedule configuration functionality."""
+    print("\n" + "="*60)
+    print("SCHEDULE CONFIGURATION DEMONSTRATION")
+    print("="*60)
+    
+    manager = get_schedule_manager()
+    
+    # Show schedule summary
+    summary = manager.get_schedule_summary()
+    print(f"Total Schedules: {summary['total_schedules']}")
+    print(f"All Valid: {summary['all_valid']}")
+    
+    if summary['errors']:
+        print("Errors:")
+        for error in summary['errors']:
+            print(f"  ❌ {error}")
+    
+    print("\nSchedule Details:")
+    for name, info in manager.get_all_schedule_info().items():
+        print(f"  {name.upper()}:")
+        print(f"    Expression: {info['expression']}")
+        print(f"    Description: {info['description']}")
+        print(f"    Human Readable: {info['human_readable']}")
+        print(f"    Valid: {'✅' if info['is_valid'] else '❌'}")
+        print()
 
 
 def main():
@@ -179,6 +280,9 @@ def main():
     print("="*60)
     
     demo_environment_variables()
+    demo_launch_config()
+    demo_pricing_config()
+    demo_schedule_config()
     demo_export_control()
     demo_notifications()
     demo_cache()
@@ -187,12 +291,23 @@ def main():
     print("DEMO COMPLETED")
     print("="*60)
     print("\nTo enable all features, set these environment variables:")
+    print("# Core functionality")
     print("ALLOW_EXPORTS=true")
     print("REDIS_URL=redis://localhost:6379/0")
     print("SENDGRID_API_KEY=your_sendgrid_api_key")
     print("TWILIO_SID=your_twilio_account_sid")
     print("TWILIO_TOKEN=your_twilio_auth_token")
     print("TWILIO_FROM=+1234567890")
+    print("\n# Launch configuration")
+    print("LAUNCH_SCOPE=houston")
+    print("DEFAULT_REGION=tx-houston")
+    print("REGISTRY_PATH=config/registry.yaml")
+    print("\n# Pricing configuration")
+    print('CREDIT_OFFERS_JSON={"starter":{"usd":199,"credits":50},"pro":{"usd":499,"credits":150},"oneoff":{"usd":25,"credits":5}}')
+    print("\n# Schedule configuration")
+    print("CRON_SCRAPE_UTC=0 5 * * *")
+    print("CRON_DIGEST_HOURLY=0 * * * *")
+    print("CRON_DIGEST_DAILY=0 13 * * *")
     print("\nNote: Some features require additional libraries to be installed:")
     print("- pip install redis (for caching)")
     print("- pip install sendgrid (for email notifications)")
