@@ -5,7 +5,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    APP_MODULE="backend.main:app" \
+    APP_MODULE="main:app" \
     PORT=8000
 
 # Set working directory
