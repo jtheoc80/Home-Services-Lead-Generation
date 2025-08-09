@@ -76,7 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await supabase
           .from('notifications')
           .update({ 
-            read_at: new Date().toISOString(),
+        const readTimestamp = new Date().toISOString();
+        await supabase
+          .from('notifications')
+          .update({ 
+            read_at: readTimestamp,
             status: 'read'
           })
           .in('id', notificationIds);
