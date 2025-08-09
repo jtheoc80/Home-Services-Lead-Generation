@@ -516,6 +516,88 @@ This registry provides a standardized approach to organizing data sources by geo
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
 
+## Connect Supabase
+
+LeadLedgerPro uses Supabase for authentication and user management. Follow these steps to set up your Supabase connection:
+
+### 1. Create a Supabase Project
+
+1. Go to [Supabase](https://supabase.com) and create a new project
+2. Wait for the database to be provisioned
+
+### 2. Get Your Project Credentials
+
+From your Supabase project dashboard:
+
+1. **Project URL**: Go to Settings → API → Project URL
+2. **Anon Key**: Go to Settings → API → Project API keys → `anon` key
+3. **JWT Secret**: Go to Settings → API → JWT Settings → JWT Secret
+
+### 3. Configure Environment Variables
+
+#### Frontend (.env.local)
+```bash
+cd frontend
+cp .env.local.example .env.local
+```
+
+Edit `.env.local` and add your Supabase credentials:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+NEXT_PUBLIC_DEFAULT_REGION=tx-houston
+```
+
+#### Backend (.env)
+```bash
+cd backend
+cp .env.example .env
+```
+
+Edit `.env` and add your Supabase credentials:
+```bash
+SUPABASE_URL=your_project_url_here
+SUPABASE_JWT_SECRET=your_jwt_secret_here
+SUPABASE_SERVICE_ROLE=your_service_role_key_here
+```
+
+### 4. Security Notes
+
+⚠️ **Important Security Guidelines:**
+
+- **Never expose service role keys in frontend code** - The service role key should only be used in backend services
+- **Use anon keys in frontend** - The anon key is safe to use in client-side code
+- **JWT Secret is for backend only** - Used for verifying JWT tokens from Supabase
+- **Keep .env files out of version control** - Add them to .gitignore
+
+### 5. Authentication Flow
+
+1. **Login**: Users sign in via magic link using `/login` page
+2. **JWT Token**: Supabase provides a JWT token after successful authentication
+3. **API Requests**: Frontend sends JWT token in Authorization header as `Bearer <token>`
+4. **Backend Verification**: FastAPI verifies the JWT using the JWT secret
+5. **Protected Routes**: Access `/api/me` and other protected endpoints
+
+### 6. Testing the Integration
+
+1. Start the backend server:
+   ```bash
+   cd backend
+   uvicorn main:app --host 0.0.0.0 --port 8000
+   ```
+
+2. Start the frontend:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. Visit `http://localhost:3000/login` to test authentication
+4. After login, test the `/api/me` endpoint with your JWT token
+
+---
+
 ## Legal Notices
 
 - LeadLedgerPro uses publicly available building permit data.
