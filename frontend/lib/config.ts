@@ -137,7 +137,8 @@ export function isFeatureEnabled(feature: keyof AppConfig['features']): boolean 
  * Get API endpoint URL
  */
 export function getApiUrl(endpoint: string): string {
-  return `${config.apiBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+  return config.apiBaseUrl + path;
 }
 
 /**
