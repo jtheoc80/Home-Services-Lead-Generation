@@ -29,7 +29,7 @@ export interface AppConfig {
  */
 function createConfig(): AppConfig {
   // Determine environment
-  const env = (process.env.NEXT_PUBLIC_ENV || 'production').toLowerCase() as AppConfig['environment'];
+  const env = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase() as AppConfig['environment'];
   
   // API base URL configuration
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE || 
