@@ -1,0 +1,1 @@
+{{brand_name}}: Your subscription access has ended. Data saved for 30 days. Return anytime: {{signup_url}} Need data export? Email support@leadledgerpro.com

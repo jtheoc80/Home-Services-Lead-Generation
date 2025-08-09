@@ -1,0 +1,1 @@
+{{brand_name}} REMINDER: Your subscription access ends TOMORROW ({{effective_date_short}}). Reactivate now to avoid interruption: {{settings_url}} Questions? Reply HELP
