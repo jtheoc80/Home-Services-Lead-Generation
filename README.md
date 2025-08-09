@@ -40,7 +40,114 @@ python -m permit_leads --source city_of_houston --days 7 --formats csv sqlite
 - `utils/`: HTTP utilities, normalization helpers, robots.txt checking
 - `tests/`: Comprehensive test suite with sample data fixtures
 
-See [`permit_leads/README.md`](permit_leads/README.md) for detailed documentation, usage examples, and extension instructions.
+## Data Enrichment
+
+The permit leads system includes comprehensive data enrichment to increase lead value and improve scoring accuracy.
+
+### Enrichment Pipeline
+
+The enrichment pipeline (`permit_leads/enrich.py`) adds the following data to each permit record:
+
+#### Address & Location
+- **Address normalization**: Standardizes formatting and abbreviations
+- **Geocoding**: Converts addresses to lat/lon coordinates using configurable providers:
+  - Nominatim (OpenStreetMap) - Free, no API key required
+  - Mapbox - Commercial, requires API token
+  - Google Maps - Commercial, requires API key
+
+#### Parcel/Assessor Data
+- **ArcGIS FeatureServer integration**: Fetches property data by coordinates
+- **Configurable per county**: Each jurisdiction can have custom endpoints
+- **Fields mapped**: APN, year built, heated sqft, lot size, land use
+
+#### Trade Classification
+- **NLP keyword matching**: Identifies relevant trades from permit descriptions
+- **Supported trades**: roofing, kitchen, bath, pool, fence, windows, foundation, solar, hvac, electrical, plumbing
+- **Multiple tags**: Records can have multiple trade classifications
+
+#### Project Analysis
+- **Owner classification**: Distinguishes between individual vs LLC/corporate owners
+- **Budget bands**: Categorizes project values ($0–5k, $5–15k, $15–50k, $50k+)
+- **Start prediction**: Estimates project start date based on jurisdiction-specific inspection timelines
+
+### Enhanced Scoring
+
+The enriched scoring algorithm weights multiple factors:
+
+- **Recency (3x weight)**: Newer permits score higher (0-25 points)
+- **Trade match (2x weight)**: High-value trades get priority (roofing: 25pts, kitchen: 24pts, bath: 22pts)
+- **Project value (2x weight)**: Logarithmic scaling favors substantial projects
+- **Parcel age (1x weight)**: Older homes more likely to need work (15+ years)
+- **Inspection status (1x weight)**: Ready-to-proceed permits score higher
+
+Final scores are capped at 100 points.
+
+### Configuration
+
+#### Environment Variables (`.env`)
+```bash
+# Geocoding provider
+GEOCODER=nominatim|mapbox|google
+MAPBOX_TOKEN=your_token_here
+GOOGLE_MAPS_API_KEY=your_key_here
+
+# County parcel endpoints
+HARRIS_COUNTY_PARCELS_URL=https://gis-web.hcad.org/server/rest/services/...
+```
+
+#### Per-County Configuration (`permit_leads/enrich_config.yaml`)
+```yaml
+parcels:
+  harris_county:
+    endpoint: "https://services.arcgis.com/..."
+    field_mapping:
+      apn: "ACCOUNT_NUM"
+      year_built: "YEAR_BUILT"
+      heated_sqft: "BUILDING_SQFT"
+      lot_size: "LOT_SIZE"
+      land_use: "LAND_USE_CODE"
+```
+
+### Usage
+
+#### Database Migration
+Before using enrichment, update your database schema:
+```bash
+python -m permit_leads migrate-db --db data/permits/permits.db
+```
+
+#### Export Enriched Leads
+```bash
+# With full enrichment pipeline
+python -m permit_leads export-enriched --lookback 14
+
+# Using existing enriched data only
+python -m permit_leads export-enriched --lookback 14 --no-enrich
+
+# Migrate database and export in one step
+python -m permit_leads export-enriched --lookback 14 --migrate
+```
+
+### Legal & Rate Limiting
+
+- **Respect ToS**: Use official APIs only; don't scrape restricted data
+- **Rate limits**: Geocoding providers have rate limits; implement delays for bulk processing
+- **PII compliance**: Store only publicly available property records
+- **Attribution**: Follow API provider attribution requirements
+
+### Data Sources
+
+#### Geocoding Providers
+- **Nominatim**: Free, 1 req/sec limit, requires attribution
+- **Mapbox**: 100k free requests/month, commercial usage allowed
+- **Google Maps**: Pay-per-use, enterprise features available
+
+#### Parcel Data
+- **Harris County, TX**: Public GIS services via ArcGIS
+- **Montgomery County, TX**: Custom endpoint configuration
+- **Extensible**: Add new counties via configuration files
+
+The enrichment pipeline significantly improves lead quality by providing location context, property characteristics, and intelligent trade matching for more targeted contractor outreach.
 
 ---
 
