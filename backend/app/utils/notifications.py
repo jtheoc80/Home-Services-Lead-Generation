@@ -248,6 +248,119 @@ class NotificationService:
         return False
 
 
+def process_new_lead_notifications() -> int:
+    """
+    Process notifications for new leads based on user preferences.
+    
+    This function is called after lead ingestion to create notifications
+    for users who have matching preferences for the newly imported leads.
+    
+    Returns:
+        Number of notifications created
+    """
+    import os
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    
+    try:
+        # Get database connection
+        db_url = os.environ.get('DATABASE_URL')
+        if not db_url:
+            logger.warning("DATABASE_URL not set, skipping notification processing")
+            return 0
+            
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Find new leads (created in last hour) that match user preferences
+        query = """
+        WITH new_leads AS (
+            SELECT 
+                l.id,
+                l.jurisdiction,
+                l.lead_score,
+                l.trade_tags,
+                l.value,
+                l.created_at
+            FROM leads l
+            WHERE l.created_at > NOW() - INTERVAL '1 hour'
+            AND l.lead_score IS NOT NULL
+        ),
+        matching_prefs AS (
+            SELECT 
+                np.account_id,
+                np.min_score_threshold,
+                np.counties,
+                np.channels,
+                np.trade_tags AS pref_trade_tags,
+                np.value_threshold,
+                nl.id AS lead_id,
+                nl.lead_score,
+                nl.jurisdiction,
+                nl.trade_tags AS lead_trade_tags,
+                nl.value
+            FROM notification_prefs np
+            CROSS JOIN new_leads nl
+            WHERE np.is_enabled = TRUE
+            AND nl.lead_score >= np.min_score_threshold
+            AND (
+                np.counties IS NULL 
+                OR np.counties = ARRAY[]::text[]
+                OR nl.jurisdiction = ANY(np.counties)
+            )
+            AND (
+                np.trade_tags IS NULL 
+                OR np.trade_tags = ARRAY[]::text[]
+                OR nl.trade_tags && np.trade_tags
+            )
+            AND (
+                np.value_threshold IS NULL 
+                OR nl.value >= np.value_threshold
+            )
+        )
+        INSERT INTO notifications (account_id, lead_id, channel, title, message, metadata)
+        SELECT 
+            mp.account_id,
+            mp.lead_id,
+            unnest(mp.channels) as channel,
+            'New High-Quality Lead Available',
+            CONCAT(
+                'A new lead with score ', 
+                ROUND(mp.lead_score, 1), 
+                ' is available in ', 
+                mp.jurisdiction,
+                CASE 
+                    WHEN mp.value IS NOT NULL THEN CONCAT(' (Est. Value: $', ROUND(mp.value, 0), ')')
+                    ELSE ''
+                END
+            ),
+            jsonb_build_object(
+                'lead_score', mp.lead_score,
+                'jurisdiction', mp.jurisdiction,
+                'estimated_value', mp.value,
+                'trade_tags', mp.lead_trade_tags
+            )
+        FROM matching_prefs mp
+        ON CONFLICT DO NOTHING
+        RETURNING id;
+        """
+        
+        cur.execute(query)
+        results = cur.fetchall()
+        notification_count = len(results)
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        logger.info(f"Created {notification_count} notifications for new leads")
+        return notification_count
+        
+    except Exception as e:
+        logger.error(f"Error processing new lead notifications: {e}")
+        return 0
+
+
 # Global notification service instance
 _notification_service = None
 
