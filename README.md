@@ -178,3 +178,10 @@ Configure scraping targets in `permit_leads/config/sources.yaml`.
 ---
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
+
+## Legal Notices
+
+- LeadLedgerPro uses publicly available building permit data.
+- All users must comply with Do Not Call, CAN-SPAM, and local solicitation laws.
+- No guarantee of accuracy or job acquisition.
+- See /terms and /privacy for full details.
