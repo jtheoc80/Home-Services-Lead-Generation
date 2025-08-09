@@ -72,3 +72,13 @@ CREATE TABLE IF NOT EXISTS lead_outcomes (
   calibrated_score NUMERIC,   -- 0..100
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id BIGSERIAL PRIMARY KEY,
+  account_id UUID NOT NULL,
+  lead_id BIGINT NOT NULL,
+  channel TEXT NOT NULL CHECK (channel IN ('inapp', 'email', 'sms')),
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed', 'read')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  sent_at TIMESTAMPTZ
+);
