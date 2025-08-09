@@ -319,6 +319,201 @@ The repository also includes a comprehensive regional registry in `config/regist
 
 This registry provides a standardized approach to organizing data sources by geographic regions across Texas metro areas including Houston, Dallas-Fort Worth, San Antonio, and Austin.
 
+## Staging Environment
+
+The staging environment provides a safe testing space for new features and changes before production deployment.
+
+### Setup and Deployment
+
+#### Prerequisites
+- Staging branch in repository  
+- Staging environment secrets configured in GitHub
+- Staging infrastructure (database, Redis, application servers)
+
+#### Automatic Deployment
+Staging deploys automatically when code is pushed to the `staging` branch:
+
+```bash
+# Create and push to staging branch
+git checkout -b staging
+git push origin staging
+```
+
+The deployment pipeline will:
+1. Run tests (backend and frontend)
+2. Deploy backend with staging environment variables
+3. Deploy frontend with staging configuration
+4. Run database migrations
+5. Seed demo data (200 sample leads + test user)
+6. Execute smoke tests
+7. Send deployment notifications
+
+#### Manual Deployment
+Trigger staging deployment manually via GitHub Actions:
+
+1. Go to **Actions** tab in GitHub repository
+2. Select **"Deploy to Staging"** workflow  
+3. Click **"Run workflow"**
+4. Choose options:
+   - Force deployment (skip test failures)
+   - Skip tests entirely
+5. Click **"Run workflow"** to start
+
+#### Environment Configuration
+Staging uses environment-specific secrets:
+
+**Backend Staging Secrets:**
+- `DATABASE_URL_STAGING`: Staging database connection
+- `SECRET_KEY_STAGING`: Application secret key
+- `REDIS_URL_STAGING`: Redis cache connection  
+- `SENDGRID_API_KEY_STAGING`: Email service key
+- `TWILIO_SID_STAGING` / `TWILIO_TOKEN_STAGING`: SMS service credentials
+
+**Frontend Staging Secrets:**
+- `NEXT_PUBLIC_API_BASE_STAGING`: Staging API URL
+- `NEXT_PUBLIC_SUPABASE_URL_STAGING`: Staging Supabase project
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING`: Staging Supabase key
+
+### Local Staging Development
+
+#### Quick Setup
+```bash
+# Set up staging environment locally
+make staging-setup
+
+# Configure environment variables
+# Edit backend/.env and frontend/.env.local with staging values
+
+# Run database migration
+make stage-migrate
+
+# Seed demo data  
+make stage-seed
+
+# Start development servers
+make dev
+```
+
+#### Manual Setup Steps
+1. **Environment Configuration:**
+   ```bash
+   # Set staging mode
+   export APP_ENV=staging
+   export NEXT_PUBLIC_ENV=staging
+   ```
+
+2. **Database Setup:**
+   ```bash
+   # Run migrations
+   python scripts/migrate.py
+   
+   # Add demo data
+   python scripts/seed_demo.py --lead-count 200
+   ```
+
+3. **Development Servers:**
+   ```bash
+   # Backend (http://localhost:8000)
+   make dev-backend
+   
+   # Frontend (http://localhost:3000)  
+   make dev-frontend
+   ```
+
+### Staging Features
+
+#### Demo Data
+Staging includes 200 sample leads with realistic data:
+- Multiple jurisdictions (Houston area)
+- Various work classes and categories
+- Enriched location and parcel data
+- ML scoring and classification
+- Test user account: `test@leadledderpro.com`
+
+#### Visual Indicators
+- Prominent orange staging banner in frontend header
+- Environment indicator in API responses
+- Debug tools and enhanced logging
+- Staging-specific API endpoints
+
+#### Health Monitoring
+Health check endpoints for monitoring:
+```bash
+# Overall health status
+curl https://staging-api.leadledderpro.com/health
+
+# Readiness check (for load balancers)
+curl https://staging-api.leadledderpro.com/health/ready
+
+# Liveness check (for container orchestration)
+curl https://staging-api.leadledderpro.com/health/live
+```
+
+### Smoke Testing
+
+Automated smoke tests verify staging deployment:
+
+1. **Backend Health:** API endpoints respond correctly
+2. **Database Connectivity:** Migration and data access work  
+3. **Frontend Accessibility:** Application loads and renders
+4. **Integration:** API calls from frontend succeed
+
+Manual smoke testing:
+```bash
+# Test health endpoints
+make health
+
+# Verify staging banner appears in frontend
+# Visit staging URL and confirm orange banner is visible
+
+# Test demo data access
+# Log in with test account and browse sample leads
+```
+
+### Troubleshooting
+
+#### Common Issues
+
+**Migration Failures:**
+```bash
+# Check database connectivity
+python scripts/migrate.py --dry-run
+
+# Run with verbose logging
+python scripts/migrate.py --verbose
+```
+
+**Seed Data Problems:**  
+```bash
+# Reset and re-seed
+make stage-migrate
+make stage-seed
+```
+
+**Frontend Build Errors:**
+```bash
+# Check environment variables
+make validate-env
+
+# Clean and rebuild
+make clean
+make build-frontend
+```
+
+**Health Check Failures:**
+```bash
+# Check service status
+curl -v http://localhost:8000/health
+
+# Review logs for database/Redis connectivity issues
+```
+
+#### Getting Help
+- Check deployment logs in GitHub Actions
+- Verify staging environment secrets are configured
+- Ensure staging infrastructure is healthy
+- Contact DevOps team for infrastructure issues
+
 ---
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
