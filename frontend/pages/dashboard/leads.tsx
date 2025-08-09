@@ -3,14 +3,23 @@ import Head from 'next/head';
 import LeadCard from '../../components/LeadCard';
 
 interface Lead {
-  id: string;
+  id: number;
+  jurisdiction: string;
+  permit_id: string;
   address: string;
-  description?: string;
-  value?: number;
-  trade_tags?: string[];
+  description: string;
+  work_class: string;
+  category: string;
+  status: string;
+  issue_date: string;
+  applicant: string;
+  owner: string;
+  value: number;
+  is_residential: boolean;
+  trade_tags: string[];
+  budget_band: string;
+  lead_score: number;
   created_at: string;
-  lead_score?: number;
-  initialVote?: 'up' | 'down';
 }
 
 export default function LeadsPage() {
@@ -35,52 +44,62 @@ export default function LeadsPage() {
       
       const mockLeads: Lead[] = [
         {
-          id: '1',
+          id: 1,
+          jurisdiction: 'City of Houston',
+          permit_id: 'R2024-00123',
           address: '123 Main St, Houston, TX 77001',
           description: 'Kitchen remodel with granite countertops and new appliances',
+          work_class: 'Residential',
+          category: 'Alteration',
+          status: 'Issued',
+          issue_date: '2024-01-15',
+          applicant: 'John Smith',
+          owner: 'John Smith',
           value: 35000,
+          is_residential: true,
           trade_tags: ['kitchen', 'remodel', 'granite'],
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          budget_band: '$15-50k',
           lead_score: 85,
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         },
         {
-          id: '2',
+          id: 2,
+          jurisdiction: 'City of Houston',
+          permit_id: 'R2024-00124',
           address: '456 Oak Ave, Houston, TX 77002',
           description: 'Roof replacement after storm damage',
+          work_class: 'Residential',
+          category: 'Repair',
+          status: 'Issued',
+          issue_date: '2024-01-16',
+          applicant: 'ABC Roofing Inc',
+          owner: 'Sarah Johnson',
           value: 15000,
-          trade_tags: ['roofing', 'storm-damage'],
+          is_residential: true,
+          trade_tags: ['roofing'],
+          budget_band: '$5-15k',
+          lead_score: 92,
           created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          lead_score: 72,
         },
         {
-          id: '3',
-          address: '789 Pine St, Houston, TX 77003',
-          description: 'Bathroom renovation with tile work',
-          value: 8000,
-          trade_tags: ['bathroom', 'tile', 'renovation'],
-          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          lead_score: 68,
-        },
-        {
-          id: '4',
-          address: '321 Elm Dr, Houston, TX 77004',
-          description: 'HVAC system installation',
-          value: 12000,
-          trade_tags: ['hvac', 'installation'],
-          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          lead_score: 55,
-          initialVote: 'up' as const,
-        },
-        {
-          id: '5',
-          address: '654 Maple Ln, Houston, TX 77005',
-          description: 'Pool deck repair and resurfacing',
-          value: 25000,
-          trade_tags: ['pool', 'concrete', 'repair'],
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          id: 3,
+          jurisdiction: 'City of Houston',
+          permit_id: 'R2024-00125',
+          address: '789 Pine Dr, Houston, TX 77003',
+          description: 'Full bathroom renovation with luxury fixtures',
+          work_class: 'Residential',
+          category: 'Alteration',
+          status: 'Issued',
+          issue_date: '2024-01-17',
+          applicant: 'Dream Bathrooms LLC',
+          owner: 'Mike Wilson',
+          value: 22000,
+          is_residential: true,
+          trade_tags: ['bathroom', 'plumbing', 'tile'],
+          budget_band: '$15-50k',
           lead_score: 78,
-          initialVote: 'down' as const,
-        }
+          created_at: new Date().toISOString(),
+        },
       ];
       
       setLeads(mockLeads);
