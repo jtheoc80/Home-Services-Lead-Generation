@@ -45,7 +45,11 @@ CREATE TABLE IF NOT EXISTS leads (
   score_parcel_age NUMERIC,
   score_inspection NUMERIC,
   scoring_version TEXT,
-  
+
+  -- Quality tracking fields
+  global_score NUMERIC DEFAULT 50,  -- 0-150 range, starts at 50
+  last_quality_update TIMESTAMPTZ,
+
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   
@@ -82,3 +86,34 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT now(),
   sent_at TIMESTAMPTZ
 );
+
+-- Lead quality events table for tracking lead scoring events
+CREATE TABLE IF NOT EXISTS lead_quality_events (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id BIGINT NOT NULL REFERENCES leads(id),
+  account_id UUID,  -- NULL for global events like decay
+  event_type TEXT NOT NULL CHECK (event_type IN ('cancellation', 'feedback_negative', 'decay')),
+  weight NUMERIC NOT NULL,  -- Positive or negative weight to apply
+  reason_code TEXT,  -- e.g., 'low_quality', 'out_of_area', 'not_qualified'
+  metadata JSONB,  -- Additional context
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Cancellations table for tracking subscription cancellations
+CREATE TABLE IF NOT EXISTS cancellations (
+  id BIGSERIAL PRIMARY KEY,
+  account_id UUID NOT NULL,
+  reason TEXT NOT NULL,  -- 'low_quality', 'out_of_area', 'too_expensive', etc.
+  weight NUMERIC NOT NULL,  -- Weight assigned based on reason
+  affected_leads BIGINT[],  -- Array of lead IDs unlocked in last 30 days
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_lead_quality_events_lead_id ON lead_quality_events(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_quality_events_created_at ON lead_quality_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_lead_quality_events_account_id ON lead_quality_events(account_id);
+CREATE INDEX IF NOT EXISTS idx_cancellations_account_id ON cancellations(account_id);
+CREATE INDEX IF NOT EXISTS idx_leads_global_score ON leads(global_score);
+CREATE INDEX IF NOT EXISTS idx_leads_last_quality_update ON leads(last_quality_update);
