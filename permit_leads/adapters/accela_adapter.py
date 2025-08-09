@@ -34,7 +34,7 @@ class AccelaAdapter:
             
             # Update jurisdiction name
             for permit in permits:
-                permit.jurisdiction = self.jurisdiction.name
+            permits = [replace(permit, jurisdiction=self.jurisdiction.name) for permit in permits]
             
             return permits
             
