@@ -1,0 +1,107 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Greater Heights",
+        "code": "HEIGHTS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-95.4300, 29.7800],
+          [-95.4000, 29.7800],
+          [-95.4000, 29.8100],
+          [-95.4300, 29.8100],
+          [-95.4300, 29.7800]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Near Northside",
+        "code": "NEAR_NORTHSIDE"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-95.3800, 29.7800],
+          [-95.3500, 29.7800],
+          [-95.3500, 29.8100],
+          [-95.3800, 29.8100],
+          [-95.3800, 29.7800]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Montrose",
+        "code": "MONTROSE"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-95.4000, 29.7300],
+          [-95.3700, 29.7300],
+          [-95.3700, 29.7600],
+          [-95.4000, 29.7600],
+          [-95.4000, 29.7300]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Museum District",
+        "code": "MUSEUM"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-95.3900, 29.7100],
+          [-95.3600, 29.7100],
+          [-95.3600, 29.7400],
+          [-95.3900, 29.7400],
+          [-95.3900, 29.7100]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "River Oaks",
+        "code": "RIVER_OAKS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-95.4300, 29.7400],
+          [-95.4000, 29.7400],
+          [-95.4000, 29.7700],
+          [-95.4300, 29.7700],
+          [-95.4300, 29.7400]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Galleria/Uptown",
+        "code": "GALLERIA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-95.4800, 29.7300],
+          [-95.4500, 29.7300],
+          [-95.4500, 29.7600],
+          [-95.4800, 29.7600],
+          [-95.4800, 29.7300]
+        ]]
+      }
+    }
+  ]
+}

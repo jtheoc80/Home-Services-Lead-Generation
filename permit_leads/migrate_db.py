@@ -63,6 +63,40 @@ def add_enrichment_columns(db_path: Path):
     print("Database migration completed successfully!")
 
 
+def create_focus_areas_table(db_path: Path):
+    """Create focus_areas table for storing user geographic preferences."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Create focus_areas table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS focus_areas (
+            account_id TEXT PRIMARY KEY,
+            mode TEXT NOT NULL,           -- 'zip' | 'council' | 'neighborhood' | 'radius'
+            codes TEXT,                   -- JSON array of zip/district/neighborhood codes (nullable for radius)
+            center_lat REAL,              -- for radius mode
+            center_lon REAL,              -- for radius mode
+            radius_miles REAL,            -- radius in miles (nullable for non-radius modes)
+            created_at TEXT NOT NULL,     -- ISO timestamp
+            updated_at TEXT NOT NULL      -- ISO timestamp
+        )
+    """)
+    
+    # Create index on account_id for fast lookups
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_focus_areas_account ON focus_areas(account_id)")
+    
+    conn.commit()
+    conn.close()
+    print("Focus areas table created successfully!")
+
+
+def run_all_migrations(db_path: Path):
+    """Run all database migrations."""
+    print(f"Running migrations on database: {db_path}")
+    add_enrichment_columns(db_path)
+    create_focus_areas_table(db_path)
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 2:
@@ -74,4 +108,4 @@ if __name__ == "__main__":
         print(f"Database not found: {db_path}")
         sys.exit(1)
     
-    add_enrichment_columns(db_path)
+    run_all_migrations(db_path)

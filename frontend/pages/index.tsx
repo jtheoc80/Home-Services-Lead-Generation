@@ -19,6 +19,9 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold">LeadLedgerPro</h1>
               <nav className="space-x-4">
+                <Link href="/dashboard" className="text-white hover:text-gray-200">
+                  Dashboard
+                </Link>
                 <Link href="/signup" className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">
                   Sign Up
                 </Link>
@@ -43,8 +46,14 @@ export default function Home() {
               
               <div className="flex justify-center space-x-4">
                 <Link 
-                  href="/signup"
+                  href="/dashboard"
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-medium hover:bg-blue-700"
+                >
+                  View Dashboard
+                </Link>
+                <Link 
+                  href="/signup"
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium hover:bg-green-700"
                 >
                   Get Started
                 </Link>
