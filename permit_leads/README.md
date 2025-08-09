@@ -284,3 +284,92 @@ See [LICENSE](../LICENSE) for terms of use.
 ---
 
 *Built with ❤️ for the home services industry. Always scrape responsibly.*
+
+## 🆕 Lead Scoring & Export
+
+After scraping permits into the SQLite database you can generate contractor‑ready lead CSVs with a scoring model.
+
+### Run Export
+
+```bash
+# Default: look back 14 days
+python -m permit_leads export-leads
+
+# Custom database / output path / window
+python -m permit_leads export-leads --db data/permits/permits.db --out data/leads --lookback 21
+```
+
+### Output Structure
+
+```
+data/
+└── leads/
+    ├── leads_recent.csv
+    └── by_jurisdiction/
+        ├── city_of_houston_leads.csv
+        └── ...
+```
+
+### Columns
+
+| Column | Description |
+|--------|-------------|
+| score_total | Aggregate score (higher = better) |
+| score_recency | 0–25 linear decay over lookback window |
+| score_residential | Residential signal (classification + keywords) |
+| score_value | Project value weighting (log scale) |
+| score_work_class | Heuristic weight based on work class keywords |
+| scoring_version | Version tag for reproducibility |
+
+Non-scoring columns are taken directly from the permits table.
+
+### Scoring (v1.0.0)
+
+Component max contributions:
+- Recency: 0–25
+- Residential signal: up to 20 (or ≤10 via keyword fallback if not auto‑classified)
+- Declared value: 0–25 (log scaled)
+- Work class/category: up to 18 (largest matching keyword weight)
+
+Total score is the sum (capped by component formulas). Ties are secondarily ordered by issue_date (most recent first).
+
+### Interpretation
+
+- 70+ : High‑value and very recent residential projects likely to need immediate contractor engagement.
+- 40–69: Viable leads, may need light manual review.
+- <40: Low urgency or insufficient data (older, low value, ambiguous type).
+
+### Automation
+
+Integrate into your nightly workflow after scraping:
+
+```yaml
+jobs:
+  scrape:
+    # existing job ...
+  export-leads:
+    needs: scrape
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Export leads
+        run: python -m permit_leads export-leads --lookback 14
+      - name: Upload lead artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lead-exports
+          path: |
+            data/leads/leads_recent.csv
+            data/leads/by_jurisdiction/*.csv
+```
+
+### Future Improvements (Roadmap)
+
+- Config-driven weights (YAML)
+- Percentile ranking by jurisdiction
+- Optional exclusion filters (statuses, min value)
+- Historical score snapshots

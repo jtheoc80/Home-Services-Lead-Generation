@@ -10,7 +10,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from models.permit import PermitRecord
+from ..models.permit import PermitRecord
 
 logger = logging.getLogger(__name__)
 

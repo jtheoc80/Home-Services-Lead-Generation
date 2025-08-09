@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
 
-from models.permit import PermitRecord
+from ..models.permit import PermitRecord
 
 logger = logging.getLogger(__name__)
 

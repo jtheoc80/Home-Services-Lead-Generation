@@ -12,9 +12,9 @@ from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 import re
 
-from scrapers.base import BaseScraper
-from models.permit import PermitRecord
-from utils.normalize import safe_float, parse_date
+from .base import BaseScraper
+from ..models.permit import PermitRecord
+from ..utils.normalize import safe_float, parse_date
 
 logger = logging.getLogger(__name__)
 
