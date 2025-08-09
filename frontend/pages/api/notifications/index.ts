@@ -73,9 +73,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .map(n => n.id);
       
       if (notificationIds.length > 0) {
-        await supabase
-          .from('notifications')
-          .update({ 
         const readTimestamp = new Date().toISOString();
         await supabase
           .from('notifications')
