@@ -1,0 +1,50 @@
+# Configuration for permit data enrichment
+# Customize per-county parcel endpoints and field mappings
+
+parcels:
+  # Harris County, TX (includes Houston)
+  harris_county:
+    endpoint: "https://services.arcgis.com/sample/parcels/FeatureServer/0"
+    field_mapping:
+      apn: "ACCOUNT_NUM"
+      year_built: "YEAR_BUILT" 
+      heated_sqft: "BUILDING_SQFT"
+      lot_size: "LOT_SIZE"
+      land_use: "LAND_USE_CODE"
+  
+  # Montgomery County, TX  
+  montgomery_county:
+    endpoint: "https://services.arcgis.com/sample/parcels/FeatureServer/1"
+    field_mapping:
+      apn: "PARCEL_ID"
+      year_built: "YR_BUILT"
+      heated_sqft: "SQFT"
+      lot_size: "ACREAGE" 
+      land_use: "USE_CODE"
+
+# Geocoding configuration (via environment variables)
+# Set GEOCODER=nominatim|mapbox|google
+# For commercial providers, set:
+# MAPBOX_TOKEN=your_token_here
+# GOOGLE_MAPS_API_KEY=your_key_here
+
+# Trade keyword configuration (can be customized per region)
+trade_keywords:
+  roofing: ["roof", "roofing", "shingle", "gutter", "eave"]
+  bath: ["bath", "bathroom", "shower", "toilet", "vanity", "tub"]
+  kitchen: ["kitchen", "cabinet", "countertop", "appliance"]
+  pool: ["pool", "spa", "jacuzzi", "hot tub", "swimming"]
+  fence: ["fence", "fencing", "gate", "barrier"]
+  windows: ["window", "glazing", "glass", "sash"]
+  foundation: ["foundation", "slab", "footing", "pier", "basement"]
+  solar: ["solar", "photovoltaic", "pv", "renewable"]
+  hvac: ["hvac", "heating", "cooling", "air condition", "furnace", "heat pump"]
+  electrical: ["electrical", "electric", "wiring", "panel", "outlet"]
+  plumbing: ["plumb", "water", "sewer", "pipe", "drain"]
+
+# Days to first inspection by jurisdiction (for start_by prediction)
+inspection_days:
+  city_of_houston: 14
+  harris_county: 10
+  montgomery_county: 12
+  default: 7

@@ -11,6 +11,8 @@ from .models.permit import PermitRecord  # noqa: F401
 from .scrapers import SCRAPERS  # type: ignore
 from .utils.robots import check_robots_txt
 from .lead_export import export_leads
+from .export_leads import export_enriched_leads
+from .migrate_db import add_enrichment_columns
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +172,18 @@ Examples:
     export.add_argument("--lookback", type=int, default=14, help="Lookback window in days (default: 14)")
     export.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
 
+    enrich = subparsers.add_parser("export-enriched", help="Generate enriched & scored leads with geocoding, parcel data, etc.")
+    enrich.add_argument("--db", default="data/permits/permits.db", help="Path to permits SQLite DB")
+    enrich.add_argument("--out", default="data/leads", help="Output directory for lead CSVs")
+    enrich.add_argument("--lookback", type=int, default=14, help="Lookback window in days (default: 14)")
+    enrich.add_argument("--migrate", action="store_true", help="Update database schema to support enrichment")
+    enrich.add_argument("--no-enrich", action="store_true", help="Skip enrichment pipeline (use existing data)")
+    enrich.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+
+    migrate = subparsers.add_parser("migrate-db", help="Update database schema to support enrichment")
+    migrate.add_argument("--db", default="data/permits/permits.db", help="Path to permits SQLite DB")
+    migrate.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+
     return parser
 
 
@@ -237,6 +251,57 @@ def handle_export(args: argparse.Namespace):
                 print(f"  {f}")
 
 
+def handle_export_enriched(args: argparse.Namespace):
+    """Handle enriched lead export with optional database migration."""
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled")
+    
+    db_path = Path(args.db)
+    if not db_path.exists():
+        raise SystemExit(f"Database not found: {db_path}")
+    
+    # Migrate database schema if requested
+    if args.migrate:
+        logger.info("Migrating database schema...")
+        add_enrichment_columns(db_path)
+    
+    out_dir = Path(args.out)
+    enrich_data = not args.no_enrich
+    
+    logger.info(f"Exporting enriched leads (enrichment={'on' if enrich_data else 'off'})...")
+    master_csv, count = export_enriched_leads(
+        db_path=db_path, 
+        out_dir=out_dir, 
+        lookback_days=args.lookback,
+        enrich_data=enrich_data
+    )
+    
+    print(f"Generated {count} enriched leads -> {master_csv}")
+    by_dir = out_dir / "by_jurisdiction"
+    if by_dir.exists():
+        per_files = sorted(p.name for p in by_dir.glob("*_enriched_leads.csv"))
+        if per_files:
+            print("Per-jurisdiction files:")
+            for f in per_files:
+                print(f"  {f}")
+
+
+def handle_migrate(args: argparse.Namespace):
+    """Handle database schema migration."""
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled")
+    
+    db_path = Path(args.db)
+    if not db_path.exists():
+        raise SystemExit(f"Database not found: {db_path}")
+    
+    logger.info("Migrating database schema...")
+    add_enrichment_columns(db_path)
+    print("Database migration completed successfully!")
+
+
 def main():
     parser = build_parser()
     args, unknown = parser.parse_known_args()
@@ -251,6 +316,10 @@ def main():
         handle_scrape(args)
     elif args.command == "export-leads":
         handle_export(args)
+    elif args.command == "export-enriched":
+        handle_export_enriched(args)
+    elif args.command == "migrate-db":
+        handle_migrate(args)
     else:
         parser.print_help()
 
