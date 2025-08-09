@@ -1,0 +1,127 @@
+# config/registry.yaml
+# LeadLedgerPro Jurisdiction Registry
+# Controls which regions/jurisdictions are scraped and available.
+# To enable a new area, uncomment its entry and set active: true.
+
+regions:
+  - slug: usa
+    name: United States
+    level: national
+    parent: null
+    timezone: America/Chicago
+
+  - slug: tx
+    name: Texas
+    level: state
+    parent: usa
+    timezone: America/Chicago
+
+  - slug: tx-houston
+    name: Houston Metro
+    level: metro
+    parent: tx
+    timezone: America/Chicago
+
+jurisdictions:
+  # --- ACTIVE (Houston Metro) ---
+  - slug: tx-harris
+    name: Harris County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://harris.maps.arcgis.com/arcgis/rest/services/BuildingPermits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_number: "permit_no"
+        issued_date: "issue_date"
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  - slug: tx-fort-bend
+    name: Fort Bend County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://fortbend.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_number: "permit_no"
+        issued_date: "issue_date"
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  - slug: tx-brazoria
+    name: Brazoria County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://brazoria.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_number: "permit_no"
+        issued_date: "issue_date"
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  - slug: tx-galveston
+    name: Galveston County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://galveston.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_number: "permit_no"
+        issued_date: "issue_date"
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  # --- FUTURE LAUNCH AREAS ---
+  # - slug: tx-bexar
+  #   name: Bexar County (San Antonio)
+  #   state: TX
+  #   region: tx-san-antonio
+  #   active: false
+  #   provider: arcgis
+  #   source_config:
+  #     url: "<placeholder>"
+  #     date_field: "issue_date"
+  #     field_map: {}
+
+  # - slug: tx-travis
+  #   name: Travis County (Austin)
+  #   state: TX
+  #   region: tx-austin
+  #   active: false
+  #   provider: arcgis
+  #   source_config:
+  #     url: "<placeholder>"
+  #     date_field: "issue_date"
+  #     field_map: {}
+
+  # - slug: tx-dallas
+  #   name: Dallas County (Dallas-Fort Worth)
+  #   state: TX
+  #   region: tx-dallas
+  #   active: false
+  #   provider: arcgis
+  #   source_config:
+  #     url: "<placeholder>"
+  #     date_field: "issue_date"
+  #     field_map: {}
