@@ -92,7 +92,11 @@ def readiness_check():
         
         return jsonify({
             "ready": True,
-            "env": app_settings.app_env,
+        
+        
+        return jsonify({
+            "ready": True,
+            "env": settings.app_env,
             "timestamp": datetime.utcnow().isoformat()
         }), 200
         
