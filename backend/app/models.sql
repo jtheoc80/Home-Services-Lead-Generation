@@ -82,3 +82,19 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT now(),
   sent_at TIMESTAMPTZ
 );
+
+-- Analytics events table for tracking subscription cancellation and reactivation
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id BIGSERIAL PRIMARY KEY,
+  account_id UUID NOT NULL,
+  event TEXT NOT NULL,
+  properties JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create indexes for analytics_events
+CREATE INDEX IF NOT EXISTS idx_analytics_events_account_id ON analytics_events(account_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_event ON analytics_events(event);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_event_created_at ON analytics_events(event, created_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_properties ON analytics_events USING gin(properties);
