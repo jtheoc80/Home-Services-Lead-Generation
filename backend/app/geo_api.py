@@ -280,6 +280,67 @@ class GeoAPI:
         except Exception as e:
             print(f"Error filtering permits by radius: {e}")
             return []
+            # Use bounding box to pre-filter permits, then apply Haversine in Python
+            # This is much faster for large datasets than calculating distance for every row in SQL
+            # Calculate bounding box
+            import math
+            # Earth radius in miles
+            R = 3959.0
+            lat_rad = math.radians(center_lat)
+            delta_lat = radius_miles / R
+            delta_lon = radius_miles / (R * math.cos(lat_rad))
+            min_lat = center_lat - math.degrees(delta_lat)
+            max_lat = center_lat + math.degrees(delta_lat)
+            min_lon = center_lon - math.degrees(delta_lon)
+            max_lon = center_lon + math.degrees(delta_lon)
+            
+            cursor.execute("""
+                SELECT * FROM permits
+                WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                AND latitude BETWEEN ? AND ?
+                AND longitude BETWEEN ? AND ?
+                ORDER BY scraped_at DESC
+                LIMIT ?
+            """, (min_lat, max_lat, min_lon, max_lon, limit * 5))  # fetch more to allow for post-filtering
+            
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+            conn.close()
+            
+            # Filter using Haversine in Python
+            results = []
+            for row in rows:
+                record = dict(zip(columns, row))
+                lat = record.get("latitude")
+                lon = record.get("longitude")
+                if lat is not None and lon is not None:
+                    distance = self._haversine_distance(center_lat, center_lon, lat, lon)
+                    if distance <= radius_miles:
+                        record["distance_miles"] = distance
+                        results.append(record)
+                if len(results) >= limit:
+                    break
+            return results
+            
+        except Exception as e:
+            print(f"Error filtering permits by radius: {e}")
+            return []
+    
+    @staticmethod
+    def _haversine_distance(lat1, lon1, lat2, lon2):
+        """
+        Calculate the great-circle distance between two points on the Earth using the Haversine formula.
+        Returns distance in miles.
+        """
+        import math
+        R = 3959.0  # Earth radius in miles
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
     
     def _filter_permits_by_codes(self, codes: List[str], limit: int) -> List[Dict]:
         """Filter permits by area codes (ZIP, council district, etc.)."""
