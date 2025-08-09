@@ -303,6 +303,12 @@ cp .env.example .env
 
 Configure scraping targets in `permit_leads/config/sources.yaml`.
 
+The repository also includes a comprehensive regional registry in `config/registry.yaml` that defines:
+- **Regions**: Hierarchical geographic areas (national → state → metro)
+- **Jurisdictions**: County-level data sources with ArcGIS endpoint configurations
+
+This registry provides a standardized approach to organizing data sources by geographic regions across Texas metro areas including Houston, Dallas-Fort Worth, San Antonio, and Austin.
+
 ---
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
