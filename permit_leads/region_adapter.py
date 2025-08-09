@@ -70,7 +70,7 @@ class RegionAwareAdapter:
             'jurisdiction_slug': jurisdiction.slug,
             'jurisdiction_id': jurisdiction.slug,  # Use slug as ID for now
             'region_slug': region.slug,
-            'region_id': region.slug,  # Use slug as ID for now
+            'region_slug': region.slug,
             'state': jurisdiction.state,
             'jurisdiction_name': jurisdiction.name,
             'region_name': region.name
