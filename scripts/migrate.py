@@ -78,6 +78,10 @@ def run_migration(database_url: str, sql_content: str, dry_run: bool = False) ->
                     logger.debug(f"SQL: {statement[:100]}...")
                     
                     connection.execute(text(statement))
+                # Execute the entire SQL content as a single statement
+                logger.info("Executing full migration SQL script as a single block")
+                logger.debug(f"SQL: {sql_content[:500]}...")
+                connection.execute(text(sql_content))
                 
                 # Commit transaction
                 trans.commit()
