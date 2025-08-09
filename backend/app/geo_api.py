@@ -30,7 +30,9 @@ class FocusArea:
 class GeoAPI:
     """API for geographic area operations."""
     
-    def __init__(self, db_path: str = "data/permits/permits.db", geo_data_path: str = "data/geo/houston"):
+    def __init__(self, db_path: str = None, geo_data_path: str = None):
+        db_path = db_path or os.environ.get("PERMITS_DB_PATH", "data/permits/permits.db")
+        geo_data_path = geo_data_path or os.environ.get("HOUSTON_GEO_DATA_PATH", "data/geo/houston")
         self.db_path = Path(db_path)
         self.geo_data_path = Path(geo_data_path)
     
