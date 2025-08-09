@@ -58,6 +58,16 @@ For production deployments and automated workflows, the following secrets must b
 - **`MAPBOX_TOKEN`**: For Mapbox geocoding service
 - **`GOOGLE_MAPS_API_KEY`**: For Google Maps geocoding service
 
+#### New Environment Variables (v2.0+)
+- **`ALLOW_EXPORTS`**: Controls data export permissions (`true`/`false`, default: `false`)
+- **`REDIS_URL`**: Redis connection for caching and session storage (`redis://host:port/db`)
+- **`SENDGRID_API_KEY`**: SendGrid API key for email notifications
+- **`TWILIO_SID`**: Twilio Account SID for SMS notifications
+- **`TWILIO_TOKEN`**: Twilio Auth Token for SMS notifications  
+- **`TWILIO_FROM`**: Twilio phone number for sending SMS (E.164 format)
+
+See [`docs/environment-variables.md`](docs/environment-variables.md) for detailed configuration instructions.
+
 To add repository secrets:
 1. Go to your GitHub repository Settings
 2. Navigate to Secrets and variables → Actions
