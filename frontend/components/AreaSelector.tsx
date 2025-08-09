@@ -33,7 +33,7 @@ export default function AreaSelector({ accountId, onSave }: AreaSelectorProps) {
   })
   const [focusMode, setFocusMode] = useState<'zip' | 'council' | 'neighborhood' | 'radius'>('zip')
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
-  const [radiusCenter, setRadiusCenter] = useState({ lat: 29.7604, lon: -95.3698 }) // Houston center
+  const [radiusCenter, setRadiusCenter] = useState({ lat: HOUSTON_CENTER_LAT, lon: HOUSTON_CENTER_LON }) // Houston center
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
