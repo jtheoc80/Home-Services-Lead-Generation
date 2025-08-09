@@ -342,7 +342,6 @@ class GeoAPI:
                 if len(results) >= limit:
                     break
             return results
-            
         except Exception as e:
             print(f"Error filtering permits by radius: {e}")
             return []
