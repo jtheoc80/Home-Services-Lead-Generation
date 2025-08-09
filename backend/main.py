@@ -142,7 +142,9 @@ async def get_cancellation_records(request: Request, admin_user_id: str = None):
     try:
         if not admin_user_id:
             raise HTTPException(status_code=400, detail="admin_user_id is required")
-        
+async def get_cancellation_records(request: Request, admin_user_id: str = Query(...)):
+    """Get cancellation records for admin review."""
+    try:
         subscription_api = get_subscription_api()
         result = subscription_api.get_cancellation_records(admin_user_id)
         
