@@ -1,0 +1,72 @@
+name: Daily Cancellation Notices
+
+on:
+  schedule:
+    # Run daily at 8 AM America/Chicago (13:00 UTC)
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    # Allow manual triggering for testing
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no actual notifications sent)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+
+jobs:
+  send-cancellation-notices:
+    runs-on: ubuntu-latest
+    
+    env:
+      SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+      TWILIO_SID: ${{ secrets.TWILIO_SID }}
+      TWILIO_TOKEN: ${{ secrets.TWILIO_TOKEN }}
+      TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_BRAND: ${{ vars.EMAIL_BRAND || 'LeadLedgerPro' }}
+      BASE_URL: ${{ vars.BASE_URL || 'https://leadledgerpro.com' }}
+      SEND_CANCEL_REMINDER_DAYS: ${{ vars.SEND_CANCEL_REMINDER_DAYS || '1' }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r backend/requirements.txt
+        # Install additional dependencies for template rendering
+        pip install jinja2 markdown
+    
+    - name: Run cancellation notification job
+      run: |
+        cd backend/app/jobs
+        python cancel_notifications.py
+      
+    - name: Upload job logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: cancellation-job-logs-${{ github.run_number }}
+        path: /tmp/cancel_notifications.log
+        retention-days: 30
+    
+    - name: Notify on failure
+      if: failure()
+      env:
+        WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        if [ -n "$WEBHOOK_URL" ]; then
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🚨 Daily cancellation notification job failed in repository: ${{ github.repository }}"}' \
+            "$WEBHOOK_URL"
+        fi
