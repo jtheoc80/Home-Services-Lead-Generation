@@ -5,9 +5,14 @@ This module sets up the FastAPI application with authentication
 and API routes including the /api/me endpoint.
 """
 
+import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth import auth_user, AuthUser
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Create FastAPI application
 app = FastAPI(
@@ -16,10 +21,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Configure CORS origins from environment variable
+# Default to localhost for development, but allow override for production
+allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Frontend origins
+
+    allow_origins=[
+        "http://localhost:3000",
+        "https://<your-staging-domain>",
+        "https://<your-prod-domain>"
+    ],
+=======
+    allow_origins=[origin.strip() for origin in allowed_origins],  # Frontend origins
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
