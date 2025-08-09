@@ -51,7 +51,9 @@ class CancellationRequest(BaseModel):
     user_id: str
     reason_category: str = None
     reason_notes: str = None
-    processed_by: str = None
+    reason_category: Optional[str] = None
+    reason_notes: Optional[str] = None
+    processed_by: Optional[str] = None
 
 class ReactivationRequest(BaseModel):
     user_id: str
