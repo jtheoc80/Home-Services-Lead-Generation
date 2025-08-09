@@ -5,11 +5,17 @@ scikit-learn>=1.1.0
 psycopg2-binary>=2.9.0
 python-dotenv>=0.19.0
 
+# FastAPI and web server dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+gunicorn>=21.2.0
+
 # FastAPI and authentication dependencies
 fastapi>=0.104.0
 uvicorn>=0.24.0
 python-jose[cryptography]>=3.3.0
 python-multipart>=0.0.6
+
 
 # Redis caching
 redis>=4.0.0
