@@ -267,7 +267,7 @@ def handle_scrape(args: argparse.Namespace):
     if all_permits and not args.dry_run:
         if "jsonl" in args.formats:
             # For region-aware, use first permit's jurisdiction or fallback
-            temp_jur = "multi-jurisdiction" if use_region_aware else SCRAPERS[args.source]("").jurisdiction
+            temp_jur = "multi-jurisdiction" if use_region_aware else SCRAPERS[sources_to_run[0]]("").jurisdiction
             write_jsonl_output(all_permits, temp_jur, output_paths)
         if "csv" in args.formats:
             write_csv_output(all_permits, output_paths)
