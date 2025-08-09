@@ -44,3 +44,33 @@ class PoliteSession:
         resp = self._session.get(url, timeout=30, **kwargs)
         resp.raise_for_status()
         return resp
+
+
+def check_robots_txt(base_url: str, user_agent: str = "PermitLeadBot/1.0") -> bool:
+    """
+    Check if the given base URL allows scraping according to robots.txt.
+    
+    Args:
+        base_url: Base URL to check (e.g., "https://example.com")
+        user_agent: User agent string to check permissions for
+        
+    Returns:
+        True if scraping is allowed, False otherwise
+    """
+    from urllib.parse import urlparse, urljoin
+    
+    try:
+        parsed = urlparse(base_url)
+        robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+        
+        rp = robotparser.RobotFileParser()
+        rp.set_url(robots_url)
+        rp.read()
+        
+        # Check if the base URL path is allowed
+        return rp.can_fetch(user_agent, base_url)
+        
+    except Exception as e:
+        # If we can't read robots.txt, be conservative and allow
+        print(f"Warning: Could not check robots.txt for {base_url}: {e}")
+        return True
