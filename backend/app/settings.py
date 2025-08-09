@@ -8,7 +8,8 @@ All configuration values should be defined here rather than hardcoded throughout
 import os
 from pathlib import Path
 from typing import Optional
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):

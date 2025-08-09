@@ -1,53 +1,246 @@
-# Home-Services-Lead-Generation
+# Houston Home Services Lead Generation
 
-Creating Leads For Home Service Contractors
+**LeadLedgerPro - Houston Metro Edition**
 
-*Note: This project is intended to be renamed to **LeadLedgerPro** in a future release.*
+A lead generation platform for home service contractors focused exclusively on the Houston metropolitan area. This system automatically collects and processes building permit data from Houston-area counties to identify high-quality leads for contractors.
 
-## Overview
+## 🏙️ Houston-First Scope
 
-This repository provides tools and scrapers for generating leads for home service contractors by collecting and processing building permit data from various municipalities.
+This platform is currently scoped to serve **Houston Metro area only**, including:
 
-## Setup
+- **Harris County** (tx-harris)
+- **Fort Bend County** (tx-fort-bend) 
+- **Brazoria County** (tx-brazoria)
+- **Galveston County** (tx-galveston)
+
+*Other regions may be added in future releases based on demand and data availability.*
+
+## 🚀 Key Features
+
+- **Automated Lead Collection**: Nightly scraping of permit data from Houston-area counties
+- **Smart Notifications**: In-app notifications for leads matching your criteria
+- **Lead Scoring**: ML-powered scoring to identify the highest quality opportunities
+- **Dashboard-Only Access**: No CSV exports - all data accessible through the web dashboard
+- **Real-Time Updates**: Live notifications when new matching leads are available
+
+## ⚡ Quick Start
 
 ### Prerequisites
 - Python 3.11 or higher
-- Git
+- PostgreSQL database
+- Node.js 16+ (for frontend)
 
 ### Installation
 
-1. **Clone the repository:**
+1. **Clone and setup:**
    ```bash
    git clone https://github.com/jtheoc80/Home-Services-Lead-Generation.git
    cd Home-Services-Lead-Generation
    ```
 
-2. **Set up environment variables:**
+2. **Configure environment:**
    ```bash
-   # Copy environment example files
-   cp .env.example .env
-   cp permit_leads/.env.example permit_leads/.env
+   # Backend configuration
    cp backend/.env.example backend/.env
-   cp frontend/.env.example frontend/.env
+   # Edit backend/.env with your database URL and settings
    
-   # Edit the .env files with your configuration
+   # Frontend configuration  
+   cp frontend/.env.example frontend/.env.local
+   # Edit frontend/.env.local with your Supabase/API settings
    ```
 
 3. **Install dependencies:**
    ```bash
-   cd permit_leads
-   pip install -r requirements.txt
+   # Install scraper dependencies
+   pip install -r permit_leads/requirements.txt
+   
+   # Install backend dependencies
+   pip install -r backend/requirements.txt
+   
+   # Install frontend dependencies
+   cd frontend && npm install
    ```
 
-4. **Test the installation:**
+4. **Setup database:**
    ```bash
-   # Test with sample data
-   python -m permit_leads --source city_of_houston --sample --days 7
+   # Run database migrations
+   psql $DATABASE_URL -f backend/app/models.sql
    ```
 
-### Required Secrets
+## 🔧 Configuration
 
-For production deployments and automated workflows, the following secrets must be configured:
+### Backend Settings (`backend/.env`)
+
+Key configuration variables:
+
+```bash
+# Houston-only scope
+LAUNCH_SCOPE=houston
+DEFAULT_REGION=tx-houston
+ALLOW_EXPORTS=false
+
+# Database and services
+DATABASE_URL=postgresql://user:pass@host:port/db
+SENDGRID_API_KEY=your_key_here
+
+# Lead scoring and notifications
+USE_ML_SCORING=false
+MIN_SCORE_THRESHOLD=70.0
+```
+
+### Frontend Settings (`frontend/.env.local`)
+
+```bash
+# Houston-focused frontend
+NEXT_PUBLIC_LAUNCH_SCOPE=houston
+NEXT_PUBLIC_EXPORTS_ENABLED=false
+NEXT_PUBLIC_FEATURE_NOTIFICATIONS=true
+
+# API configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+## 🤖 Automated Pipeline
+
+The system runs a **nightly pipeline** that:
+
+1. Scrapes permit data from Houston-area counties
+2. Processes and enriches the data
+3. Ingests leads into PostgreSQL database
+4. Generates notifications for matching user preferences
+5. Stores audit artifacts for compliance
+
+**Pipeline Schedule**: Daily at 5:00 AM UTC (Midnight Central Time)
+
+### Manual Pipeline Execution
+
+You can trigger the pipeline manually:
+
+```bash
+# Run via GitHub Actions (if you have access)
+gh workflow run nightly-pipeline.yml
+
+# Or run locally
+python permit_leads/main.py --days 14 --outdir out
+python backend/app/ingest.py out/leads_recent.csv
+```
+
+## 📊 Dashboard Access
+
+All lead data is accessible exclusively through the web dashboard:
+
+- **No CSV Exports**: Data export functionality is disabled by design
+- **Save Views**: Use built-in filtering and "Save View" functionality
+- **Notifications**: Get alerted when new leads match your criteria
+- **Real-Time**: Dashboard updates automatically with new leads
+
+## 🔒 Data Access Policy
+
+### No-Download Policy
+
+This system implements a **strict no-download policy**:
+
+- ❌ CSV export endpoints are disabled (`ALLOW_EXPORTS=false`)
+- ❌ Bulk data downloads are not permitted
+- ✅ Dashboard viewing and filtering is fully supported
+- ✅ "Save View" functionality for custom lead lists
+- ✅ In-app notifications for new leads
+
+### Admin Access Only
+
+Data exports are restricted to system administrators only and require:
+- Admin-level authentication
+- `ALLOW_EXPORTS=true` environment variable
+- Audit logging of all export activities
+
+## 📧 Notifications
+
+Configure your notification preferences to receive alerts for:
+
+- **Lead Score Threshold**: Minimum score to trigger notifications (default: 70+)
+- **Counties**: Choose which counties to monitor
+- **Channels**: In-app notifications (email coming soon)
+- **Trade Tags**: Filter by specific contractor types
+- **Value Threshold**: Minimum estimated project value
+
+Access notification settings at: `/api/me/notifications/prefs`
+
+## 🏗️ Development
+
+### Project Structure
+
+```
+├── permit_leads/          # Lead scraping and processing
+├── backend/              # API and database management
+│   ├── app/
+│   │   ├── settings.py   # Centralized configuration
+│   │   ├── models.sql    # Database schema
+│   │   └── utils/        # Utility modules
+├── frontend/             # Next.js web dashboard
+│   ├── lib/config.ts     # Frontend configuration
+│   └── pages/api/        # API endpoints
+├── config/
+│   └── registry.yaml     # County/jurisdiction configuration
+└── .github/workflows/    # Automated pipelines
+```
+
+### Adding New Counties
+
+To add new Houston-area counties:
+
+1. Update `config/registry.yaml` with new jurisdiction
+2. Set `active: true` for the new county
+3. Ensure scraper adapter exists for the data source
+4. Test with `python permit_leads/main.py --jurisdiction new-county`
+
+## 📋 Legal and Compliance
+
+### Data Usage
+
+- All permit data is sourced from **public records** only
+- Data is used for **legitimate business purposes** (lead generation)
+- No personal information is stored beyond what's publicly available
+- System complies with **public records access laws**
+
+### Rate Limiting
+
+- Scrapers implement respectful rate limiting (1-second delays)
+- Robots.txt compliance for all data sources
+- Maximum 1000 records per source per run
+
+### Privacy
+
+- No personal contact information is stored
+- Only business-related permit information is processed
+- Users control their own notification preferences
+- No cross-user data sharing
+
+## 🆘 Support
+
+### Common Issues
+
+**Pipeline Failures**: Check logs in GitHub Actions artifacts
+**Missing Notifications**: Verify your preferences in dashboard settings
+**Database Connection**: Ensure `DATABASE_URL` is correctly configured
+
+### Getting Help
+
+1. Check the [Issues](https://github.com/jtheoc80/Home-Services-Lead-Generation/issues) page
+2. Review pipeline logs in GitHub Actions
+3. Contact system administrators for access issues
+
+## 📈 Roadmap
+
+- [ ] Email notification channel
+- [ ] SMS notifications (future)
+- [ ] ML lead scoring (beta testing)
+- [ ] Mobile app companion
+- [ ] Additional Texas markets (Austin, San Antonio, Dallas)
+
+---
+
+**Houston Metro Lead Generation** - Connecting contractors with opportunities in America's 4th largest city.
 
 #### GitHub Repository Secrets
 - **`DATABASE_URL`**: Database connection string for storing permit data
