@@ -13,6 +13,8 @@ from .utils.robots import check_robots_txt
 from .lead_export import export_leads
 from .export_leads import export_enriched_leads
 from .migrate_db import add_enrichment_columns
+from .region_adapter import RegionAwareAdapter
+from .config_loader import get_config_loader
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +77,33 @@ def write_sqlite_output(permits: List[PermitRecord], output_paths: Dict[str, Pat
     logger.info(f"Saved {saved_count} new permits to SQLite database")
 
 
-def run_scraper(source_name: str, args: argparse.Namespace, output_paths: Dict[str, Path]) -> List[PermitRecord]:
+def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, Path]) -> List[PermitRecord]:
+    """Run region-aware scraper using registry configuration."""
+    try:
+        adapter = RegionAwareAdapter()
+        since = dt.datetime.now() - dt.timedelta(days=args.days)
+        
+        if args.jurisdiction:
+            # Scrape specific jurisdiction
+            logger.info(f"Scraping jurisdiction: {args.jurisdiction}")
+            permits = adapter.scrape_jurisdiction(args.jurisdiction, since, limit=args.limit)
+        else:
+            # Scrape all active jurisdictions
+            logger.info("Scraping all active jurisdictions")
+            results = adapter.scrape_all_jurisdictions(since, limit=args.limit)
+            permits = []
+            for jurisdiction_permits in results.values():
+                permits.extend(jurisdiction_permits)
+        
+        return permits
+        
+    except Exception as e:
+        logger.error(f"Error in region-aware scraper: {e}")
+        return []
+
+
+def run_legacy_scraper(source_name: str, args: argparse.Namespace, output_paths: Dict[str, Path]) -> List[PermitRecord]:
+    """Run legacy single-source scraper for backward compatibility."""
     if source_name not in SCRAPERS:
         logger.error(f"Unknown source: {source_name}. Available: {list(SCRAPERS.keys())}")
         return []
@@ -119,10 +147,16 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Scrape one source
+  # Scrape using new region-aware system
+  python -m permit_leads scrape --region-aware --days 3 --formats csv sqlite jsonl
+  
+  # Scrape specific jurisdiction
+  python -m permit_leads scrape --jurisdiction tx-harris --days 3
+
+  # Scrape one source (legacy)
   python -m permit_leads scrape --source city_of_houston --days 3 --formats csv sqlite jsonl
 
-  # Scrape all sources
+  # Scrape all sources (legacy)
   python -m permit_leads scrape --all
 
   # Export recent leads (past 14 days default)
@@ -135,8 +169,10 @@ Examples:
     parser.set_defaults(command="__auto__")
     
     # Backward compatibility: Add old CLI arguments to main parser
-    parser.add_argument("--source", choices=list(SCRAPERS.keys()), help="Specific source to scrape")
-    parser.add_argument("--all", action="store_true", help="Run all available scrapers")
+    parser.add_argument("--source", choices=list(SCRAPERS.keys()), help="Specific source to scrape (legacy)")
+    parser.add_argument("--all", action="store_true", help="Run all available scrapers (legacy)")
+    parser.add_argument("--region-aware", action="store_true", help="Use new region-aware scraping system")
+    parser.add_argument("--jurisdiction", help="Specific jurisdiction slug to scrape")
     parser.add_argument("--days", type=int, default=7, help="Look-back window in days (default: 7)")
     parser.add_argument("--limit", type=int, help="Limit number of records per source")
     parser.add_argument("--formats", nargs="+", choices=["csv", "sqlite", "jsonl"], default=["csv", "sqlite"], help="Output formats (default: csv sqlite)")
@@ -152,8 +188,10 @@ Examples:
     subparsers = parser.add_subparsers(dest="command")
 
     scrape = subparsers.add_parser("scrape", help="Scrape permit sources")
-    scrape.add_argument("--source", choices=list(SCRAPERS.keys()), help="Specific source to scrape")
-    scrape.add_argument("--all", action="store_true", help="Run all available scrapers")
+    scrape.add_argument("--source", choices=list(SCRAPERS.keys()), help="Specific source to scrape (legacy)")
+    scrape.add_argument("--all", action="store_true", help="Run all available scrapers (legacy)")
+    scrape.add_argument("--region-aware", action="store_true", help="Use new region-aware scraping system")
+    scrape.add_argument("--jurisdiction", help="Specific jurisdiction slug to scrape")
     scrape.add_argument("--days", type=int, default=7, help="Look-back window in days (default: 7)")
     scrape.add_argument("--limit", type=int, help="Limit number of records per source")
     scrape.add_argument("--formats", nargs="+", choices=["csv", "sqlite", "jsonl"], default=["csv", "sqlite"], help="Output formats (default: csv sqlite)")
@@ -191,37 +229,57 @@ def handle_scrape(args: argparse.Namespace):
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug logging enabled")
+    
+    # Determine scraping mode
+    use_region_aware = getattr(args, 'region_aware', False) or getattr(args, 'jurisdiction', None)
+    
     if args.command == "__auto__":
-        if not getattr(args, "source", None) and not getattr(args, "all", False):
-            raise SystemExit("Must specify either --source or --all (scrape mode).")
+        if not getattr(args, "source", None) and not getattr(args, "all", False) and not use_region_aware:
+            raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction (scrape mode).")
         output_dir = Path(getattr(args, "output_dir", "data"))
     else:
-        if not args.source and not args.all:
-            raise SystemExit("Must specify either --source or --all")
+        if not args.source and not args.all and not use_region_aware:
+            raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction")
         if args.source and args.all:
             raise SystemExit("Cannot specify both --source and --all")
         output_dir = Path(args.output_dir)
+    
     output_paths = setup_output_directories(output_dir)
-    sources_to_run = list(SCRAPERS.keys()) if args.all else [args.source]
     all_permits: List[PermitRecord] = []
-    for source_name in sources_to_run:
-        logger.info(f"Running scraper: {source_name}")
-        permits = run_scraper(source_name, args, output_paths)
+    
+    if use_region_aware:
+        # Use new region-aware system
+        logger.info("Using region-aware scraping system")
+        permits = run_region_aware_scraper(args, output_paths)
         all_permits.extend(permits)
-        if permits and not args.dry_run:
-            if "jsonl" in args.formats:
-                temp_jur = SCRAPERS[source_name]("").jurisdiction
-                write_jsonl_output(permits, temp_jur, output_paths)
-            if "csv" in args.formats:
-                write_csv_output(permits, output_paths)
-            if "sqlite" in args.formats:
-                write_sqlite_output(permits, output_paths)
+        sources_processed = ["region-aware"]
+    else:
+        # Use legacy system
+        sources_to_run = list(SCRAPERS.keys()) if args.all else [args.source]
+        sources_processed = sources_to_run
+        
+        for source_name in sources_to_run:
+            logger.info(f"Running legacy scraper: {source_name}")
+            permits = run_legacy_scraper(source_name, args, output_paths)
+            all_permits.extend(permits)
+    
+    # Save output files
+    if all_permits and not args.dry_run:
+        if "jsonl" in args.formats:
+            # For region-aware, use first permit's jurisdiction or fallback
+            temp_jur = "multi-jurisdiction" if use_region_aware else SCRAPERS[args.source]("").jurisdiction
+            write_jsonl_output(all_permits, temp_jur, output_paths)
+        if "csv" in args.formats:
+            write_csv_output(all_permits, output_paths)
+        if "sqlite" in args.formats:
+            write_sqlite_output(all_permits, output_paths)
+    
     total_permits = len(all_permits)
     residential_permits = sum(1 for p in all_permits if p.is_residential())
     print(f"\n=== SCRAPING SUMMARY ===")
     print(f"Total permits: {total_permits}")
     print(f"Residential permits: {residential_permits}")
-    print(f"Sources processed: {len(sources_to_run)}")
+    print(f"Sources processed: {len(sources_processed)}")
     if not args.dry_run and total_permits > 0:
         print(f"Output directory: {output_dir}")
         print(f"Formats written: {', '.join(args.formats)}")
