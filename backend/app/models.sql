@@ -72,3 +72,41 @@ CREATE TABLE IF NOT EXISTS lead_outcomes (
   calibrated_score NUMERIC,   -- 0..100
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Indexes for performance optimization
+
+-- Index on jurisdiction for region filtering
+CREATE INDEX IF NOT EXISTS idx_leads_jurisdiction ON leads (jurisdiction);
+
+-- Index on lead score for high-value leads
+CREATE INDEX IF NOT EXISTS idx_leads_score ON leads (lead_score DESC) WHERE lead_score IS NOT NULL;
+
+-- Index on issue date for recent leads
+CREATE INDEX IF NOT EXISTS idx_leads_issue_date ON leads (issue_date DESC) WHERE issue_date IS NOT NULL;
+
+-- Index on residential status for filtering
+CREATE INDEX IF NOT EXISTS idx_leads_residential ON leads (is_residential) WHERE is_residential = true;
+
+-- Composite index for common queries (jurisdiction + residential + score)
+CREATE INDEX IF NOT EXISTS idx_leads_jurisdiction_residential_score 
+ON leads (jurisdiction, is_residential, lead_score DESC) 
+WHERE is_residential = true AND lead_score IS NOT NULL;
+
+-- GIN index for trade tags array searches
+CREATE INDEX IF NOT EXISTS idx_leads_trade_tags ON leads USING GIN (trade_tags);
+
+-- Geo-spatial indexes for location-based queries
+-- Note: These work with standard PostgreSQL. For PostGIS, you'd use different syntax
+CREATE INDEX IF NOT EXISTS idx_leads_location ON leads (latitude, longitude) 
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- If PostGIS is available, uncomment the following for better geo performance:
+-- CREATE INDEX IF NOT EXISTS idx_leads_point_geom ON leads USING GIST (ST_Point(longitude, latitude))
+-- WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- Index for feedback table
+CREATE INDEX IF NOT EXISTS idx_lead_feedback_account_lead ON lead_feedback (account_id, lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_feedback_rating ON lead_feedback (rating);
+
+-- Index for lead outcomes
+CREATE INDEX IF NOT EXISTS idx_lead_outcomes_score ON lead_outcomes (calibrated_score DESC) WHERE calibrated_score IS NOT NULL;

@@ -1,10 +1,31 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import Footer from '@/components/Footer'
 import PublicDataDisclaimer from '@/components/PublicDataDisclaimer'
+import RegionSelector from '@/components/RegionSelector'
 
 export default function Home() {
+  const router = useRouter();
+  const [selectedRegion, setSelectedRegion] = useState<string>('');
+  const [selectedMetro, setSelectedMetro] = useState<string>('');
+
+  const handleRegionChange = (regionId: string, metroId: string) => {
+    setSelectedRegion(regionId);
+    setSelectedMetro(metroId);
+  };
+
+  const handleGetStarted = () => {
+    if (selectedRegion && selectedMetro) {
+      // Navigate to region-specific page
+      router.push(`/regions/${selectedRegion}/${selectedMetro}`);
+    } else {
+      // Fallback to general signup
+      router.push('/signup');
+    }
+  };
+
   return (
     <>
       <Head>
@@ -41,13 +62,23 @@ export default function Home() {
                 Connect with homeowners who need your services using public permit data
               </p>
               
+              {/* Region Selector */}
+              <div className="max-w-md mx-auto mb-8">
+                <RegionSelector
+                  selectedRegion={selectedRegion}
+                  selectedMetro={selectedMetro}
+                  onRegionChange={handleRegionChange}
+                  className="mb-4"
+                />
+              </div>
+              
               <div className="flex justify-center space-x-4">
-                <Link 
-                  href="/signup"
+                <button 
+                  onClick={handleGetStarted}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-medium hover:bg-blue-700"
                 >
                   Get Started
-                </Link>
+                </button>
                 <Link 
                   href="/terms"
                   className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg text-lg font-medium hover:bg-gray-50"

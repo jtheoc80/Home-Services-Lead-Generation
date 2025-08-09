@@ -1,0 +1,127 @@
+# Regional Configuration Registry
+# This file defines available regions/states/metros and their metadata
+# Add new regions here to enable multi-region support
+
+regions:
+  # TEXAS
+  texas:
+    display_name: "Texas"
+    short_name: "TX" 
+    active: true
+    timezone: "America/Chicago"
+    metros:
+      houston:
+        display_name: "Houston Metro"
+        short_name: "Houston"
+        active: true
+        center_lat: 29.7604
+        center_lng: -95.3698
+        radius_miles: 50
+        description: "Greater Houston metropolitan area including Harris, Montgomery, Fort Bend, Galveston, and Brazoria counties"
+        seo_keywords: ["Houston contractors", "Houston permits", "home services Houston"]
+        jurisdictions:
+          - "City of Houston"
+          - "Harris County"
+          - "Montgomery County"
+          - "Fort Bend County" 
+          - "Galveston County"
+          - "Brazoria County"
+          - "City of Galveston"
+        data_sources:
+          - harris_county_permits
+          - city_of_houston_permits
+          - galveston_permits
+          - fort_bend_permits
+          - brazoria_permits
+      dallas:
+        display_name: "Dallas-Fort Worth Metro"
+        short_name: "DFW"
+        active: false  # Not yet implemented
+        center_lat: 32.7767
+        center_lng: -96.7970
+        radius_miles: 60
+        description: "Dallas-Fort Worth metropolitan area"
+        seo_keywords: ["Dallas contractors", "DFW permits", "home services Dallas"]
+        jurisdictions:
+          - "City of Dallas"
+          - "Dallas County"
+          - "Tarrant County"
+          - "City of Fort Worth"
+        data_sources: []
+      austin:
+        display_name: "Austin Metro"
+        short_name: "Austin"
+        active: false  # Not yet implemented
+        center_lat: 30.2672
+        center_lng: -97.7431
+        radius_miles: 40
+        description: "Greater Austin metropolitan area"
+        seo_keywords: ["Austin contractors", "Austin permits", "home services Austin"]
+        jurisdictions:
+          - "City of Austin"
+          - "Travis County"
+          - "Williamson County"
+        data_sources: []
+
+  # FLORIDA (Future expansion)
+  florida:
+    display_name: "Florida"
+    short_name: "FL"
+    active: false
+    timezone: "America/New_York"
+    metros:
+      miami:
+        display_name: "Miami Metro"
+        short_name: "Miami"
+        active: false
+        center_lat: 25.7617
+        center_lng: -80.1918
+        radius_miles: 50
+        description: "Greater Miami metropolitan area"
+        seo_keywords: ["Miami contractors", "Miami permits", "home services Miami"]
+        jurisdictions:
+          - "Miami-Dade County"
+        data_sources: []
+
+# Default region for new users
+default_region: "texas"
+default_metro: "houston"
+
+# Region-specific configurations
+region_configs:
+  texas:
+    # Trade priorities specific to Texas market
+    trade_priorities:
+      roofing: 30      # High priority due to weather
+      hvac: 25         # Hot climate
+      pool: 22         # Popular in TX
+      kitchen: 24
+      bath: 22
+      foundation: 25   # Clay soil issues
+      fence: 18
+      windows: 20
+      solar: 22        # Good solar incentives
+      electrical: 18
+      plumbing: 16
+    
+    # Inspection timeline estimates (days)
+    inspection_days:
+      "City of Houston": 14
+      "Harris County": 10
+      "Montgomery County": 12
+      "Fort Bend County": 10
+      "Galveston County": 8
+      default: 7
+    
+    # Permit value thresholds for Texas market
+    value_bands:
+      low: 5000
+      medium: 15000
+      high: 50000
+      premium: 100000
+
+# SEO configuration per region
+seo_config:
+  title_template: "{metro} Home Services Leads | LeadLedgerPro"
+  description_template: "Quality home service contractor leads from building permits in {metro}. Connect with homeowners who need {trades}."
+  keywords_template: ["{metro} contractors", "{metro} permits", "home services {metro}", "{trades} {metro}"]

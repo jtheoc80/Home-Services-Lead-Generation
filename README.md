@@ -307,6 +307,155 @@ Configure scraping targets in `permit_leads/config/sources.yaml`.
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
 
+## Multi-Region Support
+
+LeadLedgerPro supports multiple regions, states, and metropolitan areas through a centralized configuration system. One deployment can serve multiple regions without code changes - only configuration updates are needed.
+
+### Adding a New State/Metro Area
+
+To onboard a new jurisdiction and activate it for lead generation:
+
+#### 1. Update Regions Registry
+
+Edit `config/regions.yaml` to add the new region/metro:
+
+```yaml
+regions:
+  # Add new state
+  florida:
+    display_name: "Florida"
+    short_name: "FL"
+    active: true  # Set to true to activate
+    timezone: "America/New_York"
+    metros:
+      miami:
+        display_name: "Miami Metro"
+        short_name: "Miami"
+        active: true  # Set to true to activate
+        center_lat: 25.7617
+        center_lng: -80.1918
+        radius_miles: 50
+        description: "Greater Miami metropolitan area including Miami-Dade County"
+        seo_keywords: ["Miami contractors", "Miami permits", "home services Miami"]
+        jurisdictions:
+          - "Miami-Dade County"
+          - "City of Miami"
+        data_sources:
+          - miami_dade_permits
+```
+
+#### 2. Configure Data Sources
+
+Add scraper configuration in `permit_leads/config/sources.yaml`:
+
+```yaml
+sources:
+  # Add new data source
+  - name: Miami-Dade County Permits
+    type: arcgis_feature_service
+    url: "https://gis.miamidade.gov/server/rest/services/Permits/FeatureServer/0/query"
+    date_field: "ISSUE_DATE"
+    out_fields: "*"
+    mappings:
+      permit_number: "PERMIT_NO"
+      issued_date: "ISSUE_DATE"
+      address: "SITE_ADDRESS"
+      description: "WORK_DESCRIPTION"
+      status: "STATUS"
+      work_class: "PERMIT_TYPE"
+      category: "USE_GROUP"
+```
+
+#### 3. Add Enrichment Configuration
+
+Update `permit_leads/enrich_config.yaml` for county-specific parcel data:
+
+```yaml
+parcels:
+  # Add new county configuration
+  miami_dade_county:
+    endpoint: "https://services.arcgis.com/florida/parcels/FeatureServer/0"
+    field_mapping:
+      apn: "FOLIO"
+      year_built: "YR_BLT"
+      heated_sqft: "TOT_LVG_AREA"
+      lot_size: "LND_SQFOOT"
+      land_use: "DOR_UC"
+
+# Add region-specific trade priorities and inspection timelines
+region_configs:
+  florida:
+    trade_priorities:
+      roofing: 35      # Higher priority in hurricane zones
+      pool: 28         # Very popular in FL
+      hvac: 30         # Hot climate
+      # ... other trades
+    inspection_days:
+      "Miami-Dade County": 7
+      "City of Miami": 10
+      default: 5
+```
+
+#### 4. Deploy Configuration
+
+Once configuration is updated:
+
+1. **Test the scraper** with sample data:
+   ```bash
+   cd permit_leads
+   python -m permit_leads --source miami_dade_permits --sample --days 7
+   ```
+
+2. **Verify region API** returns new metro:
+   ```bash
+   curl http://localhost:3000/api/regions
+   ```
+
+3. **Check dynamic pages** are generated:
+   ```bash
+   # Frontend build should generate: /regions/florida/miami
+   npm run build
+   ```
+
+4. **Update database** if needed:
+   ```bash
+   # Run any new database migrations
+   python -m backend.app.ingest out/leads_recent.csv
+   ```
+
+#### 5. Activate Region
+
+Set `active: true` in the regions configuration to make the new metro visible to users.
+
+### Region-Aware Features
+
+Once configured, the system automatically provides:
+
+- **Region Selection**: Users can select metro areas on the homepage and lead pages
+- **Filtered Leads**: API endpoints filter leads by jurisdiction based on selected region
+- **SEO Pages**: Dynamic pages at `/regions/{state}/{metro}` with region-specific content
+- **Performance**: Database queries use jurisdiction indexes for fast filtering
+- **Scoring**: Region-specific trade priorities and value bands
+
+### Configuration Reference
+
+Key configuration files for multi-region support:
+
+| File | Purpose |
+|------|---------|
+| `config/regions.yaml` | Main registry of regions, metros, and their metadata |
+| `permit_leads/config/sources.yaml` | Data source configurations for scrapers |
+| `permit_leads/enrich_config.yaml` | County-specific enrichment and trade priorities |
+| `backend/app/models.sql` | Database schema with jurisdiction indexes |
+
+### API Endpoints
+
+- `GET /api/regions` - List available regions and metros
+- `GET /api/leads?region={region}&metro={metro}` - Get region-filtered leads
+- `GET /regions/{region}/{metro}` - SEO-optimized region landing pages
+
+The system is designed to scale to dozens of metros across multiple states while maintaining fast performance and clean separation of concerns.
+
 ## Legal Notices
 
 - LeadLedgerPro uses publicly available building permit data.
