@@ -58,7 +58,7 @@ async function handleGetPreferences(req: NextApiRequest, res: NextApiResponse, u
       counties: ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston'],
       channels: ['inapp'],
       trade_tags: [],
-      value_threshold: null,
+      value_threshold: undefined,
       is_enabled: true
     };
 
