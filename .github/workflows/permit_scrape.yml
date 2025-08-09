@@ -1,4 +1,4 @@
-name: Houston Permit Scraper
+name: Nightly Permit Scraper
 
 on:
   schedule:
