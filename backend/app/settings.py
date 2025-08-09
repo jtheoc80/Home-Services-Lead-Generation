@@ -139,7 +139,7 @@ class Settings(BaseSettings):
             """Custom parsing for environment variables."""
             if field_name == "admin_emails":
                 return [email.strip() for email in raw_val.split(",") if email.strip()]
-            return cls.json_loads(raw_val)
+            return json.loads(raw_val)
 
 
 # Global settings instance
