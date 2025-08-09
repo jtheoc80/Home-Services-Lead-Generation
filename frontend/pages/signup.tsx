@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import CryptoPaymentDisclaimer from '@/components/CryptoPaymentDisclaimer'
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -9,13 +10,16 @@ export default function Signup() {
     password: '',
     company: '',
     phone: '',
+    paymentMethod: 'stripe' as 'stripe' | 'btc' | 'eth' | 'xrp',
+    cryptoWalletAddress: '',
     agreeToTerms: false
   })
 
   const [errors, setErrors] = useState<{[key: string]: string}>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target
+    const checked = (e.target as HTMLInputElement).checked
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -47,6 +51,11 @@ export default function Signup() {
       newErrors.phone = 'Phone number is required'
     }
     
+    // Validate crypto wallet address for crypto payments
+    if (formData.paymentMethod !== 'stripe' && !formData.cryptoWalletAddress.trim()) {
+      newErrors.cryptoWalletAddress = 'Crypto wallet address is required for cryptocurrency payments'
+    }
+    
     if (!formData.agreeToTerms) {
       newErrors.agreeToTerms = 'You must agree to the Terms of Service and Privacy Policy'
     }
@@ -54,9 +63,20 @@ export default function Signup() {
     setErrors(newErrors)
     
     if (Object.keys(newErrors).length === 0) {
-      // Submit form
-      console.log('Form submitted:', formData)
-      alert('Account created successfully! (This is a demo)')
+      // Submit form - this would create the contractor with trial period
+      const trialStartDate = new Date()
+      const trialEndDate = new Date(trialStartDate)
+      trialEndDate.setDate(trialEndDate.getDate() + 7) // 7-day trial
+      
+      const contractorData = {
+        ...formData,
+        trialStartDate: trialStartDate.toISOString(),
+        trialEndDate: trialEndDate.toISOString(),
+        subscriptionStatus: 'trial'
+      }
+      
+      console.log('Trial signup submitted:', contractorData)
+      alert('7-day free trial started! Welcome to LeadLedgerPro! (This is a demo)')
     }
   }
 
@@ -70,10 +90,10 @@ export default function Signup() {
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Create your contractor account
+            Start Your 7-Day Free Trial
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Start receiving quality home service leads today
+            Full access to LeadLedgerPro • Payment method required • Cancel anytime
           </p>
         </div>
 
@@ -168,6 +188,76 @@ export default function Signup() {
                 </div>
               </div>
 
+              {/* Payment Method Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Payment Method *
+                </label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Required for trial registration. You won't be charged until your trial ends.
+                </p>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'stripe' }))}
+                    className={`p-3 border rounded-lg text-sm font-medium ${
+                      formData.paymentMethod === 'stripe'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Credit Card (Stripe)
+                  </button>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-1">
+                      {['btc', 'eth', 'xrp'].map((crypto) => (
+                        <button
+                          key={crypto}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, paymentMethod: crypto as any }))}
+                          className={`p-2 border rounded text-xs font-medium ${
+                            formData.paymentMethod === crypto
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {crypto.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Crypto Wallet Address Input */}
+                {formData.paymentMethod !== 'stripe' && (
+                  <div className="mt-3">
+                    <label htmlFor="cryptoWalletAddress" className="block text-sm font-medium text-gray-700">
+                      Your {formData.paymentMethod.toUpperCase()} Wallet Address *
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        id="cryptoWalletAddress"
+                        name="cryptoWalletAddress"
+                        type="text"
+                        required
+                        value={formData.cryptoWalletAddress}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                        placeholder="Enter your wallet address"
+                      />
+                      {errors.cryptoWalletAddress && <p className="mt-1 text-sm text-red-600">{errors.cryptoWalletAddress}</p>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Crypto Payment Disclaimer */}
+                {formData.paymentMethod !== 'stripe' && (
+                  <div className="mt-3">
+                    <CryptoPaymentDisclaimer />
+                  </div>
+                )}
+              </div>
+
               {/* Consent Checkbox */}
               <div className="flex items-start">
                 <div className="flex items-center h-5">
@@ -218,8 +308,11 @@ export default function Signup() {
                       : 'bg-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  Create Account
+                  Start 7-Day Free Trial
                 </button>
+                <p className="mt-2 text-xs text-gray-600 text-center">
+                  Trial includes full dashboard access. Auto-renews after 7 days unless canceled.
+                </p>
               </div>
             </form>
 
