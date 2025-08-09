@@ -10,3 +10,6 @@ out/
 data/permits/
 data/leads/
 !data/.gitkeep
+
+# Archive files (should not be committed)
+*.zip

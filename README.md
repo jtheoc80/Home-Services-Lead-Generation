@@ -42,6 +42,32 @@ python -m permit_leads --source city_of_houston --days 7 --formats csv sqlite
 
 See [`permit_leads/README.md`](permit_leads/README.md) for detailed documentation, usage examples, and extension instructions.
 
+## GitHub Actions & Automation
+
+This repository includes automated workflows for daily permit scraping:
+
+- **Scheduled Runs**: Automated daily at 6 AM UTC (1 AM CST/2 AM CDT)
+- **Manual Runs**: Trigger via GitHub Actions UI with custom parameters
+- **Data Storage**: Results committed to repository and available as downloadable artifacts
+
+See [`docs/github-actions-runbook.md`](docs/github-actions-runbook.md) for complete setup instructions, troubleshooting, and workflow details.
+
+## Configuration
+
+### Environment Variables
+
+Copy `permit_leads/.env.example` to `permit_leads/.env` and configure as needed:
+
+```bash
+cd permit_leads
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+### Data Sources
+
+Configure scraping targets in `permit_leads/config/sources.yaml`.
+
 ---
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
