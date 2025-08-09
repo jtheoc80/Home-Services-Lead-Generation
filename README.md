@@ -2,9 +2,67 @@
 
 Creating Leads For Home Service Contractors
 
+*Note: This project is intended to be renamed to **LeadLedgerPro** in a future release.*
+
 ## Overview
 
 This repository provides tools and scrapers for generating leads for home service contractors by collecting and processing building permit data from various municipalities.
+
+## Setup
+
+### Prerequisites
+- Python 3.11 or higher
+- Git
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/jtheoc80/Home-Services-Lead-Generation.git
+   cd Home-Services-Lead-Generation
+   ```
+
+2. **Set up environment variables:**
+   ```bash
+   # Copy environment example files
+   cp .env.example .env
+   cp permit_leads/.env.example permit_leads/.env
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   
+   # Edit the .env files with your configuration
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   cd permit_leads
+   pip install -r requirements.txt
+   ```
+
+4. **Test the installation:**
+   ```bash
+   # Test with sample data
+   python -m permit_leads --source city_of_houston --sample --days 7
+   ```
+
+### Required Secrets
+
+For production deployments and automated workflows, the following secrets must be configured:
+
+#### GitHub Repository Secrets
+- **`DATABASE_URL`**: Database connection string for storing permit data
+  - Format: `postgresql://user:password@host:port/database` or `sqlite:///path/to/database.db`
+  - Required for: Backend API, ML training pipeline, data persistence
+
+#### Optional API Keys (for enhanced features)
+- **`MAPBOX_TOKEN`**: For Mapbox geocoding service
+- **`GOOGLE_MAPS_API_KEY`**: For Google Maps geocoding service
+
+To add repository secrets:
+1. Go to your GitHub repository Settings
+2. Navigate to Secrets and variables → Actions
+3. Click "New repository secret"
+4. Add the secret name and value
 
 ## Components
 
@@ -158,6 +216,76 @@ This repository includes automated workflows for daily permit scraping:
 - **Data Storage**: Results committed to repository and available as downloadable artifacts
 
 See [`docs/github-actions-runbook.md`](docs/github-actions-runbook.md) for complete setup instructions, troubleshooting, and workflow details.
+
+### Nightly Pipeline
+
+The automated permit scraping pipeline runs daily via GitHub Actions:
+
+#### Workflow: `permit_scrape.yml`
+- **Schedule**: Daily at 6 AM UTC (1 AM CST/2 AM CDT)
+- **Purpose**: Automatically scrape new building permits from configured sources
+- **Output**: CSV, SQLite, and JSONL files with permit data
+- **Storage**: Results are committed to the repository and available as artifacts
+
+**Pipeline Steps:**
+1. Set up Python 3.11 environment
+2. Install dependencies from `permit_leads/requirements.txt`
+3. Create data directories
+4. Run permit scraper for the last 1 day (scheduled) or custom days (manual)
+5. Check for new data and commit to repository
+6. Upload data artifacts for download
+7. Generate summary report
+
+**Data Location:**
+- Raw data: `data/permits/raw/`
+- Processed data: `data/permits/aggregate/`
+- Artifacts available for 30 days after each run
+
+### Manual Run Steps
+
+You can manually trigger the permit scraping workflow with custom parameters:
+
+#### Via GitHub Actions UI:
+1. Go to the **Actions** tab in your GitHub repository
+2. Select the **"Houston Permit Scraper"** workflow
+3. Click **"Run workflow"** button
+4. Configure parameters:
+   - **Source**: Choose `city_of_houston` or `all`
+   - **Days**: Number of days to look back (default: 1)
+   - **Sample data**: Check to use test data instead of live scraping
+5. Click **"Run workflow"** to start
+
+#### Via GitHub CLI:
+```bash
+# Run with default parameters (city_of_houston, 1 day)
+gh workflow run permit_scrape.yml
+
+# Run with custom parameters
+gh workflow run permit_scrape.yml \
+  -f source=city_of_houston \
+  -f days=7 \
+  -f sample_data=false
+
+# Run with sample data for testing
+gh workflow run permit_scrape.yml \
+  -f source=city_of_houston \
+  -f days=7 \
+  -f sample_data=true
+```
+
+#### Manual Local Execution:
+```bash
+# Navigate to permit_leads directory
+cd permit_leads
+
+# Run scraper locally
+python -m permit_leads --source city_of_houston --days 7 --formats csv sqlite jsonl
+
+# Run with sample data for testing
+python -m permit_leads --source city_of_houston --sample --days 7
+```
+
+**Note**: Manual runs require the `DATABASE_URL` secret to be configured if using database storage.
 
 ## Configuration
 
