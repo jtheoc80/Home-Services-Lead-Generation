@@ -260,7 +260,6 @@ def process_new_lead_notifications() -> int:
     """
     import os
     import psycopg2
-    from psycopg2.extras import RealDictCursor
     
     try:
         # Get database connection
