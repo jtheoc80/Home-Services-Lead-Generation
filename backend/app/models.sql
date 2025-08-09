@@ -82,3 +82,20 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT now(),
   sent_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id BIGSERIAL PRIMARY KEY,
+  account_id UUID,
+  user_id TEXT,
+  event_name TEXT NOT NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('user_intent', 'system_driven')),
+  properties JSONB,
+  provider TEXT,
+  provider_event_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  
+  -- Index on common query patterns
+  INDEX idx_analytics_events_account_id ON analytics_events(account_id),
+  INDEX idx_analytics_events_event_name ON analytics_events(event_name),
+  INDEX idx_analytics_events_created_at ON analytics_events(created_at)
+);
