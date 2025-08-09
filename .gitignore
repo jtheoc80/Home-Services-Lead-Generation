@@ -5,3 +5,8 @@ out/
 .env
 *.log
 .DS_Store
+
+# Data output directories (should not be committed)
+data/permits/
+data/leads/
+!data/.gitkeep
