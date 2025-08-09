@@ -39,7 +39,7 @@ class HealthChecker:
             engine = create_engine(self.settings.database_url)
             with engine.connect() as connection:
                 # Simple ping query
-                result = connection.execute("SELECT 1")
+                result = connection.execute(text("SELECT 1"))
                 return result.fetchone() is not None
                 
         except (SQLAlchemyError, Exception) as e:
