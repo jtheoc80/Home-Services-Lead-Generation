@@ -260,7 +260,28 @@ class GeoAPI:
             # Note: For production, consider using PostGIS or more accurate geospatial library
             cursor.execute("""
                 SELECT * FROM permits 
+        """Filter permits by radius from center point, using bounding box pre-filter for performance."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Calculate bounding box for pre-filter
+            # 1 degree latitude ~= 69 miles
+            lat_delta = radius_miles / 69.0
+            # 1 degree longitude ~= 69 * cos(latitude) miles
+            lon_delta = radius_miles / (69.0 * abs(math.cos(math.radians(center_lat))) if abs(math.cos(math.radians(center_lat))) > 0 else 1)
+            min_lat = center_lat - lat_delta
+            max_lat = center_lat + lat_delta
+            min_lon = center_lon - lon_delta
+            max_lon = center_lon + lon_delta
+            
+            # Simple distance calculation using Haversine formula approximation
+            # Note: For production, consider using PostGIS or more accurate geospatial library
+            cursor.execute("""
+                SELECT * FROM permits 
                 WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                AND latitude BETWEEN ? AND ?
+                AND longitude BETWEEN ? AND ?
                 AND (
                     6371 * acos(
                         cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) +
