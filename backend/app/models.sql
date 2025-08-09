@@ -3,6 +3,56 @@
 
 CREATE TYPE lead_rating AS ENUM ('no_answer','bad_contact','not_qualified','quoted','won');
 
+-- Main leads table to store imported permit/lead data
+CREATE TABLE IF NOT EXISTS leads (
+  id BIGSERIAL PRIMARY KEY,
+  jurisdiction TEXT,
+  permit_id TEXT,
+  address TEXT,
+  description TEXT,
+  work_class TEXT,
+  category TEXT,
+  status TEXT,
+  issue_date DATE,
+  applicant TEXT,
+  owner TEXT,
+  value NUMERIC,
+  is_residential BOOLEAN,
+  scraped_at TIMESTAMPTZ,
+  
+  -- Enriched location fields
+  latitude NUMERIC,
+  longitude NUMERIC,
+  
+  -- Enriched parcel fields
+  apn TEXT,
+  year_built INTEGER,
+  heated_sqft NUMERIC,
+  lot_size NUMERIC,
+  land_use TEXT,
+  
+  -- Enriched classification fields
+  owner_kind TEXT,
+  trade_tags TEXT[],
+  budget_band TEXT,
+  start_by_estimate DATE,
+  
+  -- Scoring fields
+  lead_score NUMERIC,
+  score_recency NUMERIC,
+  score_trade_match NUMERIC,
+  score_value NUMERIC,
+  score_parcel_age NUMERIC,
+  score_inspection NUMERIC,
+  scoring_version TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  
+  -- Unique constraint on jurisdiction + permit_id to prevent duplicates
+  UNIQUE (jurisdiction, permit_id)
+);
+
 CREATE TABLE IF NOT EXISTS lead_feedback (
   id BIGSERIAL PRIMARY KEY,
   account_id UUID NOT NULL,
