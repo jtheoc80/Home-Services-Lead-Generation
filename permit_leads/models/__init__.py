@@ -1,0 +1,1 @@
+# Models package for permit leads scraper

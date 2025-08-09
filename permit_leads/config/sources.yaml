@@ -1,0 +1,59 @@
+# Houston area starter config — you can add/disable sources as you go.
+sources:
+  # HARRIS COUNTY — Issued Permits (ArcGIS) — contains ISSUEDDATE and PERMITNUMBER
+  - name: Harris County Issued Permits (ArcGIS)
+    type: arcgis_feature_service
+    url: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0/query"
+    date_field: "ISSUEDDATE"
+    out_fields: "*"
+    mappings:
+      permit_number: "PERMITNUMBER"
+      issued_date: "ISSUEDDATE"
+      address: "FULLADDRESS"
+      description: "PROJECTNAME"
+      status: "STATUS"
+      work_class: "APPTYPE"
+      category: "APPTYPE"
+
+  # CITY OF GALVESTON — Building Permits (ArcGIS) — GAL_* fields
+  - name: City of Galveston Building Permits (ArcGIS)
+    type: arcgis_feature_service
+    url: "https://gis.galvestontx.gov/server/rest/services/Accela/Building_Permits/MapServer/0/query"
+    date_field: "GAL_REC_DATE"       # consider GAL_STATDATE depending on your need
+    out_fields: "*"
+    mappings:
+      permit_number: "ID"
+      issued_date: "GAL_REC_DATE"
+      address: "SITUS"
+      description: "GAL_WORK_DESC"
+      status: "GAL_STATUS"
+      work_class: "GAL_PER_SUB_TYPE"
+      category: "GAL_PER_CATEGORY"
+
+  # CITY OF HOUSTON — Sold Permits (HTML) — manual selectors TBD
+  - name: City of Houston Sold Permits (HTML)
+    type: accela_html
+    url: "https://www.cohtora.houstontx.gov/approot/soldpermits/online_permit.htm"
+    table_selector: "table"            # Placeholder; refine selectors after inspecting the results table
+    header_selector: "thead th"
+    row_selector: "tbody tr"
+    cell_selector: "td"
+    max_pages: 3
+
+  # GALVESTON COUNTY — OpenGov portal (account often required)
+  - name: Galveston County OpenGov (placeholder)
+    type: accela_html
+    url: "https://www.galvestoncountytx.gov/county-offices/engineering-right-of-way"
+    table_selector: "table"            # placeholder
+
+  # FORT BEND — TBD
+  - name: Fort Bend County Permits (placeholder)
+    type: accela_html
+    url: "https://www.fortbendcountytx.gov/government/departments/county-services/engineering/permits/development-permit"
+    table_selector: "table"            # placeholder
+
+  # BRAZORIA — TBD
+  - name: Brazoria County Permits (placeholder)
+    type: accela_html
+    url: "https://www.brazoriacountytx.gov/departments/engineering/permits"
+    table_selector: "table"            # placeholder

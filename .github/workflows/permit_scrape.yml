@@ -1,0 +1,146 @@
+name: Houston Permit Scraper
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC (1 AM CST/2 AM CDT)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Scraper source to run'
+        required: false
+        default: 'city_of_houston'
+        type: choice
+        options:
+          - 'city_of_houston'
+          - 'all'
+      days:
+        description: 'Days to look back'
+        required: false
+        default: '1'
+        type: string
+      sample_data:
+        description: 'Use sample data (for testing)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  SAMPLE_DATA: ${{ github.event.inputs.sample_data == 'true' && '1' || '0' }}
+
+jobs:
+  scrape-permits:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r permit_leads/requirements.txt
+        
+    - name: Create data directory
+      run: |
+        mkdir -p data/permits/{raw,aggregate}
+        
+    - name: Run permit scraper
+      run: |
+        cd permit_leads
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          # Scheduled run - use defaults
+          python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
+        else
+          # Manual run - use inputs
+          SOURCE="${{ github.event.inputs.source }}"
+          DAYS="${{ github.event.inputs.days }}"
+          
+          if [ "$SOURCE" = "all" ]; then
+            python -m permit_leads --all --days "$DAYS" --formats csv sqlite jsonl
+          else
+            python -m permit_leads --source "$SOURCE" --days "$DAYS" --formats csv sqlite jsonl
+          fi
+        fi
+        
+    - name: Check for new data
+      id: check_data
+      run: |
+        # Check if any files were created today
+        TODAY=$(date +%Y-%m-%d)
+        NEW_FILES=$(find data -name "*${TODAY}*" -type f | wc -l)
+        echo "new_files=${NEW_FILES}" >> $GITHUB_OUTPUT
+        echo "Found ${NEW_FILES} new files for ${TODAY}"
+        
+    - name: Commit and push data
+      if: steps.check_data.outputs.new_files > 0
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Add only data files
+        git add data/
+        
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        # Create commit with summary
+        TODAY=$(date +%Y-%m-%d)
+        PERMIT_COUNT=$(find data -name "*${TODAY}*" -name "*.csv" -exec wc -l {} \; | awk '{sum+=$1} END {print sum-NR}' || echo "0")
+        
+        git commit -m "Update permit data for ${TODAY}
+        
+        - ${PERMIT_COUNT} permits processed
+        - Files updated: $(find data -name "*${TODAY}*" -type f | wc -l)
+        - Automated scrape on $(date)"
+        
+        git push
+        
+    - name: Generate summary
+      if: always()
+      run: |
+        echo "## 📊 Scraping Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.check_data.outputs.new_files }}" -gt 0 ]; then
+          echo "✅ **Success**: Found ${{ steps.check_data.outputs.new_files }} new files" >> $GITHUB_STEP_SUMMARY
+          
+          # Show latest data
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Latest Files Created:" >> $GITHUB_STEP_SUMMARY
+          find data -name "$(date +%Y-%m-%d)*" -type f | head -5 | while read file; do
+            echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          
+          # Show permit counts if CSV exists
+          if [ -f "data/permits/aggregate/permits_$(date +%Y-%m-%d).csv" ]; then
+            PERMIT_COUNT=$(tail -n +2 "data/permits/aggregate/permits_$(date +%Y-%m-%d).csv" | wc -l)
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📋 **Permits processed today**: $PERMIT_COUNT" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "ℹ️ **No new data**: No permits found or no changes detected" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Run details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Source: ${{ github.event.inputs.source || 'city_of_houston' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Sample data: ${{ env.SAMPLE_DATA == '1' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        
+    - name: Upload data artifacts
+      if: steps.check_data.outputs.new_files > 0
+      uses: actions/upload-artifact@v3
+      with:
+        name: permit-data-$(date +%Y-%m-%d)
+        path: data/
+        retention-days: 30

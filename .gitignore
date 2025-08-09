@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.sqlite
+out/
+.env
+*.log
+.DS_Store
