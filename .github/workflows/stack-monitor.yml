@@ -4,8 +4,7 @@ name: Stack Monitor
 on:
   schedule:
     # Run every 10 minutes
-    # Run every 30 minutes
-    - cron: "*/30 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       force_remediation:
@@ -16,36 +15,14 @@ on:
 env:
   NODE_VERSION: '20'
 
----
-name: Stack Monitor
-
-on:
-  # Run every hour
-  schedule:
-    - cron: '0 * * * *'
-  # Allow manual trigger
-  workflow_dispatch:
-    inputs:
-      force_fix:
-        description: 'Force trigger AI Auto PR even if no issues detected'
-        required: false
-        type: boolean
-        default: false
-
 permissions:
   contents: read
-  actions: write
-
+  issues: write
+  actions: read
 
 jobs:
   stack-health-check:
     runs-on: ubuntu-latest
-
-    
-    permissions:
-      contents: read
-      issues: write
-      actions: read
     
     steps:
       - name: Checkout repository
@@ -67,40 +44,40 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           AUTO_REMEDIATE: ${{ vars.AUTO_REMEDIATE || 'false' }}
         run: |
           # Run health check and capture output
-          node scripts/stack-health.js > summary.md || true
+          echo "Running stack health check..."
+          node scripts/stack-health.js > health-summary.md 2>&1 || echo "Health check completed with issues"
           
-          # Read exit code from file (more reliable than $?)
-          if [ -f ".stack-health-exit-code" ]; then
-            EXIT_CODE=$(cat .stack-health-exit-code)
-            echo "health_check_failed=$EXIT_CODE" >> $GITHUB_OUTPUT
+          # Check if health check passed based on exit code
+          if [ $? -eq 0 ]; then
+            echo "health_check_failed=false" >> $GITHUB_OUTPUT
           else
-            echo "health_check_failed=1" >> $GITHUB_OUTPUT
+            echo "health_check_failed=true" >> $GITHUB_OUTPUT
           fi
           
           # Always append summary to GitHub Step Summary
-          if [ -f "summary.md" ]; then
-            cat summary.md >> $GITHUB_STEP_SUMMARY
+          if [ -f "health-summary.md" ]; then
+            cat health-summary.md >> $GITHUB_STEP_SUMMARY
           fi
         
       - name: Upload stack health artifacts
-        if: steps.health_check.outputs.health_check_failed != '0'
+        if: steps.health_check.outputs.health_check_failed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: stack-health-report-${{ github.run_number }}
           path: |
             stack-health.json
-            summary.md
-            .stack-health-exit-code
+            health-summary.md
           retention-days: 30
           if-no-files-found: warn
           
       - name: Create or update GitHub issue
-        if: steps.health_check.outputs.health_check_failed != '0'
+        if: steps.health_check.outputs.health_check_failed == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -108,8 +85,8 @@ jobs:
             
             // Read the generated summary
             let summary = '## Stack Monitor Alert\n\nStack health check failed. Please review the details below.\n\n';
-            if (fs.existsSync('summary.md')) {
-              summary = fs.readFileSync('summary.md', 'utf8');
+            if (fs.existsSync('health-summary.md')) {
+              summary = fs.readFileSync('health-summary.md', 'utf8');
             }
             
             // Add metadata
@@ -178,8 +155,13 @@ jobs:
             
       - name: Auto-remediation (if enabled)
         if: |
-          steps.health_check.outputs.health_check_failed != '0' && 
+          steps.health_check.outputs.health_check_failed == 'true' && 
           (vars.AUTO_REMEDIATE == 'true' || github.event.inputs.force_remediation == 'true')
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
         run: |
           echo "🔧 Auto-remediation is enabled, attempting to fix issues..."
           
@@ -192,11 +174,6 @@ jobs:
           if [ -f "scripts/remediate-railway.js" ]; then
             echo "Running Railway remediation..."
             node scripts/remediate-railway.js || echo "Railway remediation failed"
-          fi
-          
-          if [ -f "scripts/remediate-supabase.js" ]; then
-            echo "Running Supabase remediation..."
-            node scripts/remediate-supabase.js || echo "Supabase remediation failed"
           fi
           
           # Wait a bit and re-run health check to see if issues were resolved
@@ -212,7 +189,7 @@ jobs:
           fi
           
       - name: Close resolved issues
-        if: steps.health_check.outputs.health_check_failed == '0'
+        if: steps.health_check.outputs.health_check_failed == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -261,104 +238,7 @@ jobs:
           echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Node Version:** ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Health Check Result:** ${{ steps.health_check.outputs.health_check_failed == '0' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check Result:** ${{ steps.health_check.outputs.health_check_failed == 'false' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Auto-remediation:** ${{ vars.AUTO_REMEDIATE == 'true' && '✅ Enabled' || '❌ Disabled' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
-
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: |
-          cd frontend && npm install
-
-      - name: Run stack health check
-        id: health_check
-        run: |
-          echo "Running stack health monitor..."
-
-          # Make script executable
-          chmod +x scripts/stack-health.js
-
-          # Capture the output and exit code
-          set +e  # Don't exit on error
-          OUTPUT=$(node scripts/stack-health.js 2>&1)
-          EXIT_CODE=$?
-          set -e  # Re-enable exit on error
-
-          echo "Exit code: $EXIT_CODE"
-          echo "Output:"
-          echo "$OUTPUT"
-
-          # Extract fix instruction if present
-          FIX_INSTRUCTION=""
-          if echo "$OUTPUT" | grep -q "---FIX-INSTRUCTION---"; then
-            FIX_INSTRUCTION=$(echo "$OUTPUT" | \
-              sed -n '/---FIX-INSTRUCTION---/,/---END-FIX-INSTRUCTION---/p' | \
-              sed '1d;$d')
-          fi
-
-          # Set outputs for next step
-          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
-          has_issues=$([[ $EXIT_CODE -ne 0 ]] && echo 'true' || echo 'false')
-          echo "has_issues=$has_issues" >> $GITHUB_OUTPUT
-
-          # Handle multiline instruction
-          if [ -n "$FIX_INSTRUCTION" ]; then
-            echo "fix_instruction<<EOF" >> $GITHUB_OUTPUT
-            echo "$FIX_INSTRUCTION" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            echo "fix_instruction=" >> $GITHUB_OUTPUT
-          fi
-
-          # Set error type based on exit code
-          case $EXIT_CODE in
-            0) echo "error_type=none" >> $GITHUB_OUTPUT ;;
-            1) echo "error_type=environment" >> $GITHUB_OUTPUT ;;
-            2) echo "error_type=build" >> $GITHUB_OUTPUT ;;
-            3) echo "error_type=supabase" >> $GITHUB_OUTPUT ;;
-            4) echo "error_type=health" >> $GITHUB_OUTPUT ;;
-            *) echo "error_type=unknown" >> $GITHUB_OUTPUT ;;
-          esac
-
-      - name: Trigger AI Auto PR on issues
-        if: >
-          steps.health_check.outputs.has_issues == 'true' ||
-          github.event.inputs.force_fix == 'true'
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: stack-health-fix
-          client-payload: |
-            {
-              "instruction": "${{ steps.health_check.outputs.fix_instruction }}",
-              "error_type": "${{ steps.health_check.outputs.error_type }}",
-              "exit_code": "${{ steps.health_check.outputs.exit_code }}",
-              "triggered_by": "stack-monitor",
-              "workflow_run_id": "${{ github.run_id }}"
-            }
-
-      - name: Report status
-        run: |
-          echo "Stack health check completed"
-          echo "Has issues: ${{ steps.health_check.outputs.has_issues }}"
-          echo "Error type: ${{ steps.health_check.outputs.error_type }}"
-
-          if [ "${{ steps.health_check.outputs.has_issues }}" == "true" ]; then
-            fix_instruction="${{ steps.health_check.outputs.fix_instruction }}"
-            echo "Fix instruction: $fix_instruction"
-            echo "🚨 Issues detected - AI Auto PR workflow triggered"
-          else
-            echo "✅ No issues detected - stack is healthy"
-          fi
 
