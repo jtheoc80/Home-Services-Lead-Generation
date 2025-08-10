@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+export default function handler(req, res) {
   // Health check endpoint for Railway deployment monitoring
   // Returns status and server uptime information
   
