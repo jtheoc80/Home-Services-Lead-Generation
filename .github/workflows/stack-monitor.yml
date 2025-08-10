@@ -94,7 +94,7 @@ jobs:
           esac
           
           # Check for specific code/config issue patterns
-          if echo "$OUTPUT" | grep -q "supabaseKey is required\|NEXT_PUBLIC_.*missing\|port not bound"; then
+          if echo "$OUTPUT" | grep -q "supabaseKey is required\|NEXT_PUBLIC_.* missing:\|port not bound"; then
             ERROR_TYPE="code_config"
             echo "Detected code/config issues requiring specific AI Auto PR instruction"
           fi
