@@ -79,7 +79,7 @@ class TestRequestLoggingMiddleware(unittest.TestCase):
         
         # Create app with custom logger
         app = FastAPI()
-        app.add_middleware(RequestLoggingMiddleware, logger_name="test.middleware")
+        app.add_middleware(RequestLoggingMiddleware)
         
         @app.get("/test")
         async def test_endpoint():
