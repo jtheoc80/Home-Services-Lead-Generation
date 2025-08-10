@@ -118,7 +118,7 @@ async function main() {
     console.error('');
     
     // Output failure status
-    console.log(`::set-output name=status::failed`);
+    // Deprecated ::set-output removed
     const githubOutput = process.env.GITHUB_OUTPUT;
     if (githubOutput) {
       writeFileSync(githubOutput, `status=failed\n`, { flag: 'a' });
