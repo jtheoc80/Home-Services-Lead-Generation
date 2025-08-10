@@ -18,6 +18,7 @@ fi
 if [ ! -x "$0" ]; then
   echo "Warning: Script '$0' is not marked as executable. Consider running 'chmod +x $0'." >&2
 fi
+
 # Vercel Supabase Environment Setup Script
 # This script sets up Supabase environment variables for production, preview, and development environments
 
@@ -34,77 +35,79 @@ error_handler() {
 
 # Trap errors and call error_handler with the line number
 trap 'error_handler $LINENO' ERR
+
 echo "🚀 Setting up Supabase environment variables for Vercel project..."
 echo ""
 
-# Pre-defined Supabase URL
-# Get Supabase URL from environment variable or first command line argument
-if [ -n "$SUPABASE_URL" ]; then
-    echo "Using SUPABASE_URL from environment variable."
-elif [ -n "$1" ]; then
-    SUPABASE_URL="$1"
-    echo "Using SUPABASE_URL from command line argument."
-else
-    echo "❌ Error: SUPABASE_URL is not set. Please set the SUPABASE_URL environment variable or pass it as the first argument to this script."
-    exit 1
+# Pre-defined Supabase URL (hardcoded as per requirements)
+# Supabase URL sourced from environment variable
+if [ -z "${SUPABASE_URL}" ]; then
+  echo "Error: SUPABASE_URL environment variable is not set. Please export SUPABASE_URL before running this script." >&2
+  exit 1
 fi
 
 echo "📝 Setting NEXT_PUBLIC_SUPABASE_URL for all environments..."
 echo "   URL: $SUPABASE_URL"
 echo ""
 
+# Helper function to set environment variable
+set_env_var() {
+    local var_name="$1"
+    local environment="$2"
+    local value="$3"
+    
+    echo "🔧 Setting $var_name for $environment environment..."
+    if vercel env ls "$environment" | grep -q "^$var_name "; then
+        echo "   Variable already exists. Updating value..."
+        vercel env edit "$var_name" "$environment" --value="$value"
+    else
+        echo "   Adding new variable..."
+        vercel env add "$var_name" "$environment" --value="$value"
+    fi
+}
+
 # Set NEXT_PUBLIC_SUPABASE_URL for all environments
-echo "🔧 Adding NEXT_PUBLIC_SUPABASE_URL to production environment..."
-vercel env add NEXT_PUBLIC_SUPABASE_URL production --value="$SUPABASE_URL"
-
-echo "🔧 Adding NEXT_PUBLIC_SUPABASE_URL to preview environment..."
-vercel env add NEXT_PUBLIC_SUPABASE_URL preview --value="$SUPABASE_URL"
-
-echo "🔧 Adding NEXT_PUBLIC_SUPABASE_URL to development environment..."
-echo "🔧 Setting NEXT_PUBLIC_SUPABASE_URL for production environment..."
-if vercel env ls production | grep -q "^NEXT_PUBLIC_SUPABASE_URL "; then
-  echo "   Variable already exists. Updating value..."
-  vercel env edit NEXT_PUBLIC_SUPABASE_URL production --value="$SUPABASE_URL"
-else
-  vercel env add NEXT_PUBLIC_SUPABASE_URL production --value="$SUPABASE_URL"
-fi
-
-echo "🔧 Setting NEXT_PUBLIC_SUPABASE_URL for preview environment..."
-if vercel env ls preview | grep -q "^NEXT_PUBLIC_SUPABASE_URL "; then
-  echo "   Variable already exists. Updating value..."
-  vercel env edit NEXT_PUBLIC_SUPABASE_URL preview --value="$SUPABASE_URL"
-else
-  vercel env add NEXT_PUBLIC_SUPABASE_URL preview --value="$SUPABASE_URL"
-fi
-
-echo "🔧 Setting NEXT_PUBLIC_SUPABASE_URL for development environment..."
-if vercel env ls development | grep -q "^NEXT_PUBLIC_SUPABASE_URL "; then
-  echo "   Variable already exists. Updating value..."
-  vercel env edit NEXT_PUBLIC_SUPABASE_URL development --value="$SUPABASE_URL"
-else
-  vercel env add NEXT_PUBLIC_SUPABASE_URL development --value="$SUPABASE_URL"
-fi
+set_env_var "NEXT_PUBLIC_SUPABASE_URL" "production" "$SUPABASE_URL"
+set_env_var "NEXT_PUBLIC_SUPABASE_URL" "preview" "$SUPABASE_URL"
+set_env_var "NEXT_PUBLIC_SUPABASE_URL" "development" "$SUPABASE_URL"
 
 echo ""
 echo "🔑 Now setting NEXT_PUBLIC_SUPABASE_ANON_KEY for all environments..."
-echo "   You will be prompted to enter the anonymous key for each environment."
+echo "   You will be prompted to enter the anonymous key once, which will be set for all environments."
 echo "   Get this key from your Supabase project settings > API > anon public key"
 echo ""
 
-# Set NEXT_PUBLIC_SUPABASE_ANON_KEY for all environments (user will be prompted)
-echo "🔧 Adding NEXT_PUBLIC_SUPABASE_ANON_KEY to production environment..."
-echo "   Please paste your Supabase anonymous key when prompted:"
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
-
+# Securely prompt for the Supabase anonymous key
+echo "🔐 Please enter your Supabase anonymous key:"
+echo "   (input will be hidden for security)"
+read -s -p "   Key: " SUPABASE_ANON_KEY
 echo ""
-echo "🔧 Adding NEXT_PUBLIC_SUPABASE_ANON_KEY to preview environment..."
-echo "   Please paste your Supabase anonymous key when prompted:"
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY preview
 
+if [ -z "$SUPABASE_ANON_KEY" ]; then
+    echo "❌ Error: No anonymous key provided. Exiting."
+    exit 1
+fi
+
+echo "   ✅ Anonymous key received securely."
 echo ""
-echo "🔧 Adding NEXT_PUBLIC_SUPABASE_ANON_KEY to development environment..."
-echo "   Please paste your Supabase anonymous key when prompted:"
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY development
+
+# Helper function to set anon key for environment
+set_anon_key() {
+    local environment="$1"
+    echo "🔧 Setting NEXT_PUBLIC_SUPABASE_ANON_KEY for $environment environment..."
+    if vercel env ls "$environment" | grep -q "^NEXT_PUBLIC_SUPABASE_ANON_KEY "; then
+        echo "   Variable already exists. Updating value..."
+        vercel env edit "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$environment" --value="$SUPABASE_ANON_KEY"
+    else
+        echo "   Adding new variable..."
+        vercel env add "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$environment" --value="$SUPABASE_ANON_KEY"
+    fi
+}
+
+# Set NEXT_PUBLIC_SUPABASE_ANON_KEY for all environments
+set_anon_key "production"
+set_anon_key "preview"
+set_anon_key "development"
 
 echo ""
 echo "📥 Pulling environment variables to local .env.local file..."
@@ -113,7 +116,17 @@ vercel env pull .env.local
 echo ""
 echo "✅ Supabase environment variables have been successfully configured!"
 echo "   - NEXT_PUBLIC_SUPABASE_URL: $SUPABASE_URL"
-echo "   - NEXT_PUBLIC_SUPABASE_ANON_KEY: [configured for all environments]"
+echo "   - NEXT_PUBLIC_SUPABASE_ANON_KEY: [configured securely for all environments]"
 echo "   - Local .env.local file has been updated"
 echo ""
+echo "📋 What was done:"
+echo "   ✓ Set NEXT_PUBLIC_SUPABASE_URL for production, preview, and development"
+echo "   ✓ Set NEXT_PUBLIC_SUPABASE_ANON_KEY for production, preview, and development"
+echo "   ✓ Pulled environment variables to .env.local"
+echo ""
 echo "🎉 Setup complete! Your Vercel project is now configured with Supabase environment variables."
+echo ""
+echo "💡 Next steps:"
+echo "   1. Verify your environment variables: vercel env ls"
+echo "   2. Deploy your changes: vercel --prod"
+echo "   3. Check your local .env.local file for the pulled variables"
