@@ -9,6 +9,7 @@ endpoints for subscription management and lead generation services.
 
 import logging
 import os
+import asyncio
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Request, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,7 @@ from dotenv import load_dotenv
 # Import existing subscription API
 from app.subscription_api import get_subscription_api
 from app.auth import auth_user, AuthUser
+from app.supabase_client import get_supabase_client
 
 # Import test Supabase router
 from test_supabase import router as test_supabase_router
@@ -99,6 +101,49 @@ async def get_current_user(user: AuthUser = Depends(auth_user)):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "leadledderpro-api"}
+
+@app.get("/healthz")
+async def healthz():
+    """
+    Health check endpoint with database connectivity check.
+    
+    Returns:
+        Dict containing status, version, and database connectivity status
+    """
+    # Get version from app metadata
+    version = app.version
+    
+    # Check database connectivity with 300ms timeout
+    db_status = "down"
+    try:
+        # Create a timeout task for DB check
+        async def check_db():
+            try:
+                supabase = get_supabase_client()
+                # Simple query to test connectivity - try to query any table with minimal data
+                # This is a lightweight operation that tests database connection
+                # Query a valid user table to test connectivity (replace 'users' with a table that exists in your schema)
+                result = supabase.table('users').select('id').limit(1).execute()
+                return result is not None
+            except Exception:
+                return False
+        
+        # Wait for DB check with 300ms timeout
+        db_connected = await asyncio.wait_for(check_db(), timeout=0.3)
+        if db_connected:
+            db_status = "connected"
+    except asyncio.TimeoutError:
+        logger.warning("Database health check timed out after 300ms")
+        db_status = "down"
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        db_status = "down"
+    
+    return {
+        "status": "ok",
+        "version": version,
+        "db": db_status
+    }
 
 # Subscription management endpoints
 @app.post("/api/subscription/cancel")
