@@ -431,7 +431,9 @@ class StackHealthMonitor {
 }
 
 // CLI handling
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])
+) {
   const args = process.argv.slice(2);
   const options = {};
 
