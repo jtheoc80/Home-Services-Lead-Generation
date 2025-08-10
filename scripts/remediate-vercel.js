@@ -24,7 +24,21 @@ async function remediateVercel() {
         'Authorization': `Bearer ${vercelToken}`,
         'Content-Type': 'application/json'
       }
-    });
+    // Timeout protection for fetch (30 seconds)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    let response;
+    try {
+      response = await fetch('https://api.vercel.com/v6/deployments', {
+        headers: {
+          'Authorization': `Bearer ${vercelToken}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       throw new Error(`Vercel API error: ${response.status}`);
