@@ -1,5 +1,23 @@
 #!/bin/bash
 
+# --- Interpreter and Permission Checks ---
+
+# Check if running under Bash
+if [ -z "$BASH_VERSION" ]; then
+  echo "Error: This script must be run with Bash." >&2
+  exit 1
+fi
+
+# Check if /bin/bash exists and is executable
+if [ ! -x "/bin/bash" ]; then
+  echo "Error: /bin/bash not found or not executable." >&2
+  exit 1
+fi
+
+# Check if the script itself is executable
+if [ ! -x "$0" ]; then
+  echo "Warning: Script '$0' is not marked as executable. Consider running 'chmod +x $0'." >&2
+fi
 # Vercel Supabase Environment Setup Script
 # This script sets up Supabase environment variables for production, preview, and development environments
 
