@@ -173,9 +173,18 @@ class StackHealthChecker {
       }
 
     } catch (error) {
+      let message = error.message;
+      if (error.code === 'ENOTFOUND') {
+        message = `Network error: Cannot resolve hostname ${error.hostname}`;
+      } else if (error.code === 'ECONNREFUSED') {
+        message = `Connection refused: ${error.hostname}:${error.port}`;
+      } else if (!message) {
+        message = typeof error === 'string' ? error : JSON.stringify(error);
+      }
+      
       this.results.vercel = {
         ok: false,
-        message: error.message || 'Unknown error',
+        message,
         latencyMs: error.latencyMs || (Date.now() - startTime)
       };
     }
@@ -272,9 +281,18 @@ class StackHealthChecker {
       }
 
     } catch (error) {
+      let message = error.message;
+      if (error.code === 'ENOTFOUND') {
+        message = `Network error: Cannot resolve hostname ${error.hostname}`;
+      } else if (error.code === 'ECONNREFUSED') {
+        message = `Connection refused: ${error.hostname}:${error.port}`;
+      } else if (!message) {
+        message = typeof error === 'string' ? error : JSON.stringify(error);
+      }
+      
       this.results.railway = {
         ok: false,
-        message: error.message || 'Unknown error',
+        message,
         latencyMs: error.latencyMs || (Date.now() - startTime)
       };
     }
@@ -340,9 +358,18 @@ class StackHealthChecker {
       };
 
     } catch (error) {
+      let message = error.message;
+      if (error.code === 'ENOTFOUND') {
+        message = `Network error: Cannot resolve hostname ${error.hostname}`;
+      } else if (error.code === 'ECONNREFUSED') {
+        message = `Connection refused: ${error.hostname}:${error.port}`;
+      } else if (!message) {
+        message = typeof error === 'string' ? error : JSON.stringify(error);
+      }
+      
       this.results.supabase = {
         ok: false,
-        message: error.message || 'Unknown error',
+        message,
         latencyMs: error.latencyMs || (Date.now() - startTime)
       };
     }
