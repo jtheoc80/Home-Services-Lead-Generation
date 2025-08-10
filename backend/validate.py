@@ -243,7 +243,7 @@ def main():
     if passed == total:
         print("🎉 All validations passed!")
         print("\nNext steps:")
-        print("1. Run database migration: psql $DATABASE_URL < backend/app/migrations/001_feedback_tables.sql")
+        print("1. Run database migration: psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -b -e -f backend/app/migrations/001_feedback_tables.sql")
         print("2. Install Python dependencies: pip install -r backend/requirements.txt")
         print("3. Configure environment variables in frontend/.env")
         print("4. Start the Next.js development server: npm run dev")
