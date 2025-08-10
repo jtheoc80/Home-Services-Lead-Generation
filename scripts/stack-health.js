@@ -294,7 +294,7 @@ async function checkSupabase() {
     };
 
   } catch (error) {
-    const totalTime = Date.now() - Date.now();
+    const totalTime = Date.now() - startTime;
     results.services.supabase = {
       status: 'error',
       message: `Smoke test failed: ${error.message}`,
