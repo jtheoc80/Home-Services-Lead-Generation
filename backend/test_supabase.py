@@ -7,7 +7,7 @@ basic lead insertion functionality.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from datetime import datetime
