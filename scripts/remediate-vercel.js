@@ -69,7 +69,8 @@ async function main() {
     console.log('🔄 Triggering Vercel production deployment...');
     
     // Execute vercel deploy --prebuilt --prod --token $VERCEL_TOKEN
-    const result = await execCommand('npx', ['vercel', 'deploy', '--prebuilt', '--prod', '--token', VERCEL_TOKEN]);
+    // Execute vercel deploy --prebuilt --prod (token is passed via environment variable)
+    const result = await execCommand('npx', ['vercel', 'deploy', '--prebuilt', '--prod']);
     
     // Parse the output to extract deployment URL
     const output = result.stdout + result.stderr;
