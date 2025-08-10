@@ -66,5 +66,12 @@ Thumbs.db
 *.temp
 .cache/
 
+# Stack monitoring output files
+stack-health.json
+.stack-health-exit-code
+summary.md
+remediation-summary.md
+
 # Stack health monitoring output
 stack-health.json
+
