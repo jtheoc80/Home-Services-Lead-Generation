@@ -27,7 +27,7 @@ jobs:
       
       - name: Validate required secrets
         run: |
-          if [ -z "${{ env.VERCEL_TOKEN }}" ]; then
+          if [ -z "$VERCEL_TOKEN" ]; then
             echo "❌ Error: VERCEL_TOKEN secret is not set"
             echo "Please add your Vercel API token to repository secrets"
             exit 1
