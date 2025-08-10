@@ -92,7 +92,36 @@ def apply_schema(db_url: str, sql_content: str) -> None:
                             )
                             if cursor.fetchone():
                                 logger.info(f"Type {type_name} already exists, skipping...")
-                                continue
+                        # Extract the type name for idempotent handling (handle qualified names)
+                        match = re.search(r'CREATE\s+TYPE\s+([a-zA-Z_][\w\.]*)', statement, re.IGNORECASE)
+                        if match:
+                            qualified_type_name = match.group(1)
+                            if '.' in qualified_type_name:
+                                schema_name, type_name = qualified_type_name.split('.', 1)
+                                # Get namespace OID for schema
+                                cursor.execute(
+                                    "SELECT oid FROM pg_namespace WHERE nspname = %s",
+                                    (schema_name,)
+                                )
+                                ns_row = cursor.fetchone()
+                                if ns_row:
+                                    ns_oid = ns_row[0]
+                                    cursor.execute(
+                                        "SELECT 1 FROM pg_type WHERE typname = %s AND typnamespace = %s",
+                                        (type_name, ns_oid)
+                                    )
+                                    if cursor.fetchone():
+                                        logger.info(f"Type {qualified_type_name} already exists, skipping...")
+                                        continue
+                            else:
+                                type_name = qualified_type_name
+                                cursor.execute(
+                                    "SELECT 1 FROM pg_type WHERE typname = %s",
+                                    (type_name,)
+                                )
+                                if cursor.fetchone():
+                                    logger.info(f"Type {type_name} already exists, skipping...")
+                                    continue
                     
                     # Execute the statement
                     cursor.execute(statement)
