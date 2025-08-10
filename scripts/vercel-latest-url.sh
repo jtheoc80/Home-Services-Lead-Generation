@@ -138,7 +138,7 @@ check_http_status() {
     
     # Get HTTP status code using curl
     local http_status
-    if ! http_status=$(curl -I -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null); then
+    if ! http_status=$(curl --max-time 30 -I -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null); then
         print_error "Failed to check HTTP status for $url"
         return 1
     fi
