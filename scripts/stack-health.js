@@ -309,6 +309,34 @@ class StackHealthChecker {
           'Authorization': `Bearer ${supabaseServiceRole}`,
           'apikey': supabaseServiceRole
         }
+      // First, check if 'created_at' column exists in the 'leads' table
+      const schemaResponse = await this.makeRequest(`${supabaseUrl}/rest/v1/leads?select=*&limit=1`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceRole}`,
+          'apikey': supabaseServiceRole
+        }
+      });
+      let orderClause = '';
+      if (schemaResponse.statusCode === 200) {
+        try {
+          const schemaData = JSON.parse(schemaResponse.data);
+          if (Array.isArray(schemaData) && schemaData.length > 0 && 'created_at' in schemaData[0]) {
+            orderClause = '&order=created_at.desc';
+          } else {
+            // Document assumption and fallback
+            // 'created_at' column not found; ordering omitted
+          }
+        } catch (e) {
+          // If parsing fails, omit ordering
+        }
+      }
+      const selectResponse = await this.makeRequest(`${supabaseUrl}/rest/v1/leads?source=eq.monitor&limit=1${orderClause}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceRole}`,
+          'apikey': supabaseServiceRole
+        }
       });
 
       if (selectResponse.statusCode !== 200) {
