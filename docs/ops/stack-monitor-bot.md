@@ -312,7 +312,7 @@ jobs:
 - name: Configure Git for bot commits
   run: |
     git config user.name "stack-monitor-bot"
-    git config user.email "stack-monitor-bot@yourdomain.com"
+    git config user.email "stack-monitor-bot@homeservices.com"
 ```
 
 ---
