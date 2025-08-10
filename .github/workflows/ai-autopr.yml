@@ -13,7 +13,7 @@ on:
         type: string
   # Listen for repository dispatch events from stack monitor
   repository_dispatch:
-    types: [stack-health-fix]
+    types: [ai_autopr_request]
 
 permissions:
   contents: write

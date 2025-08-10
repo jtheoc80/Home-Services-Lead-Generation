@@ -18,7 +18,7 @@ env:
 permissions:
   contents: read
   issues: write
-  actions: read
+  actions: write
 
 jobs:
   stack-health-check:
@@ -51,7 +51,7 @@ jobs:
         run: |
           # Run health check and capture output
           echo "Running stack health check..."
-          node scripts/stack-health.js > health-summary.md 2>&1 || echo "Health check completed with issues"
+          node scripts/stack-health.js > health-summary.md 2>health-stderr.log || echo "Health check completed with issues"
           
           # Check if health check passed based on exit code
           if [ $? -eq 0 ]; then
@@ -65,6 +65,82 @@ jobs:
             cat health-summary.md >> $GITHUB_STEP_SUMMARY
           fi
         
+      - name: Check for build/config issues and dispatch AI Auto PR
+        if: steps.health_check.outputs.health_check_failed == 'true'
+        id: check_build_issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read stderr output if it exists
+            let stderrContent = '';
+            if (fs.existsSync('health-stderr.log')) {
+              stderrContent = fs.readFileSync('health-stderr.log', 'utf8');
+              console.log('Stderr content:', stderrContent);
+            }
+            
+            // Define patterns that indicate Next.js/Supabase build/config issues
+            const buildConfigPatterns = [
+              'supabaseKey is required',
+              'NEXT_PUBLIC_.*missing',
+              'NEXT_PUBLIC_.*not.*found',
+              'SIGTERM port not bound',
+              'Port.*already.*in.*use',
+              'client.*supabase.*init',
+              'SUPABASE_.*required'
+            ];
+            
+            // Check if any patterns match
+            let hasConfigIssue = false;
+            for (const pattern of buildConfigPatterns) {
+              const regex = new RegExp(pattern, 'i');
+              if (regex.test(stderrContent)) {
+                console.log(`Found config issue pattern: ${pattern}`);
+                hasConfigIssue = true;
+                break;
+              }
+            }
+            
+            if (hasConfigIssue) {
+              console.log('Build/config issues detected, dispatching AI Auto PR...');
+              
+              // Dispatch the AI Auto PR workflow
+              const instruction = "Fix Next/Supabase build: client-only Supabase init, ensure NEXT_PUBLIC_SUPABASE_* client-side only, add /api/health, use Next standalone Dockerfile for Railway.";
+              
+              await github.rest.repos.createDispatchEvent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                event_type: 'ai_autopr_request',
+                client_payload: {
+                  instruction: instruction,
+                  error_type: 'build_config',
+                  triggered_by: 'stack-monitor',
+                  stderr_content: stderrContent.substring(0, 1000) // Limit size
+                }
+              });
+              
+              console.log('AI Auto PR workflow dispatched successfully');
+              
+              // Add this info to the step summary
+              const summary = `
+              
+              ## 🤖 AI Auto PR Triggered
+              
+              Build/configuration issues detected in stack health check stderr. 
+              Automatically dispatched AI Auto PR workflow with instruction:
+              
+              > ${instruction}
+              
+              **Event Type:** ai_autopr_request  
+              **Triggered By:** stack-monitor workflow
+              `;
+              
+              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+            } else {
+              console.log('No specific build/config issues detected in stderr');
+            }
+
       - name: Upload stack health artifacts
         if: steps.health_check.outputs.health_check_failed == 'true'
         uses: actions/upload-artifact@v4
@@ -73,6 +149,7 @@ jobs:
           path: |
             stack-health.json
             health-summary.md
+            health-stderr.log
           retention-days: 30
           if-no-files-found: warn
           
