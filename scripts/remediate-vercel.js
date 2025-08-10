@@ -1,83 +1,22 @@
 #!/usr/bin/env node
 
 /**
-
- * Vercel Remediation Script
- * Attempts to resolve common Vercel deployment issues
- */
-
-console.log('🔧 Starting Vercel remediation...');
-
-async function remediateVercel() {
-  const vercelToken = process.env.VERCEL_TOKEN;
-  
-  if (!vercelToken) {
-    console.log('❌ VERCEL_TOKEN not configured - cannot remediate');
-    process.exit(1);
-  }
-
-  try {
-    console.log('🔍 Checking Vercel deployments...');
-    
-    // Example: Trigger a new deployment if the last one failed
-    const response = await fetch('https://api.vercel.com/v6/deployments', {
-      headers: {
-        'Authorization': `Bearer ${vercelToken}`,
-        'Content-Type': 'application/json'
-      }
-    // Timeout protection for fetch (30 seconds)
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-    let response;
-    try {
-      response = await fetch('https://api.vercel.com/v6/deployments', {
-        headers: {
-          'Authorization': `Bearer ${vercelToken}`,
-          'Content-Type': 'application/json'
-        },
-        signal: controller.signal
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    if (!response.ok) {
-      throw new Error(`Vercel API error: ${response.status}`);
-    }
-
-    const deployments = await response.json();
-    console.log(`✅ Found ${deployments.deployments?.length || 0} deployments`);
-    
-    // Add remediation logic here:
-    // - Check for failed deployments
-    // - Retry failed deployments
-    // - Clear cache if needed
-    // - Restart functions
-    
-    console.log('✅ Vercel remediation completed successfully');
-    
-  } catch (error) {
-    console.error('❌ Vercel remediation failed:', error.message);
-
  * Vercel Deployment Remediation Script
  * 
- * This script uses Vercel's REST API to:
- * 1. Find the latest non-draft deployment
- * 2. Trigger a redeploy of that deployment
- * 3. Print the new deployment URL and state
+ * This script uses Vercel's CLI to trigger a new deployment.
+ * It executes `vercel deploy --prebuilt --prod` to create a production deployment.
  * 
  * Requirements:
  * - VERCEL_TOKEN: Vercel API token
- * - TARGET_PROJECT: Optional target project ID/name
+ * - Must have vercel CLI available or use Vercel API directly
  * 
  * Uses only Node.js built-ins, no external dependencies.
  */
 
-const VERCEL_API_BASE = 'https://api.vercel.com';
+import { spawn } from 'child_process';
+import { writeFileSync } from 'fs';
 
-// Read environment variables
 const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
-const TARGET_PROJECT = process.env.TARGET_PROJECT;
 
 // Input validation
 if (!VERCEL_TOKEN) {
@@ -86,192 +25,40 @@ if (!VERCEL_TOKEN) {
 }
 
 console.log('🚀 Starting Vercel deployment remediation...');
-if (TARGET_PROJECT) {
-  console.log(`📋 Target Project: ${TARGET_PROJECT}`);
-}
 
 /**
- * Make a request to Vercel API
+ * Execute a shell command and return the result
  */
-async function makeVercelRequest(endpoint, options = {}) {
-  const url = `${VERCEL_API_BASE}${endpoint}`;
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${VERCEL_TOKEN}`,
-        'Content-Type': 'application/json',
-        ...options.headers
+function execCommand(command, args = []) {
+  return new Promise((resolve, reject) => {
+    const childProcess = spawn(command, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, VERCEL_TOKEN }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    childProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    childProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    childProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr, code });
+      } else {
+        reject(new Error(`Command failed with code ${code}: ${stderr || stdout}`));
       }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`❌ Vercel API request failed: ${error.message}`);
-    throw error;
-  }
-}
-
-/**
- * Get user/team information to determine scope
- */
-async function getUserInfo() {
-  console.log('👤 Fetching user information...');
-  const data = await makeVercelRequest('/v2/user');
-  return data.user || data;
-}
-
-/**
- * Get deployments for a project or user
- */
-async function getDeployments(projectId = null, teamId = null) {
-  console.log('📡 Fetching deployments...');
-  
-  let endpoint = '/v6/deployments';
-  const params = new URLSearchParams();
-  
-  if (projectId) {
-    params.append('projectId', projectId);
-  }
-  if (teamId) {
-    params.append('teamId', teamId);
-  }
-  params.append('limit', '50'); // Get recent deployments
-  
-  if (params.toString()) {
-    endpoint += `?${params.toString()}`;
-  }
-
-  const data = await makeVercelRequest(endpoint);
-  return data.deployments || [];
-}
-
-/**
- * Find project by name or ID
- */
-async function findProject(projectName, teamId = null) {
-  console.log(`🔍 Searching for project: ${projectName}`);
-  
-  let endpoint = '/v9/projects';
-  if (teamId) {
-    endpoint += `?teamId=${teamId}`;
-  }
-
-  const data = await makeVercelRequest(endpoint);
-  const projects = data.projects || [];
-  
-  // Try to find by exact name or ID
-  const project = projects.find(p => 
-    p.name === projectName || 
-    p.id === projectName
-  );
-  
-  if (!project) {
-    throw new Error(`Project "${projectName}" not found`);
-  }
-  
-  console.log(`✅ Found project: ${project.name} (${project.id})`);
-  return project;
-}
-
-/**
- * Find the latest non-draft deployment
- */
-function findLatestNonDraftDeployment(deployments) {
-  console.log(`🔍 Analyzing ${deployments.length} deployments...`);
-  
-  // Filter out draft deployments and sort by creation date (newest first)
-  const validDeployments = deployments
-    .filter(d => {
-      // Skip drafts and failed deployments
-      return d.state !== 'BUILDING' && 
-             d.state !== 'QUEUED' && 
-             d.state !== 'INITIALIZING' &&
-             d.readyState !== 'CANCELED' &&
-             d.readyState !== 'ERROR';
-    })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  if (validDeployments.length === 0) {
-    throw new Error('No valid deployments found');
-  }
-
-  const latest = validDeployments[0];
-  console.log(`✅ Found latest deployment: ${latest.uid}`);
-  console.log(`📊 State: ${latest.state}, Ready State: ${latest.readyState}`);
-  console.log(`📅 Created: ${new Date(latest.createdAt).toISOString()}`);
-  
-  return latest;
-}
-
-/**
- * Trigger a redeploy of a deployment
- */
-async function triggerRedeploy(deployment) {
-  console.log(`🔄 Triggering redeploy of deployment: ${deployment.uid}`);
-  
-  const redeployData = {
-    name: deployment.name,
-    target: deployment.target || 'production',
-    source: 'import',
-    gitSource: deployment.gitSource || undefined
-  };
-  
-  // Remove undefined values
-  Object.keys(redeployData).forEach(key => {
-    if (redeployData[key] === undefined) {
-      delete redeployData[key];
-    }
+    childProcess.on('error', (error) => {
+      reject(error);
+    });
   });
-
-  const newDeployment = await makeVercelRequest('/v13/deployments', {
-    method: 'POST',
-    body: JSON.stringify(redeployData)
-  });
-
-  console.log(`✅ New deployment triggered: ${newDeployment.uid}`);
-  return newDeployment;
-}
-
-/**
- * Get deployment status
- */
-async function getDeploymentStatus(deploymentId) {
-  const data = await makeVercelRequest(`/v13/deployments/${deploymentId}`);
-  return data;
-}
-
-/**
- * Wait for deployment to reach a final state
- */
-async function waitForDeployment(deploymentId, maxWaitTime = 300000) { // 5 minutes
-  console.log('⏳ Waiting for deployment to complete...');
-  
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < maxWaitTime) {
-    const deployment = await getDeploymentStatus(deploymentId);
-    
-    console.log(`📊 Current state: ${deployment.state}, Ready state: ${deployment.readyState || 'N/A'}`);
-    
-    // Check if deployment is in a final state
-    if (deployment.readyState === 'READY') {
-      return deployment;
-    } else if (deployment.readyState === 'ERROR' || deployment.readyState === 'CANCELED') {
-      throw new Error(`Deployment failed with state: ${deployment.readyState}`);
-    }
-    
-    // Wait 10 seconds before checking again
-    await new Promise(resolve => setTimeout(resolve, 10000));
-  }
-  
-  throw new Error('Deployment timeout - taking longer than expected');
 }
 
 /**
@@ -279,70 +66,67 @@ async function waitForDeployment(deploymentId, maxWaitTime = 300000) { // 5 minu
  */
 async function main() {
   try {
-    // Get user information
-    const userInfo = await getUserInfo();
-    const teamId = userInfo.defaultTeamId || null;
+    console.log('🔄 Triggering Vercel production deployment...');
     
-    let projectId = null;
+    // Execute vercel deploy --prebuilt --prod
+    const result = await execCommand('npx', ['vercel', 'deploy', '--prebuilt', '--prod', '--yes', '--token', VERCEL_TOKEN]);
     
-    // If TARGET_PROJECT is specified, find the project
-    if (TARGET_PROJECT) {
-      const project = await findProject(TARGET_PROJECT, teamId);
-      projectId = project.id;
-    }
+    // Parse the output to extract deployment URL
+    const output = result.stdout + result.stderr;
+    console.log('📄 Deployment output:');
+    console.log(output);
     
-    // Get deployments
-    const deployments = await getDeployments(projectId, teamId);
-    
-    if (deployments.length === 0) {
-      throw new Error('No deployments found');
-    }
-    
-    // Find latest valid deployment
-    const latestDeployment = findLatestNonDraftDeployment(deployments);
-    
-    // Trigger redeploy
-    const newDeployment = await triggerRedeploy(latestDeployment);
-    
-    // Wait for deployment to complete
-    const completedDeployment = await waitForDeployment(newDeployment.uid);
+    // Look for deployment URL in the output
+    const urlMatch = output.match(/https:\/\/[^\s]+/);
+    const deploymentUrl = urlMatch ? urlMatch[0] : null;
     
     // Print results
-    const deploymentUrl = `https://${completedDeployment.url}`;
-    
     console.log('');
-    console.log('🎉 Deployment remediation completed successfully!');
-    console.log(`🔗 New URL: ${deploymentUrl}`);
-    console.log(`📊 State: ${completedDeployment.state}`);
-    console.log(`📊 Ready State: ${completedDeployment.readyState}`);
-    console.log(`🆔 Deployment ID: ${completedDeployment.uid}`);
+    console.log('🎉 Vercel deployment completed successfully!');
+    
+    if (deploymentUrl) {
+      console.log(`🔗 New URL: ${deploymentUrl}`);
+    } else {
+      console.log('⚠️  Could not extract deployment URL from output');
+    }
+    
+    console.log(`📊 Exit code: ${result.code}`);
     console.log('');
     
     // Output for automation tools
-    console.log(`::set-output name=deployment_url::${deploymentUrl}`);
-    console.log(`::set-output name=deployment_id::${completedDeployment.uid}`);
+    if (deploymentUrl) {
+      console.log(`::set-output name=deployment_url::${deploymentUrl}`);
+    }
+    console.log(`::set-output name=status::success`);
+    
+    // GitHub Actions output file support
     const githubOutput = process.env.GITHUB_OUTPUT;
     if (githubOutput) {
-      const fs = require('fs');
-      fs.appendFileSync(githubOutput, `deployment_url=${deploymentUrl}\n`);
-      fs.appendFileSync(githubOutput, `deployment_id=${completedDeployment.uid}\n`);
-      fs.appendFileSync(githubOutput, `state=${completedDeployment.state}\n`);
-    } else {
-      console.log(`[GITHUB_OUTPUT] deployment_url=${deploymentUrl}`);
-      console.log(`[GITHUB_OUTPUT] deployment_id=${completedDeployment.uid}`);
-      console.log(`[GITHUB_OUTPUT] state=${completedDeployment.state}`);
+      const outputs = [];
+      if (deploymentUrl) {
+        outputs.push(`deployment_url=${deploymentUrl}`);
+      }
+      outputs.push(`status=success`);
+      writeFileSync(githubOutput, outputs.join('\n') + '\n', { flag: 'a' });
     }
+    
+    process.exit(0);
     
   } catch (error) {
     console.error('');
-    console.error('❌ Vercel deployment remediation failed:', error.message);
+    console.error('❌ Vercel deployment failed:', error.message);
     console.error('');
-
+    
+    // Output failure status
+    console.log(`::set-output name=status::failed`);
+    const githubOutput = process.env.GITHUB_OUTPUT;
+    if (githubOutput) {
+      writeFileSync(githubOutput, `status=failed\n`, { flag: 'a' });
+    }
+    
     process.exit(1);
   }
 }
-    
-remediateVercel();
-=======
+
 // Execute the main function
 await main();
