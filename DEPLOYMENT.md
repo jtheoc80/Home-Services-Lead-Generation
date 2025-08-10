@@ -117,6 +117,28 @@ Backend (Python)
 3. **Medium-term**: Train first ML model and enable ML scoring
 4. **Long-term**: Set up monitoring dashboards and model performance tracking
 
+## 🚂 Railway Deployment (Frontend)
+
+For deploying the frontend application specifically to Railway, follow these steps:
+
+### Railway Configuration
+1. **Set Builder**: Select `Dockerfile` as the build method
+2. **Root Directory**: Set to `frontend`
+3. **Custom Start Command**: Clear any custom start command (let Docker handle it)
+4. **Environment Variables**: Add `NODE_ENV=production` (optional, already set in Dockerfile)
+5. **Redeploy**: Trigger a new deployment
+
+### Railway Setup Steps
+```bash
+# Railway will automatically:
+# 1. Use the Dockerfile in the frontend directory
+# 2. Build the Next.js application 
+# 3. Start with npm start on port 3000
+# 4. Apply NODE_ENV=production environment
+```
+
+**Note**: This Railway configuration deploys only the frontend. The backend and ML pipeline should be deployed separately according to the main deployment steps above.
+
 ## 🛠 Troubleshooting
 
 - **Build Issues**: All TypeScript compilation passes ✅
