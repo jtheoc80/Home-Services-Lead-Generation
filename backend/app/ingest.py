@@ -246,7 +246,7 @@ class LeadIngestor:
                             elif isinstance(value, (int, float)):
                                 row_values.append(str(value))
                             elif isinstance(value, datetime):
-                                row_values.append(value.isoformat())
+                                row_values.append(value.strftime('%Y-%m-%d %H:%M:%S'))
                             else:
                                 # Escape tabs and newlines in string values
                                 escaped_value = str(value).replace('\t', '\t').replace('\n', '\n').replace('\r', '\r')
