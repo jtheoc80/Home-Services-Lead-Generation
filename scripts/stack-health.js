@@ -250,7 +250,7 @@ async function checkSupabase() {
     results.services.supabase = {
       status: 'error',
       message: `Connection failed: ${error.message}`,
-      responseTime: error.responseTime || 0
+      responseTime: 0
     };
   }
 }
