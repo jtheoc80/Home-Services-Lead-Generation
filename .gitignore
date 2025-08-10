@@ -71,3 +71,7 @@ stack-health.json
 .stack-health-exit-code
 summary.md
 remediation-summary.md
+
+# Stack health monitoring output
+stack-health.json
+
