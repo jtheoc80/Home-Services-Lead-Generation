@@ -1,0 +1,72 @@
+# Docker ignore file for monorepo project
+# This file specifies which files and directories should be excluded when building Docker images
+
+# Version control files
+.git
+.gitignore
+.github
+
+# Python cache and compiled files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+*.so
+*.egg
+*.egg-info/
+
+# Node.js dependencies and cache
+node_modules
+frontend/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts and output directories
+dist
+build
+.cache
+out/
+frontend/.next/
+frontend/out/
+
+# Data and temporary files
+data
+*.tmp
+*.temp
+.cache/
+
+# Environment and configuration files
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+
+# Log files
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test coverage and artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+.nyc_output
+
+# Documentation
+README.md
+docs/
+*.md
