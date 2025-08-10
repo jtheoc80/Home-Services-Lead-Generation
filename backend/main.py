@@ -20,6 +20,9 @@ from dotenv import load_dotenv
 from app.subscription_api import get_subscription_api
 from app.auth import auth_user, AuthUser
 
+# Import test Supabase router
+from test_supabase import router as test_supabase_router
+
 # Load environment variables
 load_dotenv()
 
@@ -48,6 +51,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include test Supabase router
+app.include_router(test_supabase_router, tags=["test", "supabase"])
 
 
 # Pydantic models for request/response validation
