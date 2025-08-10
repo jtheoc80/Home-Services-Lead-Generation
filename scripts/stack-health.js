@@ -215,7 +215,10 @@ function checkSupabaseConfig() {
           
           // Check for server-side usage patterns that should be client-only
           if (content.includes('process.env') && !content.includes('NEXT_PUBLIC_')) {
-            issues.push(`supabaseKey is required: Supabase client in ${file} uses server-side environment variables instead of NEXT_PUBLIC_*`);
+          const supabaseEnvRegex = /process\.env\.(SUPABASE_URL|SUPABASE_ANON_KEY)/;
+          const nextPublicEnvRegex = /process\.env\.NEXT_PUBLIC_SUPABASE_(URL|ANON_KEY)/;
+          if (supabaseEnvRegex.test(content) && !nextPublicEnvRegex.test(content)) {
+            issues.push(`supabaseKey is required: Supabase client in ${file} uses server-side Supabase environment variables (SUPABASE_URL or SUPABASE_ANON_KEY) instead of NEXT_PUBLIC_SUPABASE_*`);
           }
           
           if (!content.includes('createClient') && !content.includes('@supabase/supabase-js')) {
