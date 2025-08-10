@@ -138,7 +138,12 @@ When deploying to Vercel, ensure the following configuration:
 
 ### Vercel Configuration File
 
-The `frontend/vercel.json` file contains:
+2. **Install Command**: Recommended: Specify in `frontend/vercel.json`. If both dashboard and `vercel.json` are present, `vercel.json` takes precedence.
+3. **Build Command**: Recommended: Specify in `frontend/vercel.json`. If both dashboard and `vercel.json` are present, `vercel.json` takes precedence.
+
+### Vercel Configuration File
+
+It is recommended to use a `frontend/vercel.json` file for deployment configuration, as this ensures consistency and version control. When present, its settings override any dashboard configuration for install and build commands.
 ```json
 {
   "framework": "nextjs",
