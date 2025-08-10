@@ -26,7 +26,26 @@ async function remediateSupabase() {
         'apikey': serviceRoleKey,
         'Content-Type': 'application/json'
       }
-    });
+    // Add timeout handling using AbortController
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10 seconds
+    let response;
+    try {
+      response = await fetch(healthUrl, {
+        headers: {
+          'apikey': serviceRoleKey,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('Supabase API request timed out');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       throw new Error(`Supabase API error: ${response.status}`);
