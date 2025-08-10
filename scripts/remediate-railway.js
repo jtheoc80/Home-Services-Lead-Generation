@@ -327,7 +327,25 @@ async function main() {
     }
     console.log(`::set-output name=deployment_id::${finalDeployment?.id || 'N/A'}`);
     console.log(`::set-output name=status::${finalDeployment?.status || 'UNKNOWN'}`);
-    console.log(`::set-output name=operation::${operation}`);
+    const githubOutput = process.env.GITHUB_OUTPUT;
+    if (githubOutput) {
+      const fs = require('fs');
+      const outputs = [];
+      if (finalDeployment?.url) {
+        outputs.push(`service_url=${finalDeployment.url}`);
+      }
+      outputs.push(`deployment_id=${finalDeployment?.id || 'N/A'}`);
+      outputs.push(`status=${finalDeployment?.status || 'UNKNOWN'}`);
+      outputs.push(`operation=${operation}`);
+      fs.appendFileSync(githubOutput, outputs.map(line => line + '\n').join(''));
+    } else {
+      if (finalDeployment?.url) {
+        console.log(`service_url=${finalDeployment.url}`);
+      }
+      console.log(`deployment_id=${finalDeployment?.id || 'N/A'}`);
+      console.log(`status=${finalDeployment?.status || 'UNKNOWN'}`);
+      console.log(`operation=${operation}`);
+    }
     
   } catch (error) {
     console.error('');
