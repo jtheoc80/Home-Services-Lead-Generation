@@ -17,6 +17,9 @@ from pathlib import Path
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# Import Supabase client
+from .supabase_client import get_supabase_client
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -249,6 +252,152 @@ class LeadIngestor:
             raise
         finally:
             conn.close()
+
+
+def insert_lead(lead: dict) -> dict:
+    """
+    Insert a lead into the Supabase 'leads' table.
+    
+    This function uses the Supabase service client to insert a lead record
+    into the leads table and returns the inserted data or raises an error.
+    
+    Args:
+        lead: Dictionary containing lead data with the following expected fields:
+            - jurisdiction (str): The jurisdiction/region
+            - permit_id (str): Unique permit identifier
+            - address (str, optional): Property address
+            - description (str, optional): Work description
+            - work_class (str, optional): Class of work
+            - category (str, optional): Category classification
+            - status (str, optional): Permit status
+            - issue_date (str, optional): Date issued (ISO format)
+            - applicant (str, optional): Applicant name
+            - owner (str, optional): Property owner
+            - value (float, optional): Project value
+            - is_residential (bool, optional): Whether residential
+            - scraped_at (str, optional): Timestamp scraped (ISO format)
+            - latitude (float, optional): Latitude coordinate
+            - longitude (float, optional): Longitude coordinate
+            - apn (str, optional): Assessor's parcel number
+            - year_built (int, optional): Year property was built
+            - heated_sqft (float, optional): Heated square footage
+            - lot_size (float, optional): Lot size
+            - land_use (str, optional): Land use designation
+            - owner_kind (str, optional): Type of owner
+            - trade_tags (list, optional): List of trade tags
+            - budget_band (str, optional): Budget band classification
+            - start_by_estimate (str, optional): Estimated start date (ISO format)
+            - lead_score (float, optional): Overall lead score
+            - score_recency (float, optional): Recency score component
+            - score_trade_match (float, optional): Trade match score component
+            - score_value (float, optional): Value score component
+            - score_parcel_age (float, optional): Parcel age score component
+            - score_inspection (float, optional): Inspection score component
+            - scoring_version (str, optional): Version of scoring algorithm used
+    
+    Returns:
+        dict: The inserted lead record as returned by Supabase
+        
+    Raises:
+        ValueError: If required fields are missing
+        Exception: If insertion fails
+    """
+    # Validate required fields
+    if not isinstance(lead, dict):
+        raise ValueError("Lead must be a dictionary")
+    
+    if not lead.get('jurisdiction'):
+        raise ValueError("jurisdiction is required")
+    
+    if not lead.get('permit_id'):
+        raise ValueError("permit_id is required")
+    
+    try:
+        # Get Supabase client
+        supabase = get_supabase_client()
+        
+        # Prepare lead data for insertion
+        # Clean up the data to match expected types
+        clean_lead = {}
+        
+        # String fields
+        string_fields = [
+            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
+            'category', 'status', 'applicant', 'owner', 'apn', 'land_use',
+            'owner_kind', 'budget_band', 'scoring_version'
+        ]
+        
+        for field in string_fields:
+            value = lead.get(field)
+            clean_lead[field] = str(value) if value is not None else None
+        
+        # Numeric fields
+        numeric_fields = [
+            'value', 'latitude', 'longitude', 'heated_sqft', 'lot_size',
+            'lead_score', 'score_recency', 'score_trade_match', 'score_value',
+            'score_parcel_age', 'score_inspection'
+        ]
+        
+        for field in numeric_fields:
+            value = lead.get(field)
+            if value is not None:
+                try:
+                    clean_lead[field] = float(value)
+                except (ValueError, TypeError):
+                    clean_lead[field] = None
+            else:
+                clean_lead[field] = None
+        
+        # Integer fields
+        year_built = lead.get('year_built')
+        if year_built is not None:
+            try:
+                clean_lead['year_built'] = int(year_built)
+            except (ValueError, TypeError):
+                clean_lead['year_built'] = None
+        else:
+            clean_lead['year_built'] = None
+        
+        # Boolean field
+        is_residential = lead.get('is_residential')
+        if is_residential is not None:
+            clean_lead['is_residential'] = bool(is_residential)
+        else:
+            clean_lead['is_residential'] = None
+        
+        # Date/timestamp fields - expect ISO format strings
+        date_fields = ['issue_date', 'start_by_estimate', 'scraped_at']
+        for field in date_fields:
+            value = lead.get(field)
+            clean_lead[field] = value if value else None
+        
+        # Array field (trade_tags)
+        trade_tags = lead.get('trade_tags')
+        if trade_tags is not None:
+            if isinstance(trade_tags, list):
+                clean_lead['trade_tags'] = trade_tags
+            elif isinstance(trade_tags, str):
+                # Try to parse as comma-separated values
+                clean_lead['trade_tags'] = [tag.strip() for tag in trade_tags.split(',') if tag.strip()]
+            else:
+                clean_lead['trade_tags'] = None
+        else:
+            clean_lead['trade_tags'] = None
+        
+        # Insert the lead into Supabase
+        result = supabase.table('leads').insert(clean_lead).execute()
+        
+        # Check if insertion was successful
+        if result.data:
+            logger.info(f"Successfully inserted lead: {clean_lead.get('jurisdiction')}/{clean_lead.get('permit_id')}")
+            return result.data[0]  # Return the first (and only) inserted record
+        else:
+            raise Exception("No data returned from Supabase insert operation")
+            
+    except Exception as e:
+        logger.error(f"Failed to insert lead via Supabase: {e}")
+        logger.error(f"Lead data: {lead}")
+        raise Exception(f"Failed to insert lead: {e}")
 
 
 def main():
