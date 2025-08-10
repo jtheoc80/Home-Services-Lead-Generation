@@ -29,6 +29,9 @@ twilio>=7.0.0
 # Testing
 pytest>=7.0.0
 
+# Supabase integration
+supabase>=2.6.0
+
 # Optional: for enhanced ML features
 # xgboost>=1.6.0
 # lightgbm>=3.3.0

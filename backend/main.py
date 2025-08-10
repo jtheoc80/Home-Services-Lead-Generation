@@ -9,14 +9,19 @@ endpoints for subscription management and lead generation services.
 
 import logging
 import os
-from typing import Dict, Any
-from fastapi import FastAPI, HTTPException, Request
+from typing import Dict, Any, Optional
+from fastapi import FastAPI, HTTPException, Request, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
 # Import existing subscription API
 from app.subscription_api import get_subscription_api
+from app.auth import auth_user, AuthUser
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,46 +29,11 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI application
 app = FastAPI(
-    title="Home Services Lead Generation API",
-    description="API for managing subscriptions and lead generation for home service contractors",
+    title="LeadLedgerPro API",
+    description="Home Services Lead Generation API with Supabase Authentication",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "")
-if allowed_origins:
-    allowed_origins_list = [origin.strip() for origin in allowed_origins.split(",") if origin.strip()]
-else:
-    allowed_origins_list = []
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins_list,  # Set via environment variable ALLOWED_ORIGINS
-
-"""
-FastAPI main application for LeadLedgerPro backend.
-
-This module sets up the FastAPI application with authentication
-and API routes including the /api/me endpoint.
-"""
-
-import os
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from app.auth import auth_user, AuthUser
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-# Create FastAPI application
-app = FastAPI(
-    title="LeadLedgerPro API",
-    description="Home Services Lead Generation API with Supabase Authentication",
-    version="1.0.0"
 )
 
 # Configure CORS origins from environment variable
@@ -73,16 +43,7 @@ allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http:
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-
-    allow_origins=[
-        "http://localhost:3000",
-        "https://<your-staging-domain>",
-        "https://<your-prod-domain>"
-    ],
-
     allow_origins=[origin.strip() for origin in allowed_origins],  # Frontend origins
-
-
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,21 +53,22 @@ app.add_middleware(
 # Pydantic models for request/response validation
 class CancellationRequest(BaseModel):
     user_id: str
-    reason_category: str = None
-    reason_notes: str = None
     reason_category: Optional[str] = None
     reason_notes: Optional[str] = None
     processed_by: Optional[str] = None
 
 class ReactivationRequest(BaseModel):
     user_id: str
-=======
 
 @app.get("/")
 async def root():
-    """Root endpoint for health check."""
-    return {"message": "LeadLedgerPro API is running", "status": "healthy"}
-
+    """Root endpoint with API information."""
+    return {
+        "message": "LeadLedgerPro API is running",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "status": "healthy"
+    }
 
 @app.get("/api/me")
 async def get_current_user(user: AuthUser = Depends(auth_user)):
@@ -127,24 +89,10 @@ async def get_current_user(user: AuthUser = Depends(auth_user)):
         "email": user.email
     }
 
-
-
-# Health check endpoint
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-
-    return {"status": "healthy", "service": "home-services-lead-generation"}
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint with API information."""
-    return {
-        "message": "Home Services Lead Generation API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    return {"status": "healthy", "service": "leadledderpro-api"}
 
 # Subscription management endpoints
 @app.post("/api/subscription/cancel")
@@ -211,11 +159,6 @@ async def get_subscription_status(user_id: str):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/admin/cancellations")
-async def get_cancellation_records(request: Request, admin_user_id: str = None):
-    """Get cancellation records for admin review."""
-    try:
-        if not admin_user_id:
-            raise HTTPException(status_code=400, detail="admin_user_id is required")
 async def get_cancellation_records(request: Request, admin_user_id: str = Query(...)):
     """Get cancellation records for admin review."""
     try:
@@ -260,10 +203,4 @@ if __name__ == "__main__":
         log_level="info",
         reload=False
     )
-    return {"status": "healthy", "service": "leadledderpro-api"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
