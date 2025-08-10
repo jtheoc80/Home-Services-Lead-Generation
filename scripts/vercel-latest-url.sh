@@ -91,7 +91,7 @@ get_latest_deployment() {
     
     # Get deployments as JSON
     local deployments_json
-    if ! deployments_json=$(vercel ls --json); then
+    if ! deployments_json=$(vercel ls --json --limit 50); then
         print_error "Failed to fetch deployments from Vercel"
         print_error "Make sure you're authenticated with 'vercel login' and the project is linked"
         exit 1
