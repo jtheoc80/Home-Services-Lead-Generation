@@ -42,7 +42,8 @@ export default function Login() {
       } else {
         setMessage('Check your email for the magic link!')
       }
-    } catch {
+    } catch (error) {
+      console.error('Sign-in error:', error);
       setMessage('An unexpected error occurred')
     } finally {
       setLoading(false)
