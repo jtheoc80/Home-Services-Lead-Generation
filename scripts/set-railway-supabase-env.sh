@@ -9,7 +9,10 @@
 set -e  # Exit on any error
 
 # Pre-filled Supabase URL
-SUPABASE_URL="https://wsbnbncapkrdovrrghlh.supabase.co"
+# Supabase URL Setup
+if [ -z "$SUPABASE_URL" ]; then
+    read -p "Enter your Supabase project URL (e.g. https://xxxx.supabase.co): " SUPABASE_URL
+fi
 
 echo "🚀 Railway Supabase Environment Setup"
 echo "======================================"
