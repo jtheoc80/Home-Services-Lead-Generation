@@ -403,12 +403,16 @@ async function main() {
     const railwayCheck = checkRailwayConfig();
     results.push(railwayCheck);
     
-    // Determine exit code based on issues
+    // Determine exit code based on issues (prioritize first failure, but allow multiple issues)
     if (!envCheck.success) exitCode = 1;
     else if (!buildCheck.success) exitCode = 2;
     else if (!supabaseCheck.success) exitCode = 3;
     else if (!healthCheck.success) exitCode = 4;
     else if (!railwayCheck.success) exitCode = 5;
+    
+    // If we have both environment and other issues, keep environment as primary but note others
+    const hasMultipleIssues = [envCheck, buildCheck, supabaseCheck, healthCheck, railwayCheck]
+      .filter(check => !check.success).length > 1;
     
     console.log('=' .repeat(50));
     
