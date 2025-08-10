@@ -110,7 +110,7 @@ async def test_lead_insertion(lead: Optional[TestLead] = None) -> Dict[str, Any]
             )
         
         # Convert Pydantic model to dict for the insert_lead function
-        lead_data = lead.dict()
+        lead_data = lead.model_dump()
         
         # Add some additional fields that might be expected
         lead_data.update({
