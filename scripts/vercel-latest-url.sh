@@ -23,7 +23,7 @@
 #
 
 set -euo pipefail
-
+IFS=$'\n\t'
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
