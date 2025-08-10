@@ -21,6 +21,7 @@ This document provides troubleshooting guides and operational procedures for the
 - Build fails with "Environment variable not found" errors
 - Application starts but API calls fail with 500 errors
 - Supabase connection errors
+- Missing NEXT_PUBLIC_* variables cause client-side failures
 
 **Quick Checks:**
 ```bash
@@ -28,6 +29,9 @@ This document provides troubleshooting guides and operational procedures for the
 vercel env ls --scope production
 vercel env ls --scope preview
 vercel env ls --scope development
+
+# Specifically check for required NEXT_PUBLIC_ variables
+vercel env ls | grep NEXT_PUBLIC
 ```
 
 **Remediation:**
@@ -36,11 +40,22 @@ vercel env ls --scope development
    ./scripts/set-vercel-supabase-env.sh
    ```
 
-2. Or manually set required variables:
+2. Or manually set required variables (including NEXT_PUBLIC_ variables):
    ```bash
-   vercel env add SUPABASE_URL production
-   vercel env add SUPABASE_ANON_KEY production
+   # Core Supabase variables
+   vercel env add NEXT_PUBLIC_SUPABASE_URL production
+   vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
    vercel env add SUPABASE_SERVICE_ROLE_KEY production
+   
+   # Application configuration
+   vercel env add NEXT_PUBLIC_ENVIRONMENT production
+   vercel env add NEXT_PUBLIC_DEFAULT_REGION production
+   vercel env add NEXT_PUBLIC_LAUNCH_SCOPE production
+   
+   # Feature flags (examples based on .env.example)
+   vercel env add NEXT_PUBLIC_FEATURE_LEAD_SCORING production
+   vercel env add NEXT_PUBLIC_FEATURE_NOTIFICATIONS production
+   vercel env add NEXT_PUBLIC_REALTIME_UPDATES production
    ```
 
 3. Verify deployment environment configuration in `vercel.json`:
@@ -114,7 +129,22 @@ cd frontend && npm audit
    cd frontend && npm install
    ```
 
-### Deployment Commands
+#### Deployment Commands
+
+#### Fetch Deployment Logs
+```bash
+# Get recent deployment logs
+vercel logs <deployment-url>
+
+# Get logs for specific function
+vercel logs <deployment-url> --function=/api/health
+
+# Stream live logs during deployment
+vercel --prod --logs
+
+# Get latest deployment and logs
+vercel ls --limit=1 && vercel logs $(vercel ls --limit=1 | tail -1 | awk '{print $1}')
+```
 
 #### Redeploy Latest
 ```bash
@@ -237,7 +267,11 @@ ls Dockerfile nixpacks.toml
   cmd = "cd frontend && npm start"
   ```
 
-- **Dockerfile** exists for backend: `backend/Dockerfile`
+- **Dockerfile** exists for standalone Next.js: `frontend/Dockerfile`
+  - Uses 3-stage build (deps, builder, runner)
+  - Configured for `output: 'standalone'` mode in `next.config.mjs`
+  - Copies standalone build artifacts: `.next/standalone`, `.next/static`
+  - Runs with `node server.js` (standalone server)
 
 **Remediation:**
 1. **For Nixpacks issues**, update `nixpacks.toml`:
@@ -246,10 +280,16 @@ ls Dockerfile nixpacks.toml
    vim nixpacks.toml
    ```
 
-2. **To force Dockerfile usage**, remove `nixpacks.toml`:
+2. **To use Dockerfile with standalone Next.js**, remove `nixpacks.toml`:
    ```bash
    mv nixpacks.toml nixpacks.toml.backup
    railway up
+   ```
+   
+   Then configure Railway to use frontend directory:
+   ```bash
+   # Set root directory in Railway dashboard or via CLI
+   railway service update --root-directory=frontend
    ```
 
 3. **For hybrid setup** (frontend Nixpacks, backend Docker):
@@ -393,9 +433,22 @@ curl -X GET 'https://<project>.supabase.co/rest/v1/table_name' \
 - "API key not found" errors
 - Intermittent authentication failures
 
-**Key Types:**
-- **Anon Key**: Client-side, public, enforces RLS
-- **Service Role Key**: Server-side, private, bypasses RLS
+**Key Types and Usage:**
+- **Anon Key** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`): 
+  - Client-side, public, enforces RLS
+  - Safe to expose in frontend builds
+  - Used for client-side operations
+- **Service Role Key** (`SUPABASE_SERVICE_ROLE_KEY`): 
+  - Server-side, private, bypasses RLS
+  - Never expose in frontend/public builds
+  - Used in API routes and server operations
+
+**Where to Find Keys:**
+1. **Supabase Dashboard** → Project Settings → API
+2. **Project URL**: `https://your-project.supabase.co`
+3. **Keys Section**: 
+   - `anon` key → use as `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key → use as `SUPABASE_SERVICE_ROLE_KEY`
 
 **Quick Checks:**
 ```bash
