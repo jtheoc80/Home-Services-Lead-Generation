@@ -15,6 +15,32 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Monitors the health of the Home Services Lead Generation platform stack,
+ * including Vercel, Railway, and Supabase infrastructure.
+ *
+ * Key methods:
+ * - {@link makeRequest}: Makes HTTP/HTTPS requests with timeout and logging.
+ * - {@link checkVercel}: Checks the health of Vercel deployments.
+ * - {@link checkRailway}: Checks the health of Railway services.
+ * - {@link checkSupabase}: Checks the health of Supabase services.
+ * - {@link log}: Logs messages with different levels and timestamps.
+ *
+ * @class
+ * @param {Object} [options] - Configuration options.
+ * @param {boolean} [options.verbose=false] - Enable verbose logging.
+ * @param {boolean} [options.quick=false] - Enable quick health checks.
+ * @param {string|null} [options.platform=null] - Platform to target.
+ * @param {number} [options.timeout=10000] - Request timeout in milliseconds.
+ *
+ * @example
+ * // Basic usage
+ * const monitor = new StackHealthMonitor({ verbose: true, timeout: 5000 });
+ * await monitor.checkVercel();
+ * await monitor.checkRailway();
+ * await monitor.checkSupabase();
+ * console.log(monitor.results);
+ */
 class StackHealthMonitor {
   constructor(options = {}) {
     this.verbose = options.verbose || false;
