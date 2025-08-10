@@ -37,7 +37,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 # Copy standalone application from builder
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./frontend/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./frontend/public
 
 # Switch to non-root user
