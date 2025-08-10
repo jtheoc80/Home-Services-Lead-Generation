@@ -27,7 +27,7 @@ const REQUIRED_ENV_VARS = [
   'NEXT_PUBLIC_SUPABASE_ANON_KEY'
 ];
 
-const FRONTEND_DIR = 'frontend';
+const FRONTEND_DIR = process.env.FRONTEND_DIR || 'frontend';
 
 /**
  * Execute shell command safely
