@@ -87,7 +87,7 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
               </span>
               
               {/* Lead Feedback Buttons */}
-              <LeadFeedbackButtons leadId={String(lead.id)} />
+              <LeadFeedbackButtons leadId={lead.id} />
             </div>
           </div>
           
