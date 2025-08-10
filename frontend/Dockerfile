@@ -1,29 +1,32 @@
-# Multi-stage Dockerfile for Next.js Home Services Lead Generation Frontend
-# Converted from Vite-based to Next.js following best practices:
-# - Uses `next build` instead of Vite build commands
-# - Uses `next start` instead of serve for production
-# - Copies Next.js specific artifacts (.next, public, next.config.js)
-# - Exposes port 3000 and starts with npm start as required
+# Three-stage Dockerfile for Next.js Standalone Build
+# Optimized for production with minimal final image size
 
-# Stage 1: Build dependencies and application
-FROM node:18-alpine AS builder
-
+# Stage 1: Dependencies
+FROM node:18-alpine AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package.json and install dependencies (including dev dependencies for build)
+# Copy package files and install only production dependencies
+COPY package.json ./
+RUN npm install --only=production && npm cache clean --force
+
+# Stage 2: Builder  
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+# Copy package files and install all dependencies (including dev)
 COPY package.json ./
 RUN npm install
 
-# Copy source code and build using Next.js
+# Copy source code and build
 COPY . .
 RUN npm run build
 
-# Stage 2: Production runtime
+# Stage 3: Runner (final production image)
 FROM node:18-alpine AS runner
 
-# Set environment variables for Next.js production
+# Set production environment
 ENV NODE_ENV=production \
-    PORT=3000 \
     NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
@@ -32,20 +35,19 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy package.json and install only production dependencies
-COPY package.json ./
-RUN npm install --only=production && npm cache clean --force
-
-# Copy built Next.js application artifacts from builder stage
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./next.config.js
+# Copy standalone application from builder
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./frontend/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./frontend/public
 
 # Switch to non-root user
 USER nextjs
 
-# Expose port 3000 as required
+# Expose port (will be set by environment variable)
 EXPOSE 3000
 
-# Start the Next.js application using npm start (which runs `next start`)
-CMD ["npm", "start"]
+# Set default PORT environment variable
+ENV PORT=3000
+
+# Start the standalone server
+CMD ["node", "frontend/server.js"]

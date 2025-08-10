@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+export default {
   reactStrictMode: true,
+  output: 'standalone',
   swcMinify: true,
   eslint: {
     // Warning: This allows production builds to successfully complete even if
@@ -15,5 +16,3 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 }
-
-module.exports = nextConfig
