@@ -108,7 +108,8 @@ class StackHealthChecker {
         try {
           const { stdout } = await execAsync(
             `vercel ls --json --token ${vercelToken}`,
-            { timeout: 15000 }
+            `vercel ls --json`,
+            { timeout: 15000, env: { ...process.env, VERCEL_TOKEN: vercelToken } }
           );
           
           const deployments = JSON.parse(stdout);
