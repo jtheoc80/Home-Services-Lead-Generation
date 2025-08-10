@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 # Import existing subscription API
 from app.subscription_api import get_subscription_api
 from app.auth import auth_user, AuthUser
+from app.middleware import RequestLoggingMiddleware, setup_json_logging
 
 # Import test Supabase router
 from test_supabase import router as test_supabase_router
@@ -26,8 +27,8 @@ from test_supabase import router as test_supabase_router
 # Load environment variables
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure JSON logging
+setup_json_logging()
 logger = logging.getLogger(__name__)
 
 # Create FastAPI application
@@ -51,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 # Include test Supabase router
 app.include_router(test_supabase_router, tags=["test", "supabase"])
