@@ -14,7 +14,11 @@ from typing import Optional
 
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    print("Error: The 'python-dotenv' package is required to run this script. Please install it with 'pip install python-dotenv'.", file=sys.stderr)
+    sys.exit(1)
 
 # Configure logging
 logging.basicConfig(
