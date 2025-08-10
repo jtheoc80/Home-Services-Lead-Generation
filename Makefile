@@ -27,7 +27,12 @@ install-backend:
 # Install permit_leads/scraper dependencies
 install-scraper:
 	@echo "📦 Installing permit_leads dependencies..."
-	pip install -r permit_leads/requirements.txt
+	python3 -m pip install -r backend/requirements.txt
+
+# Install permit_leads/scraper dependencies
+install-scraper:
+	@echo "📦 Installing permit_leads dependencies..."
+	python3 -m pip install -r permit_leads/requirements.txt
 
 # Full setup (alias for install)
 setup: install
