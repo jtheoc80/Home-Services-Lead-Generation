@@ -534,7 +534,7 @@ curl -H "Authorization: token $GITHUB_TOKEN_BOT" \
 - name: Configure Git for bot
   run: |
     git config user.name "stack-monitor-bot"
-    git config user.email "stack-monitor-bot@yourdomain.com"
+    git config user.email "stack-monitor-bot@homeservicesleadgen.com" # Replace with your actual organization domain if different
 
 # Use bot token consistently
 - name: Use bot token for all operations
