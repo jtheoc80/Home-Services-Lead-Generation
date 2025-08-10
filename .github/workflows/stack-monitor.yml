@@ -199,7 +199,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              creator: 'app/github-actions',
               sort: 'created',
               direction: 'desc'
             });
