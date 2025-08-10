@@ -167,7 +167,11 @@ class TestRequestLoggingMiddleware(unittest.TestCase):
         
         # Create app with custom logger
         app = FastAPI()
-        app.add_middleware(RequestLoggingMiddleware, logger_name="test.error.middleware")
+        # Subclass the middleware to set logger_name
+        class CustomLoggerRequestLoggingMiddleware(RequestLoggingMiddleware):
+            def __init__(self, app):
+                super().__init__(app, logger_name="test.error.middleware")
+        app.add_middleware(CustomLoggerRequestLoggingMiddleware)
         
         @app.get("/error")
         async def error_endpoint():
