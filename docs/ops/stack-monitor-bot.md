@@ -41,7 +41,7 @@ The `stack-monitor-bot` is integrated with the following workflows:
 1. **Create a new GitHub account**:
    ```
    Username: stack-monitor-bot
-   Email: stack-monitor-bot@yourdomain.com (use organization email)
+   Email: stack-monitor-bot@<your-organization-domain>   # Replace <your-organization-domain> with your actual organization domain (e.g., example.com)
    ```
 
 2. **Configure the account**:
