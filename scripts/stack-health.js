@@ -46,7 +46,18 @@ async function makeRequest(url, options = {}) {
     });
     const responseTime = Date.now() - start;
     return { response, responseTime };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const responseTime = Date.now() - start;
+    return { response, responseTime };
   } catch (error) {
+    clearTimeout(timeoutId);
     const responseTime = Date.now() - start;
     return { error, responseTime };
   }
