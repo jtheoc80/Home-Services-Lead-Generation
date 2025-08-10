@@ -10,9 +10,11 @@ import os
 import sys
 import csv
 import logging
+import tempfile
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+from io import StringIO
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -29,9 +31,15 @@ logger = logging.getLogger(__name__)
 
 
 class LeadIngestor:
-    def __init__(self, db_url: str):
-        """Initialize ingestor with database connection."""
+    def __init__(self, db_url: str, use_copy: bool = True):
+        """Initialize ingestor with database connection.
+        
+        Args:
+            db_url: PostgreSQL connection URL
+            use_copy: Whether to use PostgreSQL COPY for bulk inserts (default: True)
+        """
         self.db_url = db_url
+        self.use_copy = use_copy
         
     def connect_db(self):
         """Create database connection."""
@@ -147,9 +155,230 @@ class LeadIngestor:
             
         return parsed
     
+    def ingest_csv_with_copy(self, csv_file_path: str) -> int:
+        """
+        Ingest leads from CSV file using PostgreSQL COPY for better performance.
+        
+        This method uses COPY FROM with a temporary table approach to handle
+        conflicts and provide transaction safety.
+        
+        Returns:
+            Number of records successfully ingested
+        """
+        if not os.path.exists(csv_file_path):
+            raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
+            
+        logger.info(f"Starting COPY-based ingest from {csv_file_path}")
+        
+        conn = self.connect_db()
+        try:
+            cur = conn.cursor()
+            
+            # Create temporary table with same structure as leads table
+            temp_table_sql = """
+                CREATE TEMPORARY TABLE temp_leads (
+                    jurisdiction TEXT,
+                    permit_id TEXT,
+                    address TEXT,
+                    description TEXT,
+                    work_class TEXT,
+                    category TEXT,
+                    status TEXT,
+                    issue_date DATE,
+                    applicant TEXT,
+                    owner TEXT,
+                    value NUMERIC,
+                    is_residential BOOLEAN,
+                    scraped_at TIMESTAMPTZ,
+                    latitude NUMERIC,
+                    longitude NUMERIC,
+                    apn TEXT,
+                    year_built INTEGER,
+                    heated_sqft NUMERIC,
+                    lot_size NUMERIC,
+                    land_use TEXT,
+                    owner_kind TEXT,
+                    trade_tags TEXT[],
+                    budget_band TEXT,
+                    start_by_estimate DATE,
+                    lead_score NUMERIC,
+                    score_recency NUMERIC,
+                    score_trade_match NUMERIC,
+                    score_value NUMERIC,
+                    score_parcel_age NUMERIC,
+                    score_inspection NUMERIC,
+                    scoring_version TEXT
+                )
+            """
+            cur.execute(temp_table_sql)
+            
+            # Prepare cleaned data for COPY
+            copy_buffer = StringIO()
+            records_processed = 0
+            
+            with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                
+                for row in reader:
+                    try:
+                        parsed_row = self.parse_csv_row(row)
+                        
+                        # Format row for COPY (tab-separated, handling NULL values)
+                        row_values = []
+                        for field in [
+                            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
+                            'category', 'status', 'issue_date', 'applicant', 'owner', 'value',
+                            'is_residential', 'scraped_at', 'latitude', 'longitude', 'apn',
+                            'year_built', 'heated_sqft', 'lot_size', 'land_use', 'owner_kind',
+                            'trade_tags', 'budget_band', 'start_by_estimate', 'lead_score',
+                            'score_recency', 'score_trade_match', 'score_value', 'score_parcel_age',
+                            'score_inspection', 'scoring_version'
+                        ]:
+                            value = parsed_row.get(field)
+                            if value is None:
+                                row_values.append('\\N')  # PostgreSQL NULL representation
+                            elif field == 'trade_tags' and isinstance(value, list):
+                                # Format array for PostgreSQL
+                                formatted_array = '{' + ','.join(f'"{tag}"' for tag in value) + '}'
+                                row_values.append(formatted_array)
+                            elif isinstance(value, bool):
+                                row_values.append('t' if value else 'f')
+                            elif isinstance(value, (int, float)):
+                                row_values.append(str(value))
+                            elif isinstance(value, datetime):
+                                row_values.append(value.isoformat())
+                            else:
+                                # Escape tabs and newlines in string values
+                                escaped_value = str(value).replace('\t', '\\t').replace('\n', '\\n').replace('\r', '\\r')
+                                row_values.append(escaped_value)
+                        
+                        copy_buffer.write('\t'.join(row_values) + '\n')
+                        records_processed += 1
+                        
+                        if records_processed % 1000 == 0:
+                            logger.info(f"Prepared {records_processed} records for COPY...")
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing row {records_processed + 1}: {e}")
+                        logger.error(f"Row data: {row}")
+                        continue
+            
+            # Reset buffer to beginning
+            copy_buffer.seek(0)
+            
+            # Perform COPY operation
+            logger.info(f"Executing COPY operation for {records_processed} records...")
+            cur.copy_from(
+                copy_buffer,
+                'temp_leads',
+                sep='\t',
+                null='\\N',
+                columns=[
+                    'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
+                    'category', 'status', 'issue_date', 'applicant', 'owner', 'value',
+                    'is_residential', 'scraped_at', 'latitude', 'longitude', 'apn',
+                    'year_built', 'heated_sqft', 'lot_size', 'land_use', 'owner_kind',
+                    'trade_tags', 'budget_band', 'start_by_estimate', 'lead_score',
+                    'score_recency', 'score_trade_match', 'score_value', 'score_parcel_age',
+                    'score_inspection', 'scoring_version'
+                ]
+            )
+            
+            # Insert from temporary table with conflict resolution
+            insert_from_temp_sql = """
+                INSERT INTO leads (
+                    jurisdiction, permit_id, address, description, work_class, category,
+                    status, issue_date, applicant, owner, value, is_residential, scraped_at,
+                    latitude, longitude, apn, year_built, heated_sqft, lot_size, land_use,
+                    owner_kind, trade_tags, budget_band, start_by_estimate,
+                    lead_score, score_recency, score_trade_match, score_value,
+                    score_parcel_age, score_inspection, scoring_version
+                )
+                SELECT * FROM temp_leads
+                ON CONFLICT (jurisdiction, permit_id) 
+                DO UPDATE SET
+                    address = EXCLUDED.address,
+                    description = EXCLUDED.description,
+                    work_class = EXCLUDED.work_class,
+                    category = EXCLUDED.category,
+                    status = EXCLUDED.status,
+                    issue_date = EXCLUDED.issue_date,
+                    applicant = EXCLUDED.applicant,
+                    owner = EXCLUDED.owner,
+                    value = EXCLUDED.value,
+                    is_residential = EXCLUDED.is_residential,
+                    scraped_at = EXCLUDED.scraped_at,
+                    latitude = EXCLUDED.latitude,
+                    longitude = EXCLUDED.longitude,
+                    apn = EXCLUDED.apn,
+                    year_built = EXCLUDED.year_built,
+                    heated_sqft = EXCLUDED.heated_sqft,
+                    lot_size = EXCLUDED.lot_size,
+                    land_use = EXCLUDED.land_use,
+                    owner_kind = EXCLUDED.owner_kind,
+                    trade_tags = EXCLUDED.trade_tags,
+                    budget_band = EXCLUDED.budget_band,
+                    start_by_estimate = EXCLUDED.start_by_estimate,
+                    lead_score = EXCLUDED.lead_score,
+                    score_recency = EXCLUDED.score_recency,
+                    score_trade_match = EXCLUDED.score_trade_match,
+                    score_value = EXCLUDED.score_value,
+                    score_parcel_age = EXCLUDED.score_parcel_age,
+                    score_inspection = EXCLUDED.score_inspection,
+                    scoring_version = EXCLUDED.scoring_version,
+                    updated_at = now()
+            """
+            cur.execute(insert_from_temp_sql)
+            
+            # Get count of affected rows
+            rows_affected = cur.rowcount
+            
+            # Commit the transaction
+            conn.commit()
+            
+            # Get the total count in the database
+            cur.execute("SELECT COUNT(*) FROM leads")
+            total_records = cur.fetchone()[0]
+            
+            logger.info(f"COPY ingest completed successfully!")
+            logger.info(f"Records processed: {records_processed}")
+            logger.info(f"Rows affected (inserted/updated): {rows_affected}")
+            logger.info(f"Total records in database: {total_records}")
+            
+            copy_buffer.close()
+            return records_processed
+            
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error during COPY ingest: {e}")
+            raise
+        finally:
+            conn.close()
+    
     def ingest_csv(self, csv_file_path: str) -> int:
         """
         Ingest leads from CSV file into PostgreSQL database.
+        
+        Uses PostgreSQL COPY for better performance when enabled, otherwise
+        falls back to individual INSERT statements.
+        
+        Returns:
+            Number of records successfully ingested
+        """
+        if self.use_copy:
+            try:
+                return self.ingest_csv_with_copy(csv_file_path)
+            except Exception as e:
+                logger.warning(f"COPY method failed: {e}. Falling back to INSERT method.")
+                self.use_copy = False
+        
+        return self.ingest_csv_with_insert(csv_file_path)
+    
+    def ingest_csv_with_insert(self, csv_file_path: str) -> int:
+        """
+        Ingest leads from CSV file using individual INSERT statements.
+        
+        This is the fallback method when COPY is not available or fails.
         
         Returns:
             Number of records successfully ingested
@@ -402,12 +631,16 @@ def insert_lead(lead: dict) -> dict:
 
 def main():
     """Main entry point for the ingest script."""
-    if len(sys.argv) != 2:
-        print("Usage: python -m backend.app.ingest <csv_file_path>")
-        print("Example: python -m backend.app.ingest out/leads_recent.csv")
+    # Default path if no argument provided
+    default_csv_path = "permit_leads/out/leads_recent.csv"
+    
+    if len(sys.argv) > 2:
+        print("Usage: python -m backend.app.ingest [csv_file_path]")
+        print(f"Example: python -m backend.app.ingest {default_csv_path}")
+        print("If no path is provided, defaults to permit_leads/out/leads_recent.csv")
         sys.exit(1)
-        
-    csv_file_path = sys.argv[1]
+    
+    csv_file_path = sys.argv[1] if len(sys.argv) == 2 else default_csv_path
     
     # Get database URL from environment
     db_url = os.environ.get('DATABASE_URL')
