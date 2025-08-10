@@ -89,8 +89,8 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
 
 4. **Setup database:**
    ```bash
-   # Run database migrations
-   psql $DATABASE_URL -f backend/app/models.sql
+   # Run database migrations with error handling
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -b -e -f backend/app/models.sql
    ```
 
 ## 🔧 Configuration
