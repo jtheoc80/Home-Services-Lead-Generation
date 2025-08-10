@@ -1,0 +1,15 @@
+# Nixpacks configuration for Home Services Lead Generation Frontend
+[variables]
+NODE_ENV = "production"
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm-9_x"]
+
+[phases.install]
+cmd = "cd frontend && npm ci"
+
+[phases.build]
+cmd = "cd frontend && npm run build"
+
+[start]
+cmd = "cd frontend && npm start"
