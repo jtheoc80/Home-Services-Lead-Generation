@@ -49,7 +49,8 @@ class TestHealthzEndpoint:
                 # Mock table method that raises an exception after delay
                 def timeout_operation(*args, **kwargs):
                     import time
-                    time.sleep(0.5)  # Longer than 300ms timeout
+                async def timeout_operation(*args, **kwargs):
+                    await asyncio.sleep(0.5)  # Longer than 300ms timeout
                     raise Exception("Operation timed out")
                 
                 mock_client.table.side_effect = timeout_operation
