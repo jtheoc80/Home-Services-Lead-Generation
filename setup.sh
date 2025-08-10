@@ -34,7 +34,12 @@ pip install -r permit_leads/requirements.txt
 # Install backend dependencies  
 echo ""
 echo "📦 Installing backend dependencies..."
-pip install -r backend/requirements.txt
+python3 -m pip install -r permit_leads/requirements.txt
+
+# Install backend dependencies  
+echo ""
+echo "📦 Installing backend dependencies..."
+python3 -m pip install -r backend/requirements.txt
 
 echo ""
 echo "=================================================="
