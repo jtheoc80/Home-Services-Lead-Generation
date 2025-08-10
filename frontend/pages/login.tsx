@@ -1,4 +1,3 @@
-'use client'
 
 // Supabase is initialized client-side only to prevent build-time key checks 
 // from failing on Vercel when environment variables are not available during build
