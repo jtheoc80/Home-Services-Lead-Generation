@@ -1,0 +1,67 @@
+name: AI Auto-PR Receiver
+
+on:
+  # Listen for repository dispatch events with specific event type
+  repository_dispatch:
+    types: [ai_autopr_request]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-autopr-receiver:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN_BOT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup GitHub CLI
+        run: |
+          # GitHub CLI should be pre-installed on ubuntu-latest
+          gh --version
+
+      - name: Extract instruction from repository dispatch payload
+        id: extract_instruction
+        run: |
+          INSTRUCTION="${{ github.event.client_payload.instruction }}"
+          echo "instruction=$INSTRUCTION" >> $GITHUB_OUTPUT
+          echo "Found instruction: $INSTRUCTION"
+          
+          if [ -z "$INSTRUCTION" ]; then
+            echo "ERROR: No instruction found in client_payload.instruction"
+            exit 1
+          fi
+
+      - name: Run AI Auto-PR script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_BOT || secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "ERROR: OPENAI_API_KEY secret is required but not set"
+            exit 1
+          fi
+          
+          if [ -z "$INSTRUCTION" ]; then
+            echo "ERROR: No instruction found in repository dispatch payload"
+            exit 1
+          fi
+          
+          echo "Running AI Auto-PR receiver with instruction: $INSTRUCTION"
+          echo "Event type: ${{ github.event.action }}"
+          echo "Repository: ${{ github.repository }}"
+          
+          chmod +x scripts/ai-autopr.js
+          ./scripts/ai-autopr.js
