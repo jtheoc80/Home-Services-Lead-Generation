@@ -47,7 +47,7 @@ jobs:
       - name: Pull Vercel project configuration
         run: |
           echo "🔄 Pulling Vercel project configuration..."
-          vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+          vercel pull --yes --environment=production
           echo "✅ Project configuration pulled successfully"
       
       - name: Get latest READY deployment
