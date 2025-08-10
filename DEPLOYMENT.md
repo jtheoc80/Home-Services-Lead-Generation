@@ -125,3 +125,38 @@ Backend (Python)
 - **Python Syntax**: All scripts compile without errors ✅
 
 The implementation is complete and ready for production deployment!
+
+## 🚀 Vercel Deployment Configuration
+
+### Required Vercel Settings
+
+When deploying to Vercel, ensure the following configuration:
+
+1. **Root Directory**: Must be set to `frontend`
+2. **Install Command**: Leave blank (use Next.js preset) OR the command will be automatically handled by `frontend/vercel.json`
+3. **Build Command**: Leave blank (use Next.js preset) OR the command will be automatically handled by `frontend/vercel.json`
+
+### Vercel Configuration File
+
+The `frontend/vercel.json` file contains:
+```json
+{
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "next build"
+}
+```
+
+This configuration ensures Vercel:
+- Uses the Next.js framework preset
+- Runs `npm ci` for faster, reliable installs
+- Uses the standard `next build` command
+
+### CLI Deployment (Optional)
+
+For GitHub Actions or manual CLI deployments, use:
+```bash
+vercel --cwd frontend
+```
+
+This ensures Vercel operates from the correct frontend directory.
