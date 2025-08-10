@@ -249,7 +249,7 @@ class LeadIngestor:
                                 row_values.append(value.isoformat())
                             else:
                                 # Escape tabs and newlines in string values
-                                escaped_value = str(value).replace('\t', '\\t').replace('\n', '\\n').replace('\r', '\\r')
+                                escaped_value = str(value).replace('\t', '\t').replace('\n', '\n').replace('\r', '\r')
                                 row_values.append(escaped_value)
                         
                         copy_buffer.write('\t'.join(row_values) + '\n')
