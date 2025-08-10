@@ -514,4 +514,4 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   });
 }
 
-export default { main, checkVercel, checkRailway, checkSupabase, analyzeOverallHealth, generateMarkdownSummary, sendSlackNotification };
+export default main;
