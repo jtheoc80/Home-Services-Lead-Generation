@@ -97,7 +97,7 @@ curl -X POST "${SUPABASE_URL}/rest/v1/leads" \
       "address": "789 Pine Road",
       "city": "Austin",
       "state": "TX",
-      "zip": "73301",
+      "zip": "78701",
       "status": "new"
     }
   ]'
