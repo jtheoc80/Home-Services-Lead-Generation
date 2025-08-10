@@ -50,7 +50,29 @@ echo "🔧 Adding NEXT_PUBLIC_SUPABASE_URL to preview environment..."
 vercel env add NEXT_PUBLIC_SUPABASE_URL preview --value="$SUPABASE_URL"
 
 echo "🔧 Adding NEXT_PUBLIC_SUPABASE_URL to development environment..."
-vercel env add NEXT_PUBLIC_SUPABASE_URL development --value="$SUPABASE_URL"
+echo "🔧 Setting NEXT_PUBLIC_SUPABASE_URL for production environment..."
+if vercel env ls production | grep -q "^NEXT_PUBLIC_SUPABASE_URL "; then
+  echo "   Variable already exists. Updating value..."
+  vercel env edit NEXT_PUBLIC_SUPABASE_URL production --value="$SUPABASE_URL"
+else
+  vercel env add NEXT_PUBLIC_SUPABASE_URL production --value="$SUPABASE_URL"
+fi
+
+echo "🔧 Setting NEXT_PUBLIC_SUPABASE_URL for preview environment..."
+if vercel env ls preview | grep -q "^NEXT_PUBLIC_SUPABASE_URL "; then
+  echo "   Variable already exists. Updating value..."
+  vercel env edit NEXT_PUBLIC_SUPABASE_URL preview --value="$SUPABASE_URL"
+else
+  vercel env add NEXT_PUBLIC_SUPABASE_URL preview --value="$SUPABASE_URL"
+fi
+
+echo "🔧 Setting NEXT_PUBLIC_SUPABASE_URL for development environment..."
+if vercel env ls development | grep -q "^NEXT_PUBLIC_SUPABASE_URL "; then
+  echo "   Variable already exists. Updating value..."
+  vercel env edit NEXT_PUBLIC_SUPABASE_URL development --value="$SUPABASE_URL"
+else
+  vercel env add NEXT_PUBLIC_SUPABASE_URL development --value="$SUPABASE_URL"
+fi
 
 echo ""
 echo "🔑 Now setting NEXT_PUBLIC_SUPABASE_ANON_KEY for all environments..."
