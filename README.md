@@ -60,14 +60,30 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
    ```
 
 3. **Install dependencies:**
+
+   **Option A: Automated setup (recommended)**
+   ```bash
+   # Using Python setup script
+   python3 setup.py
+   
+   # OR using shell script
+   ./setup.sh
+   
+   # OR using Make
+   make install
+   ```
+
+   **Option B: Manual installation**
    ```bash
    # Install scraper dependencies
    pip install -r permit_leads/requirements.txt
    
    # Install backend dependencies
    pip install -r backend/requirements.txt
-   
-   # Install frontend dependencies
+   ```
+
+   **Install frontend dependencies (all options)**
+   ```bash
    cd frontend && npm install
    ```
 
