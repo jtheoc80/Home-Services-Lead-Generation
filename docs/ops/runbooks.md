@@ -143,7 +143,13 @@ vercel logs <deployment-url> --function=/api/health
 vercel --prod --logs
 
 # Get latest deployment and logs
-vercel ls --limit=1 && vercel logs $(vercel ls --limit=1 | tail -1 | awk '{print $1}')
+# Recommended: Use the helper script to get the latest deployment URL
+./scripts/vercel-latest-url.sh
+vercel logs $(./scripts/vercel-latest-url.sh)
+
+# Alternatively, extract the latest deployment URL manually:
+# vercel ls --limit=1 | tail -1 | awk '{print $1}'
+# vercel logs <paste-deployment-url-here>
 ```
 
 #### Redeploy Latest
