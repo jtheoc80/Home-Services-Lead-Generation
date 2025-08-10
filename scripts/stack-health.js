@@ -107,7 +107,10 @@ class StackHealthChecker {
       // Try to get latest deployment from Vercel API
       if (vercelToken) {
         try {
-          const { stdout } = await execAsync(`vercel ls --json --token ${vercelToken}`);
+          const { stdout } = await execAsync(
+            `vercel ls --json`,
+            { env: { ...process.env, VERCEL_TOKEN: vercelToken } }
+          );
           const deployments = JSON.parse(stdout);
           
           const readyDeployment = deployments.find(d => d.state === 'READY');
