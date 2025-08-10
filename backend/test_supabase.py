@@ -75,7 +75,7 @@ async def health_supabase() -> Dict[str, Any]:
 
 
 @router.post("/test/lead")
-async def test_lead_insertion(lead: TestLead = None) -> Dict[str, Any]:
+async def test_lead_insertion(lead: Optional[TestLead] = None) -> Dict[str, Any]:
     """
     Test endpoint for inserting a simple lead into Supabase.
     
