@@ -3,7 +3,7 @@ Pydantic model for building permit records with normalization helpers.
 """
 import hashlib
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 import json
 
@@ -25,6 +25,13 @@ class PermitRecord(BaseModel):
     latitude: Optional[float] = Field(None, description="Latitude coordinate")
     longitude: Optional[float] = Field(None, description="Longitude coordinate")
     
+    # Parcel/assessor data
+    apn: Optional[str] = Field(None, description="Assessor's Parcel Number")
+    year_built: Optional[int] = Field(None, description="Year property was built")
+    heated_sqft: Optional[int] = Field(None, description="Heated square footage")
+    lot_size: Optional[float] = Field(None, description="Lot size in square feet or acres")
+    land_use: Optional[str] = Field(None, description="Land use classification")
+    
     # Permit details
     description: Optional[str] = Field(None, description="Work description/project details")
     work_class: Optional[str] = Field(None, description="Type/category of work")
@@ -39,7 +46,13 @@ class PermitRecord(BaseModel):
     # People and value
     applicant: Optional[str] = Field(None, description="Applicant/contractor name")
     owner: Optional[str] = Field(None, description="Property owner name")
+    owner_kind: Optional[str] = Field(None, description="Owner classification: 'individual' or 'llc'")
     value: Optional[float] = Field(None, description="Declared project value")
+    
+    # Trade and project classification
+    trade_tags: List[str] = Field(default_factory=list, description="Relevant trade categories")
+    budget_band: Optional[str] = Field(None, description="Budget range category")
+    start_by_estimate: Optional[str] = Field(None, description="Estimated project start date")
     
     # Metadata
     source_url: Optional[str] = Field(None, description="Source URL where record was found")

@@ -1,0 +1,113 @@
+name: Expose Railway service and print URL
+
+"on":
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      service_id:
+        description: 'Railway Service ID (optional override)'
+        required: false
+        type: string
+      environment_id:
+        description: 'Railway Environment ID (optional)'
+        required: false
+        type: string
+
+env:
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+  RAILWAY_SERVICE_ID: ${{ inputs.service_id || secrets.RAILWAY_SERVICE_ID }}
+  RAILWAY_ENV_ID: ${{ inputs.environment_id || secrets.RAILWAY_ENV_ID }}
+
+jobs:
+  expose-and-url:
+    runs-on: ubuntu-latest
+    outputs:
+      public_url: ${{ steps.expose.outputs.public_url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ env.RAILWAY_TOKEN }}" ]; then
+            echo "❌ Error: RAILWAY_TOKEN secret is not set"
+            echo "Please add your Railway API token to repository secrets"
+            exit 1
+          fi
+          
+          if [ -z "${{ env.RAILWAY_SERVICE_ID }}" ]; then
+            echo "❌ Error: RAILWAY_SERVICE_ID secret is not set"
+            echo "Please add your Railway service ID to repository secrets"
+            exit 1
+          fi
+          
+          echo "✅ Required secrets are configured"
+      
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/railway-expose-and-url.js
+          chmod +x scripts/post-url-comment.js
+      
+      - name: Expose Railway service and get URL
+        id: expose
+        run: |
+          echo "🚀 Starting Railway service exposure..."
+          
+          # Run the main script and capture output
+          OUTPUT=$(node scripts/railway-expose-and-url.js 2>&1)
+          EXIT_CODE=$?
+          
+          echo "$OUTPUT"
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Railway exposure failed"
+            exit $EXIT_CODE
+          fi
+          
+          # Extract the public URL from output
+          PUBLIC_URL=$(echo "$OUTPUT" | grep "🔗 Public URL:" | sed 's/.*🔗 Public URL: //')
+          
+          if [ -z "$PUBLIC_URL" ]; then
+            echo "❌ Could not extract public URL from output"
+            exit 1
+          fi
+          
+          echo "public_url=$PUBLIC_URL" >> $GITHUB_OUTPUT
+          
+          # Add to step summary
+          echo "## 🚀 Railway Service Exposed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service ID:** \`${{ env.RAILWAY_SERVICE_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ env.RAILWAY_ENV_ID }}" ]; then
+            echo "**Environment ID:** \`${{ env.RAILWAY_ENV_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "**Public URL:** [$PUBLIC_URL]($PUBLIC_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Service is now accessible on the internet" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Post URL comment (if in PR)
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ steps.expose.outputs.public_url }}" ]; then
+            echo "💬 Posting comment with public URL..."
+            node scripts/post-url-comment.js "${{ steps.expose.outputs.public_url }}"
+          else
+            echo "⚠️  No public URL available to post"
+          fi
+      
+      - name: Output success
+        run: |
+          echo ""
+          echo "🎉 Railway service exposure completed successfully!"
+          echo "🔗 Public URL: ${{ steps.expose.outputs.public_url }}"
+          echo ""

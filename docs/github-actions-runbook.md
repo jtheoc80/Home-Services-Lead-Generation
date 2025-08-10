@@ -1,0 +1,232 @@
+# GitHub Actions Setup & Runbook
+
+This repository uses GitHub Actions to automate permit scraping and lead generation. This document explains the workflows, setup requirements, and troubleshooting.
+
+## Overview
+
+The repository includes two main workflows:
+
+1. **`permit_scrape.yml`** - Main scraping workflow with manual and scheduled triggers
+2. **`nightly-scrape.yml`** - Legacy nightly scraping workflow
+
+## Workflows
+
+### 1. Houston Permit Scraper (`permit_scrape.yml`)
+
+**Purpose**: Scrapes building permit data from Houston-area municipalities and processes it into leads.
+
+**Triggers**:
+- **Schedule**: Daily at 6 AM UTC (1 AM CST/2 AM CDT)
+- **Manual**: Via GitHub Actions UI with customizable parameters
+
+**Manual Run Parameters**:
+- `source`: Which scraper to run (`city_of_houston` or `all`)
+- `days`: Number of days to look back (default: 1)
+- `sample_data`: Use test data instead of live scraping (default: false)
+
+**What it does**:
+1. Sets up Python 3.11 environment
+2. Installs dependencies from `permit_leads/requirements.txt`
+3. Creates output directory structure
+4. Runs the permit scraper
+5. Commits new data back to the repository
+6. Uploads data as workflow artifacts
+7. Generates a summary report
+
+### 2. Nightly Scrape (`nightly-scrape.yml`)
+
+**Purpose**: Legacy workflow for simple nightly scraping.
+
+**Triggers**:
+- **Schedule**: Daily at 6 AM UTC
+- **Manual**: Via workflow_dispatch
+
+**What it does**:
+1. Sets up Python 3.11 environment
+2. Installs dependencies
+3. Runs scraper for last 7 days
+4. Uploads CSV and SQLite artifacts
+
+## Setup Requirements
+
+### Repository Settings
+
+No special repository settings are required. The workflows use the default `GITHUB_TOKEN` for:
+- Checking out code
+- Committing scraped data back to the repository
+- Uploading artifacts
+
+### Secrets
+
+Currently, **no repository secrets are required**. The workflows operate using:
+- **Sample data mode** for testing
+- **Public data sources** that don't require authentication
+- **Built-in GitHub token** for repository operations
+
+### Permissions
+
+The workflows require the following permissions (automatically granted to `GITHUB_TOKEN`):
+- `contents: write` - To commit scraped data back to repository
+- `actions: read` - To access workflow artifacts
+
+## Configuration
+
+### Environment Variables
+
+The workflows use these environment variables:
+
+- `SAMPLE_DATA`: Set to '1' to use test data (set automatically based on manual run parameters)
+
+### Application Configuration
+
+The scraper is configured via:
+- `permit_leads/config/sources.yaml` - Data source definitions
+- `permit_leads/.env` - Environment variables (optional, see `.env.example`)
+
+## Runbook
+
+### Manual Execution
+
+1. **Go to Actions tab** in GitHub repository
+2. **Select "Houston Permit Scraper"** workflow
+3. **Click "Run workflow"**
+4. **Configure parameters**:
+   - Source: `city_of_houston` for single source, `all` for all sources
+   - Days: How many days back to scrape (1-30 recommended)
+   - Sample data: Check this for testing with fake data
+5. **Click "Run workflow"** button
+
+### Monitoring
+
+**Check workflow status**:
+- Go to Actions tab to see running/completed workflows
+- Click on a workflow run to see detailed logs
+- Check the "Summary" section for permit counts and files created
+
+**Data output locations**:
+- **Repository**: New data committed to `data/` directory
+- **Artifacts**: Downloaded via Actions UI (30-day retention)
+
+### Troubleshooting
+
+#### Common Issues
+
+**❌ Workflow fails with "No module named permit_leads"**
+- **Cause**: Dependencies not installed correctly
+- **Solution**: Check `permit_leads/requirements.txt` exists and is valid
+
+**❌ "No new data" message**
+- **Cause**: No permits found for the specified date range
+- **Solution**: Try increasing the `days` parameter or using sample data
+
+**❌ Git commit fails**
+- **Cause**: No changes to commit or permissions issue
+- **Solution**: Check if data directory has new files; this is often normal
+
+**❌ Network/scraping errors**
+- **Cause**: Target websites may be down or blocking requests
+- **Solution**: Try with sample data first, check target website status
+
+#### Debug Steps
+
+1. **Test with sample data**:
+   ```bash
+   # In manual run, check "Use sample data"
+   # Or run locally:
+   cd permit_leads
+   python -m permit_leads scrape --source city_of_houston --sample --verbose
+   ```
+
+2. **Check logs**:
+   - Click on failed workflow run
+   - Expand each step to see detailed error messages
+   - Look for Python tracebacks or HTTP errors
+
+3. **Verify configuration**:
+   - Check `permit_leads/config/sources.yaml` for correct URLs
+   - Verify `requirements.txt` has all needed dependencies
+
+#### Local Testing
+
+Before relying on Actions, test locally:
+
+```bash
+# Clone repository
+git clone https://github.com/jtheoc80/Home-Services-Lead-Generation.git
+cd Home-Services-Lead-Generation
+
+# Install dependencies
+cd permit_leads
+pip install -r requirements.txt
+
+# Test with sample data
+python -m permit_leads scrape --source city_of_houston --sample --verbose
+
+# Test with real data (small window)
+python -m permit_leads scrape --source city_of_houston --days 1 --verbose
+```
+
+## Data Management
+
+### Storage
+
+- **Repository**: Scraped data is committed to the `data/` directory
+- **Artifacts**: Workflow artifacts are retained for 30 days
+- **Database**: SQLite database at `data/permits/permits.db`
+
+### Data Structure
+
+```
+data/
+├── permits/
+│   ├── raw/
+│   │   └── city_of_houston/
+│   │       └── 2025-08-09.jsonl
+│   ├── aggregate/
+│   │   ├── permits_2025-08-09.csv
+│   │   └── permits_latest.csv
+│   └── permits.db
+└── leads/
+    ├── leads_recent.csv
+    └── by_jurisdiction/
+        └── city_of_houston_leads.csv
+```
+
+### Cleanup
+
+The repository automatically excludes:
+- `.env` files (secrets)
+- `*.zip` archives
+- Python cache files (`__pycache__/`)
+- Virtual environments (`venv/`)
+
+## Future Enhancements
+
+### Potential Secrets (if needed later)
+
+If the scrapers need authentication in the future, add these secrets:
+
+- `API_KEY_HOUSTON` - API key for Houston permit system
+- `NOTIFICATION_EMAIL` - Email for failure alerts
+- `SMTP_PASSWORD` - Password for email notifications
+
+### Monitoring Improvements
+
+Consider adding:
+- Slack/email notifications for failures
+- Data quality checks
+- Performance monitoring
+- Lead scoring alerts
+
+## Support
+
+For issues with the workflows:
+
+1. Check this runbook for common solutions
+2. Review workflow logs in the Actions tab
+3. Test changes locally before pushing
+4. Open an issue with error logs and steps to reproduce
+
+---
+
+*Last updated: August 2025*

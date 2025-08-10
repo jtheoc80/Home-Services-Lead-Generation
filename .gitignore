@@ -6,7 +6,72 @@ out/
 *.log
 .DS_Store
 
+# Frontend environment files
+frontend/.env.local
+frontend/.env
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Data output directories (should not be committed)
 data/permits/
 data/leads/
 !data/.gitkeep
+
+# Archive files (should not be committed)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Frontend
+frontend/.env.local
+frontend/.env
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+node_modules/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Stack monitoring output files
+stack-health.json
+.stack-health-exit-code
+summary.md
+remediation-summary.md
+
+# Stack health monitoring output
+stack-health.json
+

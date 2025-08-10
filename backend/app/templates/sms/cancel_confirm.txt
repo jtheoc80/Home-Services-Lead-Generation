@@ -1,0 +1,1 @@
+{{brand_name}}: Your {{plan_name}} subscription cancellation is confirmed. {% if is_immediate %}Access ended immediately.{% else %}Access continues until {{effective_date_short}}. Reactivate anytime at {{settings_url}}{% endif %} Questions? Reply HELP
