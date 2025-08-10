@@ -20,6 +20,10 @@ dev:
 	@echo "Setting up development environment..."
 	@# Copy .env.example to .env if .env doesn't exist in root directory
 	@if [ ! -f .env ]; then \
+		if [ ! -f .env.example ]; then \
+			echo "❌ Error: .env.example not found in the root directory. Please add it before running 'make dev'."; \
+			exit 1; \
+		fi; \
 		echo "Creating .env from .env.example..."; \
 		cp .env.example .env; \
 		echo "⚠️  Please edit .env and configure your environment variables"; \
