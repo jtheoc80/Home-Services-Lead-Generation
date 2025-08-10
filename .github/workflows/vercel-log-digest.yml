@@ -97,7 +97,7 @@ jobs:
           echo "📥 Fetching logs for deployment: $DEPLOYMENT_URL"
           
           # Fetch logs for the last 60 minutes (1h)
-          if ! vercel logs "$DEPLOYMENT_URL" --since 1h --token ${{ secrets.VERCEL_TOKEN }} > vercel_logs.txt; then
+          if ! vercel logs "$DEPLOYMENT_URL" --since 1h > vercel_logs.txt; then
             echo "⚠️  Warning: Failed to fetch logs for deployment"
             echo "Creating empty log file..."
             echo "No logs available or failed to fetch logs" > vercel_logs.txt
