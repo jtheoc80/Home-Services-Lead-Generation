@@ -130,7 +130,9 @@ def apply_schema(db_url: str, sql_content: str) -> None:
                 except psycopg2.Error as e:
                     # For CREATE TYPE statements, if the error is about the type already existing,
                     # we can safely ignore it
-                    if "already exists" in str(e).lower() and "type" in statement.lower():
+                    # For CREATE TYPE statements, if the error code is for duplicate object (42710),
+                    # we can safely ignore it
+                    if e.pgcode == '42710' and statement.upper().startswith('CREATE TYPE'):
                         logger.info(f"Type already exists, continuing...")
                         continue
                     else:
