@@ -1,6 +1,7 @@
 {
   "name": "home-services-lead-generation",
   "version": "1.0.0",
+  "type": "module",
   "description": "LeadLedgerPro - Home Services Lead Generation Platform",
   "scripts": {
     "dev": "cd frontend && npm run dev",

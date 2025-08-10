@@ -20,6 +20,7 @@ interface Lead {
   budget_band: string
   lead_score: number
   created_at: string
+  initialVote?: 'up' | 'down'
 }
 
 interface FeedbackData {
@@ -87,7 +88,11 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
               </span>
               
               {/* Lead Feedback Buttons */}
+
               <LeadFeedbackButtons leadId={lead.id} />
+
+              <LeadFeedbackButtons leadId={String(lead.id)} initialVote={lead.initialVote} />
+
             </div>
           </div>
           
