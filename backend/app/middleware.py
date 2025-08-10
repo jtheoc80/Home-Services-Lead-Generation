@@ -46,7 +46,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     - Adds request_id to response headers
     """
 
-    def __init__(self, app, logger_name: str = __name__):
+    def __init__(self, app, logger_name: str = "app.middleware"):
         super().__init__(app)
         self.logger = logging.getLogger(logger_name)
 
