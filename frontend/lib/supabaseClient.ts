@@ -24,7 +24,7 @@ export function getSupabase(): SupabaseClient | null {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
-      'Missing Supabase configuration. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment variables.'
+      'Missing Supabase configuration. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set as client-side environment variables (prefixed with NEXT_PUBLIC_) in your .env file. These must be available to the browser at build time.'
     );
   }
 
