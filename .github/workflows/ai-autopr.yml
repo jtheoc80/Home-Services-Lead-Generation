@@ -1,0 +1,81 @@
+name: AI Auto-PR Bot
+
+on:
+  # Listen for comments containing "/ai pr:" in issues and pull requests
+  issue_comment:
+    types: [created]
+  # Allow manual trigger with instruction input
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: 'AI instruction for generating PR'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-autopr:
+    runs-on: ubuntu-latest
+    # Only run on "/ai pr:" comments or workflow_dispatch
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/ai pr:')) ||
+      github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup GitHub CLI
+        run: |
+          # GitHub CLI should be pre-installed on ubuntu-latest
+          gh --version
+
+      - name: Extract instruction from comment
+        if: github.event_name == 'issue_comment'
+        id: extract_instruction
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          # Extract text after "/ai pr:" 
+          INSTRUCTION=$(echo "$COMMENT_BODY" | sed -n 's|.*/ai pr:\s*\(.*\)|\1|p' | head -1)
+          echo "instruction=$INSTRUCTION" >> $GITHUB_OUTPUT
+          echo "Found instruction: $INSTRUCTION"
+
+      - name: Set instruction for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        id: set_instruction
+        run: |
+          echo "instruction=${{ github.event.inputs.instruction }}" >> $GITHUB_OUTPUT
+
+      - name: Run AI Auto-PR script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction || steps.set_instruction.outputs.instruction }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || '' }}
+          COMMENT_ID: ${{ github.event.comment.id || '' }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "ERROR: OPENAI_API_KEY secret is required but not set"
+            exit 1
+          fi
+          
+          if [ -z "$INSTRUCTION" ]; then
+            echo "ERROR: No instruction found in comment or input"
+            exit 1
+          fi
+          
+          echo "Running AI Auto-PR with instruction: $INSTRUCTION"
+          chmod +x scripts/ai-autopr.js
+          ./scripts/ai-autopr.js
