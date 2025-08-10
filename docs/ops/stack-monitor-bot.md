@@ -595,7 +595,7 @@ curl -H "Authorization: token $GITHUB_TOKEN_BOT" \
 ### Emergency Contacts
 - **Repository Owner**: [Repository Settings](https://github.com/jtheoc80/Home-Services-Lead-Generation/settings)
 - **GitHub Support**: https://support.github.com (for platform issues)
-- **Security Team**: contact_security@yourdomain.com (for security incidents)
+- **Security Team**: See [internal security contacts page](https://intranet.yourcompany.com/security-contacts) or contact your manager for escalation (for security incidents)
 
 ---
 
