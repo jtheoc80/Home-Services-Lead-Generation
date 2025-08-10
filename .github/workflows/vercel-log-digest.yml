@@ -56,7 +56,7 @@ jobs:
           echo "🔍 Fetching latest READY deployment..."
           
           # Get deployments and find the latest READY one
-          DEPLOYMENT_DATA=$(vercel ls --json --token ${{ secrets.VERCEL_TOKEN }})
+          DEPLOYMENT_DATA=$(vercel ls --json)
           
           # Extract URL of the latest READY deployment
           DEPLOYMENT_URL=$(echo "$DEPLOYMENT_DATA" | jq -r '[.deployments[] | select(.state=="READY")] | sort_by(.createdAt) | reverse | first | .url // empty')
