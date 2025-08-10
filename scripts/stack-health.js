@@ -292,7 +292,9 @@ class StackHealthMonitor {
       // Basic database connectivity (try to hit a simple endpoint)
       if (supabaseKey) {
         try {
-          const dbResponse = await this.makeRequest(`${supabaseUrl}/rest/v1/?select=version()`, {
+          // Replace with a valid table name that exists in your Supabase project, e.g., 'users'
+          const tableName = 'users'; // Change this if needed
+          const dbResponse = await this.makeRequest(`${supabaseUrl}/rest/v1/${tableName}?select=*&limit=1`, {
             headers: { 'apikey': supabaseKey }
           });
 
