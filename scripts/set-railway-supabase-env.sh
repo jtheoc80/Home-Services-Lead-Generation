@@ -119,7 +119,16 @@ echo "🔑 Setting SUPABASE_SERVICE_ROLE..."
 if railway variables set SUPABASE_SERVICE_ROLE="$SUPABASE_SERVICE_ROLE" --service="$SERVICE_ID"; then
     echo "✅ SUPABASE_SERVICE_ROLE set successfully (key hidden for security)"
 else
+# Set SUPABASE_SERVICE_ROLE using a temporary .env file to avoid exposing the secret in process list
+echo "🔑 Setting SUPABASE_SERVICE_ROLE..."
+TMP_ENV_FILE=$(mktemp)
+echo "SUPABASE_SERVICE_ROLE=$SUPABASE_SERVICE_ROLE" > "$TMP_ENV_FILE"
+if railway variables import "$TMP_ENV_FILE" --service="$SERVICE_ID"; then
+    echo "✅ SUPABASE_SERVICE_ROLE set successfully (key hidden for security)"
+    rm -f "$TMP_ENV_FILE"
+else
     echo "❌ Error: Failed to set SUPABASE_SERVICE_ROLE"
+    rm -f "$TMP_ENV_FILE"
     exit 1
 fi
 
