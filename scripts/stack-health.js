@@ -99,6 +99,38 @@ async function checkVercel() {
       message: `Connection failed: ${error.message}`,
       responseTime: error.responseTime || 0
     };
+  const { response, responseTime, error } = await makeRequest(
+    'https://api.vercel.com/v2/user',
+    {
+      headers: {
+        'Authorization': `Bearer ${config.vercelToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  if (error) {
+    results.services.vercel = {
+      status: 'error',
+      message: `Connection failed: ${error.message}`,
+      responseTime
+    };
+    return;
+  }
+
+  if (response.ok) {
+    const userData = await response.json();
+    results.services.vercel = {
+      status: 'healthy',
+      message: `API accessible, user: ${userData.user?.username || 'unknown'}`,
+      responseTime
+    };
+  } else {
+    results.services.vercel = {
+      status: 'error',
+      message: `API returned ${response.status}: ${response.statusText}`,
+      responseTime
+    };
   }
 }
 
