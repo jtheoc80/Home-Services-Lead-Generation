@@ -73,7 +73,7 @@ set_env_var "NEXT_PUBLIC_SUPABASE_URL" "development" "$SUPABASE_URL"
 
 echo ""
 echo "🔑 Now setting NEXT_PUBLIC_SUPABASE_ANON_KEY for all environments..."
-echo "   You will be prompted to enter the anonymous key for each environment."
+echo "   You will be prompted to enter the anonymous key once, which will be set for all environments."
 echo "   Get this key from your Supabase project settings > API > anon public key"
 echo ""
 
