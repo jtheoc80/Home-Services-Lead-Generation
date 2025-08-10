@@ -202,7 +202,7 @@ async function checkRailway() {
     results.services.railway = {
       status: 'error',
       message: `Connection failed: ${error.message}`,
-      responseTime: error.responseTime || 0
+      responseTime: undefined
     };
   }
 }
