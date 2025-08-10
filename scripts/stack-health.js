@@ -293,7 +293,7 @@ async function checkFrontend() {
     results.services.frontend = {
       status: 'error',
       message: `Connection failed: ${error.message}`,
-      responseTime: error.responseTime || 0
+      responseTime: 0
     };
   }
 }
