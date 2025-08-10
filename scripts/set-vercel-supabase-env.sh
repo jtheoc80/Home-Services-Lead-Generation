@@ -23,6 +23,17 @@ fi
 
 set -e  # Exit on any error
 
+# Error handler function
+error_handler() {
+    echo ""
+    echo "❌ Error occurred on line $1."
+    echo "   Please check the previous output for details."
+    echo "   If you need help, refer to the README or contact support."
+    exit 1
+}
+
+# Trap errors and call error_handler with the line number
+trap 'error_handler $LINENO' ERR
 echo "🚀 Setting up Supabase environment variables for Vercel project..."
 echo ""
 
