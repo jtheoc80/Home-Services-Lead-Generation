@@ -263,7 +263,17 @@ async function main() {
     // Output for automation tools
     console.log(`::set-output name=deployment_url::${deploymentUrl}`);
     console.log(`::set-output name=deployment_id::${completedDeployment.uid}`);
-    console.log(`::set-output name=state::${completedDeployment.state}`);
+    const githubOutput = process.env.GITHUB_OUTPUT;
+    if (githubOutput) {
+      const fs = require('fs');
+      fs.appendFileSync(githubOutput, `deployment_url=${deploymentUrl}\n`);
+      fs.appendFileSync(githubOutput, `deployment_id=${completedDeployment.uid}\n`);
+      fs.appendFileSync(githubOutput, `state=${completedDeployment.state}\n`);
+    } else {
+      console.log(`[GITHUB_OUTPUT] deployment_url=${deploymentUrl}`);
+      console.log(`[GITHUB_OUTPUT] deployment_id=${completedDeployment.uid}`);
+      console.log(`[GITHUB_OUTPUT] state=${completedDeployment.state}`);
+    }
     
   } catch (error) {
     console.error('');
