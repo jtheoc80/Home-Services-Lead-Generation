@@ -122,7 +122,8 @@ async def healthz():
                 supabase = get_supabase_client()
                 # Simple query to test connectivity - try to query any table with minimal data
                 # This is a lightweight operation that tests database connection
-                result = supabase.table('information_schema.tables').select('table_name').limit(1).execute()
+                # Query a valid user table to test connectivity (replace 'users' with a table that exists in your schema)
+                result = supabase.table('users').select('id').limit(1).execute()
                 return result is not None
             except Exception:
                 return False
