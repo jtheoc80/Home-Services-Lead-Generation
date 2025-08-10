@@ -308,7 +308,7 @@ async function checkFrontend() {
   
   if (!config.frontendUrl) {
     results.services.frontend = {
-      status: 'warning',
+      status: 'error',
       message: 'FRONTEND_URL not configured',
       responseTime: 0
     };
