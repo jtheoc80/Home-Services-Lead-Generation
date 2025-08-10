@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 interface LeadFeedbackButtonsProps {
-  leadId: string;
+  leadId: number;
   initialVote?: 'up' | 'down';
 }
 
@@ -31,7 +31,7 @@ export default function LeadFeedbackButtons({ leadId, initialVote }: LeadFeedbac
       const token = getAuthToken();
       if (!token) return;
 
-      const response = await fetch(`/api/leads/${leadId}/feedback`, {
+      const response = await fetch(`/api/leads/${String(leadId)}/feedback`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -68,7 +68,7 @@ export default function LeadFeedbackButtons({ leadId, initialVote }: LeadFeedbac
         feedback_date: new Date().toISOString()
       });
 
-      const response = await fetch(`/api/leads/${leadId}/feedback`, {
+      const response = await fetch(`/api/leads/${String(leadId)}/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
