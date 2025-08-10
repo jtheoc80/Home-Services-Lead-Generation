@@ -23,8 +23,12 @@ import { promisify } from 'util';
 import { writeFileSync } from 'fs';
 import https from 'https';
 import http from 'http';
+
+import { URL, fileURLToPath } from 'url';
+=======
 import { URL } from 'url';
 import { fileURLToPath } from 'url';
+
 
 const execAsync = promisify(exec);
 
@@ -437,6 +441,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   checker.runAllChecks().catch(error => {
     console.error('💥 Fatal error:', error.message);
 
+export default StackHealthChecker;
+=======
  * - AUTO_REMEDIATE: Enable auto-remediation (optional)
  */
 
@@ -940,4 +946,5 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
 export default StackHealthChecker;
 
 export default main;
+
 
