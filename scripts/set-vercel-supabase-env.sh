@@ -27,7 +27,16 @@ echo "🚀 Setting up Supabase environment variables for Vercel project..."
 echo ""
 
 # Pre-defined Supabase URL
-SUPABASE_URL="https://wsbnbncapkrdovrrghlh.supabase.co"
+# Get Supabase URL from environment variable or first command line argument
+if [ -n "$SUPABASE_URL" ]; then
+    echo "Using SUPABASE_URL from environment variable."
+elif [ -n "$1" ]; then
+    SUPABASE_URL="$1"
+    echo "Using SUPABASE_URL from command line argument."
+else
+    echo "❌ Error: SUPABASE_URL is not set. Please set the SUPABASE_URL environment variable or pass it as the first argument to this script."
+    exit 1
+fi
 
 echo "📝 Setting NEXT_PUBLIC_SUPABASE_URL for all environments..."
 echo "   URL: $SUPABASE_URL"
