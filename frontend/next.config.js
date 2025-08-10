@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   eslint: {
+
+    ignoreDuringBuilds: process.env.DISABLE_ESLINT === 'true',
+=======
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
@@ -13,6 +16,7 @@ const nextConfig = {
     // your project has type errors.
     // !! WARN !!
     ignoreBuildErrors: true,
+
   },
 }
 

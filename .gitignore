@@ -41,6 +41,14 @@ build/
 .coverage
 htmlcov/
 
+# Frontend
+frontend/.env.local
+frontend/.env
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+node_modules/
+
 # IDE and editors
 .vscode/
 .idea/

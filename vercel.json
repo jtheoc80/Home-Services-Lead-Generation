@@ -1,0 +1,15 @@
+{
+  "buildCommand": "cd frontend && npm run build:production",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "cd frontend && npm install",
+  "framework": "nextjs",
+  "functions": {
+    "frontend/pages/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "env": {
+    "SKIP_ENV_VALIDATION": "1",
+    "DISABLE_ESLINT": "true"
+  }
+}
