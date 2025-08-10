@@ -11,6 +11,9 @@ on:
         description: 'AI instruction for generating PR'
         required: true
         type: string
+  # Listen for repository dispatch events from stack monitor
+  repository_dispatch:
+    types: [stack-health-fix]
 
 permissions:
   contents: write
@@ -20,10 +23,11 @@ permissions:
 jobs:
   ai-autopr:
     runs-on: ubuntu-latest
-    # Only run on "/ai pr:" comments or workflow_dispatch
+    # Only run on "/ai pr:" comments, workflow_dispatch, or repository_dispatch
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/ai pr:')) ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'repository_dispatch'
     
     steps:
       - name: Checkout repository
@@ -58,13 +62,23 @@ jobs:
         run: |
           echo "instruction=${{ github.event.inputs.instruction }}" >> $GITHUB_OUTPUT
 
+      - name: Set instruction for repository_dispatch
+        if: github.event_name == 'repository_dispatch'
+        id: set_dispatch_instruction
+        run: |
+          echo "instruction=${{ github.event.client_payload.instruction }}" >> $GITHUB_OUTPUT
+          echo "error_type=${{ github.event.client_payload.error_type }}" >> $GITHUB_OUTPUT
+          echo "triggered_by=${{ github.event.client_payload.triggered_by }}" >> $GITHUB_OUTPUT
+
       - name: Run AI Auto-PR script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction || steps.set_instruction.outputs.instruction }}
+          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction || steps.set_instruction.outputs.instruction || steps.set_dispatch_instruction.outputs.instruction }}
           ISSUE_NUMBER: ${{ github.event.issue.number || '' }}
           COMMENT_ID: ${{ github.event.comment.id || '' }}
+          ERROR_TYPE: ${{ steps.set_dispatch_instruction.outputs.error_type || '' }}
+          TRIGGERED_BY: ${{ steps.set_dispatch_instruction.outputs.triggered_by || '' }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "ERROR: OPENAI_API_KEY secret is required but not set"
