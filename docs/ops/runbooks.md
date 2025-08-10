@@ -289,7 +289,7 @@ ls Dockerfile nixpacks.toml
    Then configure Railway to use frontend directory:
    ```bash
    # Set root directory in Railway dashboard or via CLI
-   railway service update --root-directory=frontend
+   railway service set-directory <serviceName> frontend
    ```
 
 3. **For hybrid setup** (frontend Nixpacks, backend Docker):
