@@ -33,7 +33,7 @@ function execCommand(command, args = []) {
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, VERCEL_TOKEN }
+      env: { ...process.env }
     });
 
     let stdout = '';
@@ -68,8 +68,9 @@ async function main() {
   try {
     console.log('🔄 Triggering Vercel production deployment...');
     
-    // Execute vercel deploy --prebuilt --prod
-    const result = await execCommand('npx', ['vercel', 'deploy', '--prebuilt', '--prod', '--yes']);
+    // Execute vercel deploy --prebuilt --prod --token $VERCEL_TOKEN
+    // Execute vercel deploy --prebuilt --prod (token is passed via environment variable)
+    const result = await execCommand('npx', ['vercel', 'deploy', '--prebuilt', '--prod']);
     
     // Parse the output to extract deployment URL
     const output = result.stdout + result.stderr;
