@@ -123,7 +123,7 @@ For deploying the frontend application specifically to Railway, follow these ste
 
 ### Railway Configuration
 1. **Set Builder**: Select `Dockerfile` as the build method
-2. **Root Directory**: Set to `frontend` 
+2. **Root Directory**: Set to `frontend`
 3. **Custom Start Command**: Clear any custom start command (let Docker handle it)
 4. **Environment Variables**: Add `NODE_ENV=production` (optional, already set in Dockerfile)
 5. **Redeploy**: Trigger a new deployment
