@@ -64,4 +64,4 @@ jobs:
           echo "Repository: ${{ github.repository }}"
           
           chmod +x scripts/ai-autopr.js
-          ./scripts/ai-autopr.js
+          node scripts/ai-autopr.js
