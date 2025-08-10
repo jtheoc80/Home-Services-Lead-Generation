@@ -411,7 +411,7 @@ class StackHealthChecker {
 }
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const checker = new StackHealthChecker();
   checker.runAllChecks().catch(error => {
     console.error('💥 Fatal error:', error.message);
