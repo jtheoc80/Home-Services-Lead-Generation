@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const supabase = client();
+  // Use the singleton supabase client
   const { data, error } = await supabase
     .from('leads')
     .insert([{
