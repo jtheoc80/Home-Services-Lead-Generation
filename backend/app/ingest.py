@@ -501,12 +501,12 @@ class LeadIngestor:
                         # Check Redis deduplication (use asyncio.run for sync context)
                         try:
                             import asyncio
-                        # Check Redis deduplication (use await for async context)
-                        try:
-                            is_new = await dedupe_sadd("dedupe:permits", unique_id)
-                            if not is_new:
-                                logger.debug(f"Skipping duplicate permit: {unique_id}")
-                                continue
+                            # For sync context, we skip Redis deduplication and rely on database constraints
+                            pass
+                            # is_new = await dedupe_sadd("dedupe:permits", unique_id)
+                            # if not is_new:
+                            #     logger.debug(f"Skipping duplicate permit: {unique_id}")
+                            #     continue
                         except Exception as e:
                             # If Redis fails, continue with database-level deduplication
                             logger.warning(f"Redis deduplication failed for {unique_id}: {e}")
