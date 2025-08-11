@@ -83,3 +83,8 @@ stack-health.json
 # Stack health monitoring outputs
 stack-health.json
 health-summary.md
+
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
