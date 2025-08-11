@@ -173,7 +173,7 @@ check_licenses() {
 
 # Main execution
 main() {
-    cd "$(dirname "$0")"
+    cd "$(dirname "$0")/.."
     
     # Ensure we have dependencies installed
     if [ ! -d "node_modules" ]; then
