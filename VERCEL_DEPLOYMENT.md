@@ -25,6 +25,7 @@ vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 vercel env add SUPABASE_SERVICE_ROLE_KEY
 
 # Optional: Set API base URL for all environments
+# Only needed if your application makes requests to a custom API endpoint (e.g., serverless functions or external backend)
 vercel env add NEXT_PUBLIC_API_BASE
 ```
 
