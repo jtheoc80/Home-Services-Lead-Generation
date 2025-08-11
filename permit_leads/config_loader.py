@@ -53,10 +53,10 @@ class Jurisdiction:
         return cls(
             slug=data['slug'],
             name=data['name'],
-            region_slug=data['region_slug'],
+            region_slug=data.get('region_slug', data.get('region')),  # Handle both region and region_slug
             state=data['state'],
             fips=data.get('fips'),
-            timezone=data['timezone'],
+            timezone=data.get('timezone', 'America/Chicago'),  # Default timezone
             provider=data['provider'],
             active=data.get('active', True),
             source_config=data['source_config']

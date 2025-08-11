@@ -34,11 +34,11 @@ jurisdictions:
       url: "https://harris.maps.arcgis.com/arcgis/rest/services/BuildingPermits/FeatureServer/0"
       date_field: "issue_date"
       field_map:
-        permit_number: "permit_no"
-        issued_date: "issue_date"
-        permit_type: "type"
+        permit_id: "permit_no"
+        issue_date: "issue_date"
+        work_class: "type"
         value: "value"
-        contractor: "contractor_name"
+        applicant: "contractor_name"
         address: "address"
 
   - slug: tx-fort-bend
@@ -51,11 +51,11 @@ jurisdictions:
       url: "https://fortbend.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
       date_field: "issue_date"
       field_map:
-        permit_number: "permit_no"
-        issued_date: "issue_date"
-        permit_type: "type"
+        permit_id: "permit_no"
+        issue_date: "issue_date"
+        work_class: "type"
         value: "value"
-        contractor: "contractor_name"
+        applicant: "contractor_name"
         address: "address"
 
   - slug: tx-brazoria
@@ -68,11 +68,11 @@ jurisdictions:
       url: "https://brazoria.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
       date_field: "issue_date"
       field_map:
-        permit_number: "permit_no"
-        issued_date: "issue_date"
-        permit_type: "type"
+        permit_id: "permit_no"
+        issue_date: "issue_date"
+        work_class: "type"
         value: "value"
-        contractor: "contractor_name"
+        applicant: "contractor_name"
         address: "address"
 
   - slug: tx-galveston
@@ -85,11 +85,11 @@ jurisdictions:
       url: "https://galveston.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
       date_field: "issue_date"
       field_map:
-        permit_number: "permit_no"
-        issued_date: "issue_date"
-        permit_type: "type"
+        permit_id: "permit_no"
+        issue_date: "issue_date"
+        work_class: "type"
         value: "value"
-        contractor: "contractor_name"
+        applicant: "contractor_name"
         address: "address"
 
   # --- FUTURE LAUNCH AREAS ---
