@@ -83,3 +83,9 @@ stack-health.json
 # Stack health monitoring outputs
 stack-health.json
 health-summary.md
+
+# Visual regression testing output
+screenshots/current/
+screenshots/diffs/
+visual-regression-results.json
+visual-regression-summary.md
