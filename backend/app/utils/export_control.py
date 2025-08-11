@@ -325,5 +325,6 @@ def get_export_controller() -> ExportController:
     global _export_controller
     # Always create a new instance to pick up environment changes
     # In production, this could be optimized with caching and invalidation
-    _export_controller = ExportController()
+    if _export_controller is None:
+        _export_controller = ExportController()
     return _export_controller
