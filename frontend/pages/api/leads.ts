@@ -7,7 +7,25 @@ import path from 'path';
 // const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // const supabase = createClient(supabaseUrl, supabaseKey);
-
+// TODO: Ensure the following environment variables are set in production:
+//   - NEXT_PUBLIC_SUPABASE_URL
+//   - SUPABASE_SERVICE_ROLE_KEY
+// Example initialization with validation and error handling:
+// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// if (!supabaseUrl) {
+//   throw new Error('Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL');
+// }
+// if (!supabaseKey) {
+//   throw new Error('Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY');
+// }
+// let supabase;
+// try {
+//   supabase = createClient(supabaseUrl, supabaseKey);
+// } catch (err) {
+//   console.error('Failed to initialize Supabase client:', err);
+//   throw err;
+// }
 interface LeadsQuery {
   region?: string;
   metro?: string;
