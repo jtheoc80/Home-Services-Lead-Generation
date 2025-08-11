@@ -91,7 +91,13 @@ jobs:
         id: node-checks
         run: |
           echo "Running ESLint..."
-          npm run lint 2>&1 || echo "lint_issues=true" >> $GITHUB_OUTPUT
+          if ! npm run lint 2>&1; then
+            echo "lint_issues=true" >> $GITHUB_OUTPUT
+            echo "ESLint issues found"
+          else
+            echo "lint_issues=false" >> $GITHUB_OUTPUT
+            echo "ESLint OK"
+          fi
           
           echo "Running TypeScript type check..."
           npm run typecheck 2>&1 || echo "type_issues=true" >> $GITHUB_OUTPUT
