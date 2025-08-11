@@ -257,14 +257,152 @@ See [`docs/ops/README.md`](docs/ops/README.md) for complete environment setup gu
 
 ## 🔧 Configuration
 
+### Required Secrets
+
+LeadLedgerPro requires three essential secrets for proper functionality:
+
+#### Core Required Secrets
+
+1. **`SUPABASE_URL`** - Your Supabase project URL
+   - Format: `https://your-project-id.supabase.co`
+   - Get from: Supabase Dashboard → Settings → API → Project URL
+
+2. **`SUPABASE_SERVICE_ROLE_KEY`** - Your Supabase service role key
+   - Format: Long JWT token starting with `eyJ`
+   - Get from: Supabase Dashboard → Settings → API → service_role key
+   - ⚠️ **Keep secure** - Never expose in frontend code
+
+3. **`HC_ISSUED_PERMITS_URL`** - Harris County issued permits API endpoint
+   - Value: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
+3. **`HC_ISSUED_PERMITS_URL`** - Harris County, Texas issued building permits API endpoint
+   - Value: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
+   - Used for: Scraping Harris County, Texas building permit data
+
+#### Setting Secrets with GitHub CLI
+
+**Prerequisites:** Install and authenticate with [GitHub CLI](https://cli.github.com/)
+```bash
+# Install GitHub CLI (if not already installed)
+# macOS: brew install gh
+# Ubuntu: sudo apt install gh
+# Windows: winget install GitHub.cli
+
+# Authenticate
+gh auth login
+```
+
+**Set all required secrets:**
+```bash
+# Method 1: Interactive prompts (will ask for values)
+gh secret set SUPABASE_URL
+gh secret set SUPABASE_SERVICE_ROLE_KEY  
+gh secret set HC_ISSUED_PERMITS_URL
+
+# Method 2: Set values directly
+gh secret set SUPABASE_URL --body "https://your-project-id.supabase.co"
+gh secret set SUPABASE_SERVICE_ROLE_KEY --body "your-service-role-key-here"
+gh secret set HC_ISSUED_PERMITS_URL --body "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+
+# Method 3: Set from file or environment variable
+echo "https://your-project-id.supabase.co" | gh secret set SUPABASE_URL --body -
+gh secret set HC_ISSUED_PERMITS_URL --body "$HARRIS_COUNTY_PERMITS_URL"
+
+# Method 3: Set from file or environment variable
+echo "https://your-project-id.supabase.co" | gh secret set SUPABASE_URL --body -
+gh secret set SUPABASE_SERVICE_ROLE_KEY --body "$SUPABASE_SERVICE_ROLE_KEY"
+echo "$HARRIS_COUNTY_PERMITS_URL" | gh secret set HC_ISSUED_PERMITS_URL --body -
+```
+
+**Verify secrets are set:**
+```bash
+gh secret list
+```
+
+### Local Development Setup
+
+For testing locally, create environment files with these secrets:
+
+#### Frontend (.env.local)
+```bash
+cd frontend
+cp .env.local.example .env.local
+```
+
+Edit `frontend/.env.local`:
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# API Configuration  
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+NEXT_PUBLIC_DEFAULT_REGION=tx-houston
+```
+
+#### Backend (.env)
+```bash
+cd backend  
+cp .env.example .env
+```
+
+Edit `backend/.env`:
+```bash
+# Supabase Configuration
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+SUPABASE_JWT_SECRET=your-jwt-secret-here
+
+# Harris County Permits
+HC_ISSUED_PERMITS_URL=https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/leadledger
+```
+
+#### Permit Scraper (.env)
+```bash
+cd permit_leads
+cp .env.example .env  
+```
+
+Edit `permit_leads/.env`:
+```bash
+# Harris County Permits API
+HC_ISSUED_PERMITS_URL=https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0
+
+# Database for storing scraped data
+DATABASE_URL=postgresql://user:password@localhost:5432/leadledger
+```
+
+### Testing Your Configuration
+
+**Test backend connection:**
+```bash
+cd backend
+python -c "
+import os
+from dotenv import load_dotenv
+load_dotenv()
+print('SUPABASE_URL:', os.getenv('SUPABASE_URL', 'NOT SET'))
+print('HC_ISSUED_PERMITS_URL:', os.getenv('HC_ISSUED_PERMITS_URL', 'NOT SET'))
+print('Service role key configured:', bool(os.getenv('SUPABASE_SERVICE_ROLE_KEY')))
+"
+```
+
+python scripts/test-config.py
+```bash
+cd permit_leads
+python -c "
+import os
+from dotenv import load_dotenv
+load_dotenv()
+print('HC_ISSUED_PERMITS_URL:', os.getenv('HC_ISSUED_PERMITS_URL', 'NOT SET'))
+"
+```
+
 ### Environment Variables Setup
 
 For **Vercel deployment**, see the complete setup guide: **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)**
-
-**Required environment variables:**
-- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key  
-- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
 
 **Quick Vercel setup:**
 ```bash
@@ -447,52 +585,6 @@ To add new Houston-area counties:
 ---
 
 **Houston Metro Lead Generation** - Connecting contractors with opportunities in America's 4th largest city.
-
-#### GitHub Repository Secrets
-- **`DATABASE_URL`**: Database connection string for storing permit data
-  - Format: `postgresql://user:password@host:port/database` or `sqlite:///path/to/database.db`
-  - Required for: Backend API, ML training pipeline, data persistence
-
-#### Optional API Keys (for enhanced features)
-- **`MAPBOX_TOKEN`**: For Mapbox geocoding service
-- **`GOOGLE_MAPS_API_KEY`**: For Google Maps geocoding service
-
-#### New Environment Variables (v2.0+)
-- **`ALLOW_EXPORTS`**: Controls data export permissions (`true`/`false`, default: `false`)
-- **`REDIS_URL`**: Redis connection for caching and session storage (`redis://host:port/db`)
-- **`SENDGRID_API_KEY`**: SendGrid API key for email notifications
-- **`TWILIO_SID`**: Twilio Account SID for SMS notifications
-- **`TWILIO_TOKEN`**: Twilio Auth Token for SMS notifications  
-- **`TWILIO_FROM`**: Twilio phone number for sending SMS (E.164 format)
-
-See [`docs/environment-variables.md`](docs/environment-variables.md) for detailed configuration instructions.
-
-To add repository secrets:
-1. Go to your GitHub repository Settings
-2. Navigate to Secrets and variables → Actions
-3. Click "New repository secret"
-4. Add the secret name and value
-
-**Or use GitHub CLI:**
-
-> **Prerequisite:** You must have the [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) before running these commands.
-```bash
-gh secret set DATABASE_URL
-gh secret set SENDGRID_API_KEY
-
-> **Note:** If you do not provide a value, `gh secret set` will prompt you interactively for the secret value. For automation or scripting, you can pass the value directly using the `--body` flag or via stdin.
-
-```bash
-# Interactive prompt (will ask for value)
-gh secret set DATABASE_URL
-
-# Pass value directly using --body
-gh secret set DATABASE_URL --body "your_database_url_here"
-
-# Pass value via stdin
-echo "your_database_url_here" | gh secret set DATABASE_URL --body -
-```
-
 
 **Problem:** Contractors waste countless hours chasing cold leads, often competing for the same opportunities everyone else already knows about.
 
