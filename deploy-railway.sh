@@ -59,6 +59,13 @@ echo ""
 echo "🗄️  Step 3: Applying database schema..."
 echo "Running one-off command: python backend/scripts/apply_schema.py"
 railway run python backend/scripts/apply_schema.py
+SCHEMA_EXIT_CODE=$?
+if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+    echo "❌ Failed to apply database schema. Please check the logs above or run: railway logs"
+    exit $SCHEMA_EXIT_CODE
+else
+    echo "✅ Database schema applied successfully."
+fi
 
 # Step 4: Verify health endpoint
 echo ""
