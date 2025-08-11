@@ -162,38 +162,13 @@ jobs:
           
           # Test basic Python imports to ensure dependencies are compatible
           echo "🔍 Testing Python dependency compatibility..."
-          python -c "
-import sys
-try:
-    import requests
-    import pydantic  
-    import fastapi
-    import pandas
-    import numpy
-    import supabase
-    print('✅ All major Python dependencies import successfully')
-except ImportError as e:
-    print(f'❌ Import error: {e}')
-    sys.exit(1)
-          " || echo "⚠️ Dependency compatibility test failed"
+          python3 -c 'import sys; import requests, pydantic, fastapi, pandas, numpy, supabase; print("✅ All major Python dependencies import successfully")' || echo "⚠️ Dependency compatibility test failed"
 
       - name: Test npm dependency compatibility  
         run: |
           echo "🔍 Testing npm dependency compatibility..."
-          # Test that major dependencies can be imported
           cd frontend
-          node -e "
-try {
-    require('next');
-    require('react');
-    require('react-dom');
-    require('@supabase/supabase-js');
-    console.log('✅ All major npm dependencies import successfully');
-} catch (e) {
-    console.error('❌ Import error:', e.message);
-    process.exit(1);
-}
-          " || echo "⚠️ NPM dependency compatibility test failed"
+          node -e 'require("next"); require("react"); require("react-dom"); require("@supabase/supabase-js"); console.log("✅ All major npm dependencies import successfully");' || echo "⚠️ NPM dependency compatibility test failed"
 
       - name: Test status
         run: echo "All tests completed successfully!"
@@ -238,11 +213,7 @@ try {
           gh pr edit ${{ github.event.pull_request.number }} --add-label "${{ needs.check-dependabot.outputs.update-type }}-update"
           
           # Add comment explaining the process
-          gh pr comment ${{ github.event.pull_request.number }} --body "🔍 This is a **${{ needs.check-dependabot.outputs.update-type }}** update that requires maintainer review.
-
-Tests have passed ✅, but this PR has been labeled with \`needs-testing\` and requires manual approval before merging.
-
-Please review the changes and test thoroughly before approving."
+          gh pr comment ${{ github.event.pull_request.number }} --body "🔍 This is a **${{ needs.check-dependabot.outputs.update-type }}** update that requires maintainer review. Tests have passed ✅, but this PR has been labeled with \`needs-testing\` and requires manual approval before merging. Please review the changes and test thoroughly before approving."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -263,10 +234,6 @@ Please review the changes and test thoroughly before approving."
           gh pr edit ${{ github.event.pull_request.number }} --add-label "unknown-update"
           
           # Add comment explaining the process
-          gh pr comment ${{ github.event.pull_request.number }} --body "❓ This dependency update could not be automatically classified.
-
-Tests have passed ✅, but this PR requires manual review to determine the appropriate merge strategy.
-
-Please review the changes and test thoroughly before approving."
+          gh pr comment ${{ github.event.pull_request.number }} --body "❓ This dependency update could not be automatically classified. Tests have passed ✅, but this PR requires manual review to determine the appropriate merge strategy. Please review the changes and test thoroughly before approving."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
