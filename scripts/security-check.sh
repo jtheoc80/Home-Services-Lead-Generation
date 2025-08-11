@@ -43,7 +43,9 @@ check_prerequisites() {
     
     if ! command -v license-checker &> /dev/null; then
         print_warning "license-checker not found, installing globally..."
-        npm install -g license-checker
+    if ! command -v npx &> /dev/null; then
+        print_error "npx is required but not installed (comes with npm >=5.2.0)"
+        exit 1
     fi
     
     if ! python3 -c "import pip_audit" &> /dev/null; then
