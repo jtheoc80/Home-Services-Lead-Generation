@@ -35,7 +35,7 @@ async def run():
                     await handle({k: v for k, v in kv.items()})
                     ids.append(_id)
                 except Exception:
-                    pass
+                    logging.exception("Exception occurred while handling message")
             if ids:
                 await stream_ack(STREAM, GROUP, *ids)
 
