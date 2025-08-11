@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "installCommand": "cd frontend && npm install",
-  "buildCommand": "cd frontend && npm run build",
+  "buildCommand": "cd frontend && npm run build:production",
   "outputDirectory": "frontend/.next",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
