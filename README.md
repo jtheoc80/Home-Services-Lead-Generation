@@ -274,7 +274,9 @@ LeadLedgerPro requires three essential secrets for proper functionality:
 
 3. **`HC_ISSUED_PERMITS_URL`** - Harris County issued permits API endpoint
    - Value: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
-   - Used for: Scraping Harris County building permit data
+3. **`HC_ISSUED_PERMITS_URL`** - Harris County, Texas issued building permits API endpoint
+   - Value: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
+   - Used for: Scraping Harris County, Texas building permit data
 
 #### Setting Secrets with GitHub CLI
 
