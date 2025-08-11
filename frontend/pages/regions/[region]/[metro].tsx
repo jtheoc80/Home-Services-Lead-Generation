@@ -185,7 +185,15 @@ export default function RegionPage({ metro, seoData, leadStats }: PageProps) {
                   <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">Harris County</span>
                   <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">City of Houston</span>
                   <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">Montgomery County</span>
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">Fort Bend County</span>
+                  {metro.jurisdictions && metro.jurisdictions.length > 0 ? (
+                    metro.jurisdictions.map((jurisdiction, idx) => (
+                      <span key={idx} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                        {jurisdiction}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500 text-sm">No jurisdictions listed.</span>
+                  )}
                 </div>
               </div>
             </div>
