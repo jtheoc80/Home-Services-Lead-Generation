@@ -1,0 +1,330 @@
+name: Visual Regression Testing
+
+on:
+  schedule:
+    # Run nightly at 09:00 UTC (3:00 AM CST / 4:00 AM CDT)
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      baseline_mode:
+        description: 'Update baseline images instead of comparing'
+        type: boolean
+        default: false
+      threshold:
+        description: 'Pixel diff threshold (0.0-1.0, default: 0.05)'
+        required: false
+        default: '0.05'
+      pages:
+        description: 'Comma-separated list of pages to test (default: all)'
+        required: false
+        default: 'homepage,dashboard,login,admin'
+
+# Prevent concurrent runs to avoid resource conflicts
+concurrency:
+  group: visual-regression
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  PLAYWRIGHT_VERSION: '1.40.0'
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+    
+    env:
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      PIXEL_DIFF_THRESHOLD: ${{ github.event.inputs.threshold || '0.05' }}
+      BASELINE_MODE: ${{ github.event.inputs.baseline_mode || 'false' }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install chromium
+
+      - name: Install Playwright dependencies
+        run: |
+          npx playwright install-deps chromium
+
+      - name: Validate environment
+        run: |
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "❌ FRONTEND_URL not configured"
+            exit 1
+          fi
+          
+          echo "✅ Frontend URL: $FRONTEND_URL"
+          echo "✅ Pixel threshold: $PIXEL_DIFF_THRESHOLD"
+          echo "✅ Baseline mode: $BASELINE_MODE"
+          
+          # Test frontend connectivity
+          echo "Testing frontend connectivity..."
+          curl -s --max-time 30 "$FRONTEND_URL" > /dev/null || {
+            echo "❌ Frontend not accessible at $FRONTEND_URL"
+            exit 1
+          }
+          echo "✅ Frontend is accessible"
+
+      - name: Download baseline images
+        if: github.event.inputs.baseline_mode != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: visual-regression-baselines
+          path: screenshots/baselines/
+        continue-on-error: true
+
+      - name: Create directories
+        run: |
+          mkdir -p screenshots/baselines
+          mkdir -p screenshots/current
+          mkdir -p screenshots/diffs
+
+      - name: Capture screenshots
+        id: screenshots
+        run: |
+          echo "Starting visual regression testing..."
+          node scripts/visual-regression.js
+          
+          # Check if there were any failures
+          if [ -f "visual-regression-results.json" ]; then
+            FAILURES=$(node -e "
+              const results = require('./visual-regression-results.json');
+              const failures = results.tests.filter(t => !t.passed);
+              console.log(failures.length);
+            ")
+            echo "failures_count=$FAILURES" >> $GITHUB_OUTPUT
+            
+            if [ "$FAILURES" -gt 0 ]; then
+              echo "has_failures=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_failures=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_failures=false" >> $GITHUB_OUTPUT
+            echo "failures_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload baseline images
+        if: github.event.inputs.baseline_mode == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baselines
+          path: screenshots/baselines/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Upload current screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-current-${{ github.run_number }}
+          path: screenshots/current/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload diff images
+        if: steps.screenshots.outputs.has_failures == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs-${{ github.run_number }}
+          path: screenshots/diffs/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-results-${{ github.run_number }}
+          path: |
+            visual-regression-results.json
+            visual-regression-summary.md
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Create or update GitHub issue
+        if: steps.screenshots.outputs.has_failures == 'true' && github.event.inputs.baseline_mode != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read the test results
+            let results = {};
+            let summary = '## Visual Regression Failures Detected\n\nThe nightly visual regression test detected changes that exceed the pixel difference threshold.\n\n';
+            
+            try {
+              if (fs.existsSync('visual-regression-results.json')) {
+                results = JSON.parse(fs.readFileSync('visual-regression-results.json', 'utf8'));
+              }
+              
+              if (fs.existsSync('visual-regression-summary.md')) {
+                summary = fs.readFileSync('visual-regression-summary.md', 'utf8');
+              }
+            } catch (error) {
+              console.log('Error reading results:', error);
+            }
+            
+            // Create issue body with details
+            const artifactUrls = {
+              current: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts`,
+              diffs: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts`,
+              results: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts`
+            };
+            
+            const metadata = `
+            
+            ---
+            
+            ### 📊 Test Details
+            
+            - **Run Number:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - **Frontend URL:** ${{ env.FRONTEND_URL }}
+            - **Pixel Threshold:** ${{ env.PIXEL_DIFF_THRESHOLD }}
+            - **Failed Tests:** ${{ steps.screenshots.outputs.failures_count }}
+            - **Timestamp:** ${new Date().toISOString()}
+            
+            ### 📁 Artifacts
+            
+            - [📸 Current Screenshots](${artifactUrls.current})
+            - [🔍 Difference Images](${artifactUrls.diffs})
+            - [📋 Detailed Results](${artifactUrls.results})
+            
+            ### 🔧 Next Steps
+            
+            1. **Review the diff images** to understand what changed
+            2. **Verify if changes are intentional** (new features, design updates)
+            3. **Update baselines** if changes are approved by running the workflow with \`baseline_mode: true\`
+            4. **Investigate regressions** if changes are unexpected
+            
+            ---
+            
+            *This issue was automatically generated by the Visual Regression Testing workflow.*
+            `;
+            
+            const title = '🔍 Visual Regression Alert';
+            const body = summary + metadata;
+            
+            // Search for existing visual regression issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'visual-regression,automated'
+            });
+            
+            const existingIssue = issues.find(issue => 
+              issue.title.includes('Visual Regression Alert')
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: body,
+                labels: ['bug', 'visual-regression', 'automated', 'needs-review']
+              });
+              
+              // Add comment with latest update
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `### 🔄 New Visual Regression Detected\n\n**Run #${{ github.run_number }}** detected ${{ steps.screenshots.outputs.failures_count }} visual changes.\n\nSee updated issue description for latest details and artifacts.`
+              });
+              
+              console.log(`Updated existing visual regression issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['bug', 'visual-regression', 'automated', 'needs-review']
+              });
+              
+              console.log(`Created new visual regression issue #${issue.number}`);
+            }
+
+      - name: Close resolved issues
+        if: steps.screenshots.outputs.has_failures == 'false' && github.event.inputs.baseline_mode != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Search for open visual regression issues
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'visual-regression,automated'
+            });
+            
+            const visualRegressionIssues = issues.filter(issue => 
+              issue.title.includes('Visual Regression Alert')
+            );
+            
+            for (const issue of visualRegressionIssues) {
+              // Add resolution comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `### ✅ Visual Regression Resolved\n\n**Run #${{ github.run_number }}** confirmed all visual tests are passing.\n\nClosing this issue automatically.`
+              });
+              
+              // Close the issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+              
+              console.log(`Closed resolved visual regression issue #${issue.number}`);
+            }
+
+      - name: Add summary to step output
+        if: always()
+        run: |
+          echo "## 🔍 Visual Regression Testing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "visual-regression-summary.md" ]; then
+            cat visual-regression-summary.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No summary file generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Artifacts Generated" >> $GITHUB_STEP_SUMMARY
+          echo "- Current Screenshots: \`visual-regression-current-${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.screenshots.outputs.has_failures }}" == "true" ]; then
+            echo "- Difference Images: \`visual-regression-diffs-${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "- Test Results: \`visual-regression-results-${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Run:** Nightly at 09:00 UTC" >> $GITHUB_STEP_SUMMARY

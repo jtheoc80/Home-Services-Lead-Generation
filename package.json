@@ -9,16 +9,28 @@
     "build": "cd frontend && npm run build",
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint",
+    "typecheck": "cd frontend && npm run type-check",
+    "test": "cd frontend && npm run test",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
+    "schema:drift": "tsx scripts/schema-drift-check.ts",
+
+    "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
+    "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
 
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
+    "scrape:harris": "node scripts/scrape-harris.cjs",
 
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
     "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
 
-    "scrape:harris": "node scripts/scrape-harris.cjs",
+    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+
+    "visual:test": "node scripts/visual-regression.js",
+    "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
+    "visual:install": "npx playwright install chromium",
+    "visual:dry-run": "node scripts/visual-regression-dry-run.js"
 
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
 
@@ -30,11 +42,18 @@
     "@supabase/supabase-js": "^2.0.0",
     "axios": "^1.11.0",
     "next": "^14.0.0",
+    "playwright": "^1.40.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "undici": "^7.13.0"
   },
   "devDependencies": {
+
+    "@apidevtools/swagger-parser": "^12.0.0",
+    "@redocly/cli": "^2.0.2",
+
+    "@playwright/test": "^1.54.2",
+
     "tsx": "^4.0.0"
   },
   "private": true

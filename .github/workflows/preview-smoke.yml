@@ -1,0 +1,172 @@
+name: Preview Smoke Test
+
+on:
+  deployment_status:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  smoke-test:
+    # Only run when deployment is successful and it's a preview deployment
+    if: github.event.deployment_status.state == 'success' && 
+        github.event.deployment_status.environment_url != '' &&
+        github.event.deployment_status.environment == 'Preview'
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install chromium
+
+      - name: Wait for deployment to be ready
+        run: |
+          echo "Deployment URL: ${{ github.event.deployment_status.environment_url }}"
+          echo "Waiting for deployment to be fully ready..."
+          
+          # Wait up to 2 minutes for the deployment to be accessible
+          for i in {1..24}; do
+            if curl -f -s --max-time 10 "${{ github.event.deployment_status.environment_url }}" > /dev/null; then
+              echo "✅ Deployment is accessible"
+              break
+            else
+              echo "⏳ Waiting for deployment (attempt $i/24)..."
+              sleep 5
+            fi
+            
+            if [ $i -eq 24 ]; then
+              echo "❌ Deployment not accessible after 2 minutes"
+              exit 1
+            fi
+          done
+
+      - name: Run smoke tests
+        env:
+          BASE_URL: ${{ github.event.deployment_status.environment_url }}
+        run: |
+          echo "Running smoke tests against: $BASE_URL"
+          npx playwright test --config=playwright.config.ts tests/e2e/smoke.spec.ts
+        continue-on-error: false
+
+      - name: Upload test results and artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-screenshots-${{ github.run_number }}
+          path: test-results/screenshots/
+          retention-days: 7
+
+      - name: Upload HTML dumps on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-html-dumps-${{ github.run_number }}
+          path: test-results/html-dumps/
+          retention-days: 7
+
+      - name: Comment on PR with results
+        if: github.event.deployment_status.environment == 'Preview' && github.event.pull_request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = context.runId;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
+            const deploymentUrl = '${{ github.event.deployment_status.environment_url }}';
+            
+            const success = '${{ job.status }}' === 'success';
+            const emoji = success ? '✅' : '❌';
+            const status = success ? 'PASSED' : 'FAILED';
+            
+            let comment = `## ${emoji} Preview Smoke Test ${status}
+            
+            **Deployment URL:** ${deploymentUrl}
+            **Test Results:** [View Details](${runUrl})
+            
+            ### Tests Performed:
+            - 🏠 Homepage (\`/\`)
+            - 🔍 Health API (\`/api/health\`)
+            - 🔒 Protected Page (\`/leads\`)
+            - 🩺 Overall System Health
+            `;
+            
+            if (!success) {
+              comment += `
+            ### 🚨 Test Failures
+            Some endpoints returned unexpected status codes. Check the [test results](${runUrl}) for details.
+            
+            **Artifacts Available:**
+            - Screenshots of failed pages
+            - HTML dumps for debugging
+            - Full test reports
+            `;
+            }
+            
+            comment += `
+            ---
+            *Smoke tests help ensure your preview deployment is working correctly before merging.*`;
+            
+            // Find existing comment to update or create new one
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            
+            const existingComment = comments.data.find(
+              comment => comment.body.includes('Preview Smoke Test')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: comment
+              });
+            }
+
+      - name: Set status check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const success = '${{ job.status }}' === 'success';
+            const sha = context.payload.deployment_status.deployment.sha;
+            
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: sha,
+              state: success ? 'success' : 'failure',
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: success ? 'All smoke tests passed' : 'Some smoke tests failed',
+              context: 'preview-smoke-test'
+            });
