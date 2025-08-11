@@ -21,10 +21,18 @@ try:
     from .metrics import track_request_start, track_request_end
     from .settings import settings
     METRICS_AVAILABLE = True
+    
+    def is_metrics_enabled():
+        """Check if metrics are enabled."""
+        return getattr(settings, 'enable_metrics', False)
+        
 except ImportError:
     METRICS_AVAILABLE = False
     track_request_start = lambda x: None
     track_request_end = lambda w, x, y, z: None
+    
+    def is_metrics_enabled():
+        return False
 
 
 class JSONFormatter(logging.Formatter):
@@ -82,7 +90,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         
         # Track request start for metrics (if enabled)
-        if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+        if METRICS_AVAILABLE and is_metrics_enabled():
             track_request_start(request_id)
         
         # Process the request
@@ -104,7 +112,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             self.logger.error(json.dumps(log_data))
             
             # Track failed request for metrics (if enabled)
-            if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+            if METRICS_AVAILABLE and is_metrics_enabled():
                 track_request_end(request_id, request.method, str(request.url.path), 500)
             
             # Return error response with request_id header
@@ -122,7 +130,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
         
         # Track successful request for metrics (if enabled)
-        if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+        if METRICS_AVAILABLE and is_metrics_enabled():
             track_request_end(request_id, request.method, str(request.url.path), response.status_code)
         
         # Prepare log data

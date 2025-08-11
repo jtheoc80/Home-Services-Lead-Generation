@@ -27,9 +27,17 @@ try:
     from .metrics import track_ingestion
     from .settings import settings
     METRICS_AVAILABLE = True
+    
+    def is_metrics_enabled():
+        """Check if metrics are enabled."""
+        return getattr(settings, 'enable_metrics', False)
+        
 except ImportError:
     METRICS_AVAILABLE = False
     track_ingestion = lambda x, y, z: None
+    
+    def is_metrics_enabled():
+        return False
 
 # Configure logging
 logging.basicConfig(
@@ -355,7 +363,7 @@ class LeadIngestor:
             logger.info(f"Total records in database: {total_records}")
             
             # Track metrics if enabled
-            if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+            if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_copy', records_processed, 'success')
             
             copy_buffer.close()
@@ -366,7 +374,7 @@ class LeadIngestor:
             logger.error(f"Error during COPY ingest: {e}")
             
             # Track failed ingestion if metrics enabled
-            if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+            if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_copy', 0, 'error')
             
             raise
@@ -492,7 +500,7 @@ class LeadIngestor:
             logger.info(f"Total records in database: {total_records}")
             
             # Track metrics if enabled
-            if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+            if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_insert', records_processed, 'success')
             
             return records_processed
@@ -502,7 +510,7 @@ class LeadIngestor:
             logger.error(f"Error during ingest: {e}")
             
             # Track failed ingestion if metrics enabled
-            if METRICS_AVAILABLE and getattr(settings, 'enable_metrics', False):
+            if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_insert', 0, 'error')
             
             raise
