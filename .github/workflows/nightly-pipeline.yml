@@ -2,7 +2,7 @@ name: Nightly Pipeline
 
 on:
   schedule:
-    # Runs at 02:30 America/Chicago (08:30 UTC)
+    # Runs at 08:30 UTC (corresponds to 02:30 or 03:30 America/Chicago depending on daylight saving time)
     - cron: "30 8 * * *"
   workflow_dispatch:
     inputs:
