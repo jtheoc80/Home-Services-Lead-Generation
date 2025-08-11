@@ -231,7 +231,7 @@ jobs:
           
           if [ -n "$CLS_SCORE" ] && [ "$CLS_SCORE" != "null" ] && [ "$CLS_SCORE" != "" ]; then
             CLS_DISPLAY="$CLS_SCORE"
-            if [ $(echo "$CLS_SCORE <= 0.1" | bc -l) -eq 1 ]; then
+            if [ $(awk "BEGIN {print ($CLS_SCORE <= 0.1)}" 2>/dev/null || echo 0) -eq 1 ]; then
               CLS_STATUS="✅"
             else
               CLS_STATUS="❌"
