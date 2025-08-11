@@ -10,16 +10,19 @@
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint",
     "install-frontend": "cd frontend && npm install",
-    "supa:smoke": "tsx scripts/supaSmoke.ts"
+    "supa:smoke": "tsx scripts/supaSmoke.ts",
+    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
   },
   "workspaces": [
     "frontend"
   ],
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
+    "axios": "^1.11.0",
     "next": "^14.0.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "undici": "^7.13.0"
   },
   "devDependencies": {
     "tsx": "^4.0.0"
