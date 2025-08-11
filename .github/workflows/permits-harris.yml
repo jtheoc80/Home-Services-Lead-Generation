@@ -126,7 +126,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📁 Files Updated:" >> $GITHUB_STEP_SUMMARY
           TODAY=$(date +%Y-%m-%d)
-          find data -name "*${TODAY}*" -name "*harris*" -o -name "*${TODAY}*" -name "permits_*" | head -5 | while read file; do
+          find data \( -name "*${TODAY}*" -name "*harris*" \) -o \( -name "*${TODAY}*" -name "permits_*" \) | head -5 | while read file; do
             if [ -f "$file" ]; then
               SIZE=$(stat -c%s "$file" 2>/dev/null || echo "0")
               echo "- \`$file\` (${SIZE} bytes)" >> $GITHUB_STEP_SUMMARY
