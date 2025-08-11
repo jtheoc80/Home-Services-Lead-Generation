@@ -344,7 +344,8 @@ class StackHealthChecker {
 
       // Step 2: Signed service-role query (read-only) as specified in requirements
       // Use a simple read-only query on a system table that should always exist
-      const queryResponse = await this.makeRequest(`${supabaseUrl}/rest/v1/`, {
+      // Query a known system table to test service-role authentication
+      const queryResponse = await this.makeRequest(`${supabaseUrl}/rest/v1/pg_catalog.pg_tables?select=schemaname,tablename&limit=1`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${supabaseServiceRole}`,
