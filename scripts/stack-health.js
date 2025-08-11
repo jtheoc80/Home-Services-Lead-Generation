@@ -438,7 +438,7 @@ class StackHealthChecker {
     const hasConfigIssues = !this.results.frontend.ok || !this.results.vercel.ok;
     if (hasConfigIssues) {
       // Output patterns that align with stack-monitor.yml detectors
-      console.error('NEXT_PUBLIC_SUPABASE_URL missing or invalid');
+      console.error('SUPABASE_URL missing or invalid');
       console.error('Frontend configuration issues detected');
     }
 
