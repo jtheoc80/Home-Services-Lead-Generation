@@ -88,7 +88,9 @@ class ChaosRedisWrapper:
         # For AsyncMock, we need to actually call and await if it's a coroutine
         pipeline = self.original.pipeline()
         # But since we're in a sync method, we can't await, so assume it returns directly
-        return pipeline
+        """Return a ChaosPipelineWrapper to inject latency into pipeline operations."""
+        pipeline = self.original.pipeline()
+        return ChaosPipelineWrapper(pipeline, self.min_latency, self.max_latency)
 
 
 class ChaosPipelineWrapper:
