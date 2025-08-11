@@ -1,0 +1,69 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "make start",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "ENVIRONMENT": "production",
+        "DEBUG": "false"
+      }
+    },
+    "development": {
+      "variables": {
+        "ENVIRONMENT": "development", 
+        "DEBUG": "true"
+      },
+      "deploy": {
+        "startCommand": "make db-init && make dev"
+      }
+    }
+  },
+  "services": {
+    "backend": {
+      "build": {
+        "builder": "NIXPACKS"
+      },
+      "deploy": {
+        "startCommand": "make start",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10
+      },
+      "environments": {
+        "production": {
+          "variables": {
+            "ENVIRONMENT": "production",
+            "DEBUG": "false"
+          }
+        },
+        "development": {
+          "variables": {
+            "ENVIRONMENT": "development", 
+            "DEBUG": "true"
+          },
+          "deploy": {
+            "startCommand": "make db-init && make dev"
+          }
+        }
+      }
+    }
+  },
+  "plugins": {
+    "postgres": {
+      "type": "postgresql",
+      "environmentMappings": {
+        "DATABASE_URL": "DATABASE_URL"
+      }
+    }
+  }
+}
