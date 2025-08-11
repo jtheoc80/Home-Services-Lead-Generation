@@ -13,7 +13,6 @@ import os
 import logging
 import asyncio
 import hashlib
-import hmac
 import json
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
