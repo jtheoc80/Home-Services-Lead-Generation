@@ -36,7 +36,7 @@ class StripeClient:
         self.publishable_key = os.getenv("STRIPE_PUBLISHABLE_KEY")
         
         if not self.secret_key:
-            raise ValueError("STRIPE_SECRET_KEY environment variable is required")
+            raise ValueError("Stripe configuration error: missing required secret key")
         
         # Set the global Stripe API key
         stripe.api_key = self.secret_key
