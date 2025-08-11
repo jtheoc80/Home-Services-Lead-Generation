@@ -49,7 +49,7 @@ def update_last_run(args):
         try:
             timestamp = datetime.fromisoformat(args.timestamp)
         except ValueError:
-            print(f"Error: Invalid timestamp format '{args.timestamp}'. Use ISO format like '2025-01-15 10:30:00'")
+            print(f"Error: Invalid timestamp format '{args.timestamp}'. Use ISO format like '2025-01-15T10:30:00'")
             return
     else:
         # Use current time
