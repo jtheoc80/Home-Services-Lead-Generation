@@ -278,7 +278,10 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
                 admin_user(user)  # This will raise HTTPException if not admin
                 is_admin_override = True
                 logger.info(f"Admin override requested by {user.email} for {export_type.value}")
-            except HTTPException as e:
+            if is_admin(user):
+                is_admin_override = True
+                logger.info(f"Admin override requested by {user.email} for {export_type.value}")
+            else:
                 # User is not admin but requested override
                 logger.warning(f"Non-admin user {user.email} attempted admin override for export")
                 raise HTTPException(
