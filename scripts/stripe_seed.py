@@ -17,7 +17,7 @@ import os
 import sys
 import json
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 # Add parent directory to path to import backend modules
 project_root = Path(__file__).parent.parent
