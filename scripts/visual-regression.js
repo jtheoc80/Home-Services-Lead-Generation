@@ -214,7 +214,6 @@ class VisualRegressionTester {
       
       // Create a temporary page for comparison
       const tempPage = await this.browser.newPage();
-      
       // Use Playwright's expect API for visual comparison
       const diffPath = join('screenshots/diffs', `${name}-diff.png`);
       
