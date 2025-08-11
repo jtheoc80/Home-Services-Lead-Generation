@@ -86,7 +86,17 @@ class ETLAwareArcGISAdapter:
             # Build query parameters with proper date format for ArcGIS
             # ArcGIS expects timestamps in epoch milliseconds or specific date formats
             since_str = since.strftime('%Y-%m-%d %H:%M:%S')
-            where_clause = f"{self.date_field} > TIMESTAMP '{since_str}'"
+            # ArcGIS expects timestamps in epoch milliseconds or specific date formats.
+            # If 'date_format' is set to 'epoch' in config, use epoch milliseconds. Otherwise, use string format.
+            if self.date_format == 'epoch':
+                # ArcGIS expects epoch milliseconds (UTC)
+                epoch_ms = int(since.timestamp() * 1000)
+                where_clause = f"{self.date_field} > {epoch_ms}"
+            else:
+                # Default: use string format. This works for most ArcGIS servers, but may not be universal.
+                # If you encounter compatibility issues, set 'date_format' to 'epoch' in the config.
+                since_str = since.strftime('%Y-%m-%d %H:%M:%S')
+                where_clause = f"{self.date_field} > TIMESTAMP '{since_str}'"
             
             params = {
                 'where': where_clause,
