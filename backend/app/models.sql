@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS user_subscriptions (
   payment_method TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
 
-  sent_at TIMESTAMPTZ
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TYPE cancellation_reason AS ENUM (
