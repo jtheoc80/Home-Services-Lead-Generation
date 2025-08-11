@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-export default function ClientInsertPage() {
 type ResultState = {
   error?: string;
   details?: unknown;

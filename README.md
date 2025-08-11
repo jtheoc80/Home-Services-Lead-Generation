@@ -32,6 +32,7 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
 - **Lead Scoring**: ML-powered scoring to identify the highest quality opportunities
 - **Dashboard-Only Access**: No CSV exports - all data accessible through the web dashboard
 - **Real-Time Updates**: Live notifications when new matching leads are available
+- **OpenAPI Integration**: Auto-generated TypeScript and Python clients with API validation
 
 ## ⚡ 5-Minute Quickstart
 
@@ -899,13 +900,37 @@ The enrichment pipeline significantly improves lead quality by providing locatio
 
 ## GitHub Actions & Automation
 
-This repository includes automated workflows for daily permit scraping:
+This repository includes automated workflows for daily permit scraping and performance monitoring:
 
 - **Scheduled Runs**: Automated daily at 6 AM UTC (1 AM CST/2 AM CDT)
 - **Manual Runs**: Trigger via GitHub Actions UI with custom parameters
 - **Data Storage**: Results committed to repository and available as downloadable artifacts
+- **Performance Monitoring**: Lighthouse audits on every PR with budget enforcement
 
 See [`docs/github-actions-runbook.md`](docs/github-actions-runbook.md) for complete setup instructions, troubleshooting, and workflow details.
+
+### Performance Monitoring
+
+#### Workflow: `lighthouse.yml`
+- **Trigger**: Every pull request to `main` or `develop` branches
+- **Purpose**: Audit Vercel preview deployments for performance budgets
+- **Budgets**: LCP ≤ 2.5s, TBT ≤ 300ms, CLS ≤ 0.1
+- **Output**: Detailed performance report posted as PR comment
+
+**Performance Steps:**
+1. Get latest Vercel deployment URL
+2. Run Lighthouse CI with 3 test runs
+3. Check performance budgets (LCP, TBT, CLS)
+4. Generate markdown report with metrics and status
+5. Post report to PR as comment
+6. Fail job if any budget is exceeded
+
+**Performance Budgets:**
+- **Largest Contentful Paint (LCP)**: ≤ 2.5 seconds
+- **Total Blocking Time (TBT)**: ≤ 300 milliseconds  
+- **Cumulative Layout Shift (CLS)**: ≤ 0.1
+
+The workflow ensures every PR maintains performance standards before merge.
 
 ### Nightly Pipeline
 
@@ -1010,6 +1035,99 @@ This registry provides a standardized approach to organizing data sources by geo
 ---
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
+
+## 🔗 OpenAPI Integration
+
+LeadLedgerPro provides a fully documented REST API with auto-generated clients for seamless integration.
+
+### OpenAPI Specification
+
+The API is documented using OpenAPI 3.1 specification:
+
+- **Specification File**: [`openapi.yaml`](./openapi.yaml)
+- **Interactive Docs**: Available at `http://localhost:8000/docs` (Swagger UI)
+- **ReDoc**: Available at `http://localhost:8000/redoc` (alternative documentation)
+
+### Auto-Generated Clients
+
+#### TypeScript Client (Frontend)
+
+Located at [`frontend/src/lib/api-client.ts`](./frontend/src/lib/api-client.ts)
+
+```typescript
+import { apiClient } from './src/lib/api-client';
+
+// Health check
+const health = await apiClient.health.healthCheck();
+
+// Get current user
+const user = await apiClient.auth.getCurrentUser();
+
+// Cancel subscription
+await apiClient.subscription.cancelSubscription({
+  cancellationRequest: {
+    user_id: 'user123',
+    reason_category: 'user_request'
+  }
+});
+```
+
+#### Python Client (Backend Jobs)
+
+Located at [`backend/clients/`](./backend/clients/)
+
+```python
+from backend.clients import LeadLedgerProClient
+
+client = LeadLedgerProClient(base_url='http://localhost:8000')
+
+# Health check
+health = client.health.health_check()
+
+# Export data
+from backend.clients.leadledderpro_client import ExportDataRequest
+result = client.export.export_data(
+    export_data_request=ExportDataRequest(
+        export_type='leads',
+        format='csv'
+    )
+)
+```
+
+### API Validation Workflow
+
+GitHub Actions automatically:
+
+1. **Validates OpenAPI spec** syntax and standards compliance
+2. **Generates fresh clients** when the API changes
+3. **Fails PRs** that change the API without updating `openapi.yaml`
+4. **Comments on PRs** with validation results
+
+### Updating the API Specification
+
+When you modify the backend API endpoints:
+
+1. **Update the spec**: Run `python scripts/extract-openapi.py`
+2. **Commit changes**: Include both API changes and `openapi.yaml` updates
+3. **Validate**: GitHub Actions will validate and regenerate clients
+
+### Available API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Basic health check |
+| `/healthz` | GET | Extended health check |
+| `/api/me` | GET | Current user info |
+| `/api/subscription/cancel` | POST | Cancel subscription |
+| `/api/subscription/reactivate` | POST | Reactivate subscription |
+| `/api/subscription/status/{user_id}` | GET | Subscription status |
+| `/api/export/data` | POST | Export data |
+| `/api/export/status` | GET | Export configuration |
+| `/api/admin/cancellations` | GET | Admin cancellation records |
+| `/metrics` | GET | Prometheus metrics |
+
+See [`API_CLIENT_EXAMPLES.md`](./API_CLIENT_EXAMPLES.md) for detailed usage examples.
 
 ## Connect Supabase
 

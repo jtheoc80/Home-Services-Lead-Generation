@@ -1,0 +1,340 @@
+name: Lighthouse Performance Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Validate required secrets
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "❌ Error: VERCEL_TOKEN secret is not set"
+            echo "Please add your Vercel API token to repository secrets"
+            exit 1
+          fi
+          echo "✅ VERCEL_TOKEN is configured"
+      
+      - name: Install Vercel CLI and dependencies
+        run: |
+          npm install -g vercel@latest
+          # Verify jq is available (should be pre-installed on ubuntu-latest)
+          if ! command -v jq &> /dev/null; then
+            echo "Installing jq..."
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+          echo "✅ Dependencies installed"
+      
+      - name: Pull Vercel project configuration
+        run: |
+          echo "🔄 Pulling Vercel project configuration..."
+          vercel pull --yes --environment=production
+          echo "✅ Project configuration pulled successfully"
+      
+      - name: Get latest READY deployment URL
+        id: deployment
+        run: |
+          echo "🔍 Fetching latest READY deployment..."
+          
+          # Get deployments and find the latest READY one
+          DEPLOYMENT_DATA=$(vercel ls --json)
+          
+          # Extract URL of the latest READY deployment
+          DEPLOYMENT_URL=$(echo "$DEPLOYMENT_DATA" | jq -r '[.deployments[] | select(.state=="READY")] | sort_by(.createdAt) | reverse | first | .url // empty')
+          
+          if [ -z "$DEPLOYMENT_URL" ] || [ "$DEPLOYMENT_URL" = "null" ]; then
+            echo "❌ Error: No READY deployment found"
+            echo "Please ensure you have at least one successful deployment on Vercel"
+            echo ""
+            echo "## ❌ Lighthouse Audit Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Error:** No READY deployment found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please ensure you have at least one successful deployment on Vercel before running this audit." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Ensure URL has https:// prefix
+          if [[ "$DEPLOYMENT_URL" != https://* ]]; then
+            DEPLOYMENT_URL="https://$DEPLOYMENT_URL"
+          fi
+          
+          # Save URL to file and output
+          echo "$DEPLOYMENT_URL" > vercel_url.txt
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          
+          echo "✅ Latest READY deployment found: $DEPLOYMENT_URL"
+          
+          # Add to step summary
+          echo "## 🚀 Vercel Deployment Found" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment URL:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create Lighthouse CI configuration
+        run: |
+          DEPLOYMENT_URL="${{ steps.deployment.outputs.deployment_url }}"
+          mkdir -p .lighthouseci
+          cat > .lighthouseci/lighthouserc.json << EOF
+          {
+            "ci": {
+              "collect": {
+                "url": ["$DEPLOYMENT_URL"],
+                "numberOfRuns": 3
+              },
+              "assert": {
+                "assertions": {
+                  "largest-contentful-paint": ["error", {"maxNumericValue": 2500}],
+                  "total-blocking-time": ["error", {"maxNumericValue": 300}],
+                  "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}]
+                }
+              },
+              "upload": {
+                "target": "temporary-public-storage"
+              }
+            }
+          }
+          EOF
+          echo "✅ Lighthouse CI configuration created"
+
+      - name: Run Lighthouse CI
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: './.lighthouseci/lighthouserc.json'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        continue-on-error: true
+
+      - name: Process Lighthouse results
+        id: results
+        run: |
+          DEPLOYMENT_URL="${{ steps.deployment.outputs.deployment_url }}"
+          
+          # Initialize variables
+          LCP_SCORE=""
+          TBT_SCORE=""
+          CLS_SCORE=""
+          OVERALL_SCORE=""
+          BUDGET_PASSED="true"
+          
+          # Check if lighthouse results exist
+          if [ -f ".lighthouseci/lhci_reports/manifest.json" ]; then
+            # Get the latest report
+            REPORT_PATH=$(jq -r '.[0].jsonPath' .lighthouseci/lhci_reports/manifest.json)
+            
+            if [ -f "$REPORT_PATH" ]; then
+              # Extract metrics
+              LCP_SCORE=$(jq -r '.audits["largest-contentful-paint"].numericValue' "$REPORT_PATH")
+              TBT_SCORE=$(jq -r '.audits["total-blocking-time"].numericValue' "$REPORT_PATH")
+              CLS_SCORE=$(jq -r '.audits["cumulative-layout-shift"].numericValue' "$REPORT_PATH")
+              OVERALL_SCORE=$(jq -r '.categories.performance.score * 100' "$REPORT_PATH")
+              
+              # Check budgets
+              if [ $(echo "$LCP_SCORE > 2500" | bc -l) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ LCP budget exceeded: ${LCP_SCORE}ms > 2500ms"
+              fi
+              
+              if [ $(echo "$TBT_SCORE > 300" | bc -l) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ TBT budget exceeded: ${TBT_SCORE}ms > 300ms"
+              fi
+              
+              if [ $(awk "BEGIN {print ($LCP_SCORE > 2500)}" 2>/dev/null || echo 0) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ LCP budget exceeded: ${LCP_SCORE}ms > 2500ms"
+              fi
+              
+              if [ $(awk "BEGIN {print ($TBT_SCORE > 300)}" 2>/dev/null || echo 0) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ TBT budget exceeded: ${TBT_SCORE}ms > 300ms"
+              fi
+              
+              if [ $(awk "BEGIN {print ($CLS_SCORE > 0.1)}" 2>/dev/null || echo 0) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ CLS budget exceeded: $CLS_SCORE > 0.1"
+              fi
+              
+              echo "lcp_score=$LCP_SCORE" >> $GITHUB_OUTPUT
+              echo "tbt_score=$TBT_SCORE" >> $GITHUB_OUTPUT
+              echo "cls_score=$CLS_SCORE" >> $GITHUB_OUTPUT
+              echo "overall_score=$OVERALL_SCORE" >> $GITHUB_OUTPUT
+              echo "budget_passed=$BUDGET_PASSED" >> $GITHUB_OUTPUT
+              
+              # Get Lighthouse URL if available
+              LIGHTHOUSE_URL=$(jq -r '.lhr.finalUrl // empty' "$REPORT_PATH")
+              echo "lighthouse_url=$LIGHTHOUSE_URL" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Lighthouse report file not found"
+              echo "budget_passed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Lighthouse manifest not found"
+            echo "budget_passed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate report and post PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEPLOYMENT_URL="${{ steps.deployment.outputs.deployment_url }}"
+          LCP_SCORE="${{ steps.results.outputs.lcp_score }}"
+          TBT_SCORE="${{ steps.results.outputs.tbt_score }}"
+          CLS_SCORE="${{ steps.results.outputs.cls_score }}"
+          OVERALL_SCORE="${{ steps.results.outputs.overall_score }}"
+          BUDGET_PASSED="${{ steps.results.outputs.budget_passed }}"
+          
+          # Format scores for display
+          if [ -n "$LCP_SCORE" ] && [ "$LCP_SCORE" != "null" ] && [ "$LCP_SCORE" != "" ]; then
+            LCP_DISPLAY="${LCP_SCORE}ms"
+            if [ $(awk "BEGIN {print ($LCP_SCORE <= 2500)}" 2>/dev/null || echo 0) -eq 1 ]; then
+              LCP_STATUS="✅"
+            else
+              LCP_STATUS="❌"
+            fi
+          else
+            LCP_DISPLAY="N/A"
+            LCP_STATUS="⚠️"
+          fi
+          
+          if [ -n "$TBT_SCORE" ] && [ "$TBT_SCORE" != "null" ] && [ "$TBT_SCORE" != "" ]; then
+            TBT_DISPLAY="${TBT_SCORE}ms"
+            if [ $(awk "BEGIN {print ($TBT_SCORE <= 300)}" 2>/dev/null || echo 0) -eq 1 ]; then
+              TBT_STATUS="✅"
+            else
+              TBT_STATUS="❌"
+            fi
+          else
+            TBT_DISPLAY="N/A"
+            TBT_STATUS="⚠️"
+          fi
+          
+          if [ -n "$CLS_SCORE" ] && [ "$CLS_SCORE" != "null" ] && [ "$CLS_SCORE" != "" ]; then
+            CLS_DISPLAY="$CLS_SCORE"
+            if [ $(awk "BEGIN {print ($CLS_SCORE <= 0.1)}" 2>/dev/null || echo 0) -eq 1 ]; then
+              CLS_STATUS="✅"
+            else
+              CLS_STATUS="❌"
+            fi
+          else
+            CLS_DISPLAY="N/A"
+            CLS_STATUS="⚠️"
+          fi
+          
+          if [ -n "$OVERALL_SCORE" ] && [ "$OVERALL_SCORE" != "null" ]; then
+            OVERALL_DISPLAY="${OVERALL_SCORE}%"
+          else
+            OVERALL_DISPLAY="N/A"
+          fi
+          
+          # Determine overall status
+          if [ "$BUDGET_PASSED" = "true" ]; then
+            OVERALL_STATUS="✅ All budgets passed"
+            STATUS_ICON="✅"
+          else
+            OVERALL_STATUS="❌ Budget(s) exceeded"
+            STATUS_ICON="❌"
+          fi
+          
+          # Create the PR comment
+          cat > pr_comment.md << EOF
+          ## $STATUS_ICON Lighthouse Performance Audit
+          
+          **Deployment:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)
+          **Overall Performance Score:** $OVERALL_DISPLAY
+          **Status:** $OVERALL_STATUS
+          
+          ### 📊 Performance Metrics
+          
+          | Metric | Value | Budget | Status |
+          |--------|-------|--------|--------|
+          | **Largest Contentful Paint (LCP)** | $LCP_DISPLAY | ≤ 2.5s | $LCP_STATUS |
+          | **Total Blocking Time (TBT)** | $TBT_DISPLAY | ≤ 300ms | $TBT_STATUS |
+          | **Cumulative Layout Shift (CLS)** | $CLS_DISPLAY | ≤ 0.1 | $CLS_STATUS |
+          
+          ### 📈 Performance Guidelines
+          
+          - **LCP (Largest Contentful Paint):** Measures loading performance. Good performance is ≤ 2.5s
+          - **TBT (Total Blocking Time):** Measures interactivity. Good performance is ≤ 300ms  
+          - **CLS (Cumulative Layout Shift):** Measures visual stability. Good performance is ≤ 0.1
+          
+          ---
+          *Generated by [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci) in workflow run [\#${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+          EOF
+          
+          # Post comment using GitHub API
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d @- \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" << EOF
+          {
+            "body": $(cat pr_comment.md | jq -Rs .)
+          }
+          EOF
+          
+          echo "💬 Posted Lighthouse report on PR #${{ github.event.pull_request.number }}"
+
+      - name: Add results to job summary
+        run: |
+          DEPLOYMENT_URL="${{ steps.deployment.outputs.deployment_url }}"
+          LCP_SCORE="${{ steps.results.outputs.lcp_score }}"
+          TBT_SCORE="${{ steps.results.outputs.tbt_score }}"
+          CLS_SCORE="${{ steps.results.outputs.cls_score }}"
+          OVERALL_SCORE="${{ steps.results.outputs.overall_score }}"
+          BUDGET_PASSED="${{ steps.results.outputs.budget_passed }}"
+          
+          if [ "$BUDGET_PASSED" = "true" ]; then
+            echo "## ✅ Lighthouse Performance Audit Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Lighthouse Performance Audit Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "**Overall Performance Score:** ${OVERALL_SCORE}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Performance Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value | Budget | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| LCP | ${LCP_SCORE}ms | ≤ 2500ms | $(if [ $(echo "$LCP_SCORE <= 2500" | bc -l) -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| TBT | ${TBT_SCORE}ms | ≤ 300ms | $(if [ $(echo "$TBT_SCORE <= 300" | bc -l) -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| LCP | ${LCP_SCORE}ms | ≤ 2500ms | $(if [ $(awk "BEGIN {print (${LCP_SCORE} <= 2500)}") -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| TBT | ${TBT_SCORE}ms | ≤ 300ms | $(if [ $(awk "BEGIN {print (${TBT_SCORE} <= 300)}") -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| CLS | $CLS_SCORE | ≤ 0.1 | $(if [ $(awk "BEGIN {print (${CLS_SCORE} <= 0.1)}") -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail job if budgets exceeded
+        if: steps.results.outputs.budget_passed == 'false'
+        run: |
+          echo "❌ Performance budgets were exceeded. Failing the job."
+          exit 1
+
+      - name: Upload Lighthouse artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports-${{ github.run_number }}
+          path: .lighthouseci/
+          retention-days: 7
+          if-no-files-found: warn

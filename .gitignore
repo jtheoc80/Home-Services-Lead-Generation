@@ -89,3 +89,9 @@ screenshots/current/
 screenshots/diffs/
 visual-regression-results.json
 visual-regression-summary.md
+
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
+
