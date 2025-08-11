@@ -16,7 +16,12 @@ if ! command -v git-secrets &> /dev/null; then
     git clone https://github.com/awslabs/git-secrets.git
     cd git-secrets
     make install
+    TMPDIR="$(mktemp -d)"
+    git clone https://github.com/awslabs/git-secrets.git "$TMPDIR/git-secrets"
+    cd "$TMPDIR/git-secrets"
+    make install
     cd -
+    rm -rf "$TMPDIR"
     echo "✅ git-secrets installed successfully"
 else
     echo "✅ git-secrets is already installed"
