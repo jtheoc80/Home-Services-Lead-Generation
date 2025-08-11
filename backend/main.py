@@ -10,10 +10,12 @@ endpoints for subscription management and lead generation services.
 import logging
 import os
 import asyncio
+import secrets
+import base64
 from typing import Dict, Any, Optional
-from fastapi import FastAPI, HTTPException, Request, Depends, Query
+from fastapi import FastAPI, HTTPException, Request, Depends, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -25,8 +27,18 @@ from app.middleware import RequestLoggingMiddleware, setup_json_logging
 
 from app.supabase_client import get_supabase_client
 
+
+# Import metrics if available
+try:
+    from app.metrics import get_metrics, get_metrics_content_type
+    from app.settings import settings
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+=======
 # Import export control
 from app.utils.export_control import get_export_controller, ExportType, ExportRequest
+
 
 
 # Import test Supabase router
@@ -78,11 +90,66 @@ class CancellationRequest(BaseModel):
 class ReactivationRequest(BaseModel):
     user_id: str
 
+
+
+def verify_metrics_auth(authorization: str = Header(None)) -> bool:
+    """
+    Verify basic authentication for metrics endpoint.
+    
+    Args:
+        authorization: Authorization header containing basic auth credentials
+        
+    Returns:
+        True if authentication successful
+        
+    Raises:
+        HTTPException: If authentication fails
+    """
+    if not METRICS_AVAILABLE or not getattr(settings, 'enable_metrics', False):
+        raise HTTPException(status_code=503, detail="Metrics not available")
+    
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Authorization header required",
+            headers={"WWW-Authenticate": "Basic"}
+        )
+    
+    try:
+        # Parse basic auth header
+        scheme, credentials = authorization.split()
+        if scheme.lower() != 'basic':
+            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+        
+        # Decode credentials
+        decoded = base64.b64decode(credentials).decode('utf-8')
+        username, password = decoded.split(':', 1)
+        
+        # Verify credentials using constant-time comparison
+        expected_username = getattr(settings, 'metrics_username', 'admin')
+        expected_password = getattr(settings, 'metrics_password', 'changeme')
+        
+        if not (secrets.compare_digest(username, expected_username) and 
+                secrets.compare_digest(password, expected_password)):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid credentials",
+                headers={"WWW-Authenticate": "Basic"}
+            )
+        
+        return True
+        
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
 class ExportDataRequest(BaseModel):
     export_type: str  # leads, permits, scored_leads, analytics, feedback
     format: Optional[str] = "csv"  # csv, json, xlsx
     filters: Optional[Dict[str, Any]] = None
     admin_override: Optional[bool] = False
+
 
 @app.get("/")
 async def root():
@@ -160,6 +227,28 @@ async def healthz():
         "version": version,
         "db": db_status
     }
+
+@app.get("/metrics")
+async def metrics_endpoint(auth: bool = Depends(verify_metrics_auth)):
+    """
+    Prometheus metrics endpoint with basic authentication.
+    
+    This endpoint exposes Prometheus-style metrics for monitoring.
+    Access is protected by basic authentication and can be disabled
+    in production unless ENABLE_METRICS=true is set.
+    
+    Returns:
+        Prometheus formatted metrics
+    """
+    try:
+        metrics_data = get_metrics()
+        return Response(
+            content=metrics_data,
+            media_type=get_metrics_content_type()
+        )
+    except Exception as e:
+        logger.error(f"Error generating metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error generating metrics")
 
 # Subscription management endpoints
 @app.post("/api/subscription/cancel")

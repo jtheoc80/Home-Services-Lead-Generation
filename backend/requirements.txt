@@ -16,6 +16,9 @@ uvicorn>=0.24.0
 python-jose[cryptography]>=3.3.0
 python-multipart>=0.0.6
 
+# Pydantic for settings management
+pydantic-settings>=2.0.0
+
 
 # Redis caching
 redis>=4.0.0
@@ -28,6 +31,9 @@ twilio>=7.0.0
 
 # Testing
 pytest>=7.0.0
+
+# Prometheus metrics
+prometheus_client>=0.20.0
 
 # Supabase integration
 supabase>=2.6.0

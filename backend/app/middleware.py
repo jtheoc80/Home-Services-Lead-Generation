@@ -3,7 +3,8 @@
 Request logging middleware for FastAPI application.
 
 This module provides middleware for JSON structured logging with request tracking,
-including request_id generation and timing measurement.
+including request_id generation and timing measurement. Also includes optional
+Prometheus metrics collection.
 """
 
 import json
@@ -14,6 +15,30 @@ from typing import Callable, Dict, Any
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Import metrics tracking (only if enabled)
+try:
+    from .metrics import track_request_start, track_request_end
+    from .settings import settings
+    METRICS_AVAILABLE = True
+    
+    def is_metrics_enabled():
+        """Check if metrics are enabled."""
+        return getattr(settings, 'enable_metrics', False)
+        
+except ImportError:
+    METRICS_AVAILABLE = False
+    track_request_start = lambda x: None
+    def track_request_start(request_id):
+        """No-op fallback for track_request_start when metrics are unavailable."""
+        return None
+
+    def track_request_end(request_id, method, path, status_code):
+        """No-op fallback for track_request_end when metrics are unavailable."""
+        return None
+    
+    def is_metrics_enabled():
+        return False
 
 
 class JSONFormatter(logging.Formatter):
@@ -52,7 +77,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process the request and response with logging.
+        Process the request and response with logging and optional metrics.
         
         Args:
             request: The incoming HTTP request
@@ -69,6 +94,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         
         # Record start time
         start_time = time.time()
+        
+        # Track request start for metrics (if enabled)
+        if METRICS_AVAILABLE and is_metrics_enabled():
+            track_request_start(request_id)
         
         # Process the request
         try:
@@ -88,6 +117,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             
             self.logger.error(json.dumps(log_data))
             
+            # Track failed request for metrics (if enabled)
+            if METRICS_AVAILABLE and is_metrics_enabled():
+                track_request_end(request_id, request.method, str(request.url.path), 500)
+            
             # Return error response with request_id header
             response = JSONResponse(
                 status_code=500,
@@ -101,6 +134,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         
         # Add request_id to response headers
         response.headers["X-Request-ID"] = request_id
+        
+        # Track successful request for metrics (if enabled)
+        if METRICS_AVAILABLE and is_metrics_enabled():
+            track_request_end(request_id, request.method, str(request.url.path), response.status_code)
         
         # Prepare log data
         log_data = {
