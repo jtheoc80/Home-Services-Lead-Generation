@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
-
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 /**
  * Vercel Stripe Webhook Handler (App Router)
@@ -37,6 +34,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
     }
 
+    // Lazy load stripe to avoid build-time issues
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
     // Verify webhook signature
     let event;
     try {
@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
 
     // Check for duplicate events (idempotency)
     if (supabaseUrl && supabaseServiceKey) {
+      // Lazy load supabase to avoid build-time issues
+      const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
       try {
@@ -145,6 +147,8 @@ export async function POST(request: NextRequest) {
  * Process events locally using Supabase for critical updates
  */
 async function processEventLocally(event: any, supabaseUrl: string, supabaseServiceKey: string) {
+  // Lazy load supabase to avoid build-time issues
+  const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {

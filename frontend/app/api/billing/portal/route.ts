@@ -1,5 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 
+// Make this route dynamic since it reads headers
+export const dynamic = 'force-dynamic';
+
 /**
  * Billing portal API proxy
  * Forwards portal session requests to backend
