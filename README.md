@@ -136,6 +136,51 @@ open http://localhost:3000/dashboard  # Dashboard (requires login setup for full
 
 ---
 
+## 🔍 5-Minute Quickstart (Monitoring)
+
+Monitor your stack health across Vercel, Railway, and Supabase:
+
+### Required Environment Variables
+Set these in your environment or `.env` file:
+```bash
+# For comprehensive monitoring
+FRONTEND_URL=https://your-app.vercel.app
+VERCEL_TOKEN=your_vercel_api_token
+RAILWAY_TOKEN=your_railway_api_token  
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE=your_service_role_key
+```
+
+### Quick Health Check
+```bash
+# Run local diagnosis
+./scripts/diagnose.sh
+
+# Check stack health across all platforms  
+node scripts/stack-health.js
+
+# Test frontend health endpoint (requires running frontend)
+curl http://localhost:3000/api/health
+```
+
+### Trigger Manual Monitoring
+```bash
+# Manual stack monitor run
+gh workflow run stack-monitor.yml
+
+# Force remediation attempt
+gh workflow run stack-monitor.yml --field force_remediation=true
+```
+
+### Find Issues and Artifacts
+- **GitHub Issues**: Auto-created issues tagged `infrastructure` for failures
+- **Workflow Artifacts**: Download logs from [Actions tab](../../actions)
+- **Real-time Logs**: Check individual platform dashboards (Vercel, Railway, Supabase)
+
+See [`docs/ops/README.md`](docs/ops/README.md) for complete environment setup guide.
+
+---
+
 ## ⚡ Quick Start
 
 ### Prerequisites

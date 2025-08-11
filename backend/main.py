@@ -225,7 +225,8 @@ async def healthz():
     return {
         "status": "ok",
         "version": version,
-        "db": db_status
+        "db": db_status,
+        "ts": asyncio.get_event_loop().time()
     }
 
 @app.get("/metrics")
