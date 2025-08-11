@@ -293,6 +293,13 @@ To add repository secrets:
 3. Click "New repository secret"
 4. Add the secret name and value
 
+**Or use GitHub CLI:**
+```bash
+gh secret set DATABASE_URL
+gh secret set SENDGRID_API_KEY
+gh secret set REDIS_URL
+```
+
 
 **Problem:** Contractors waste countless hours chasing cold leads, often competing for the same opportunities everyone else already knows about.
 
