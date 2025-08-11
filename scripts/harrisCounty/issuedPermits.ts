@@ -176,7 +176,7 @@ async function fetchPermits(baseUrl: string, since: Date): Promise<PermitRecord[
   return permits;
 }
 
-async function upsertPermits(supabase: any, permits: PermitRecord[]): Promise<void> {
+async function upsertPermits(supabase: SupabaseClient<any>, permits: PermitRecord[]): Promise<void> {
   if (permits.length === 0) {
     console.log('No permits to upsert');
     return;
