@@ -12,6 +12,7 @@ import os
 import asyncio
 import secrets
 import base64
+import time
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Request, Depends, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,7 +36,7 @@ try:
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
-=======
+
 # Import export control
 from app.utils.export_control import get_export_controller, ExportType, ExportRequest
 
@@ -368,10 +369,7 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
                 admin_user(user)  # This will raise HTTPException if not admin
                 is_admin_override = True
                 logger.info(f"Admin override requested by {user.email} for {export_type.value}")
-            if is_admin(user):
-                is_admin_override = True
-                logger.info(f"Admin override requested by {user.email} for {export_type.value}")
-            else:
+            except HTTPException:
                 # User is not admin but requested override
                 logger.warning(f"Non-admin user {user.email} attempted admin override for export")
                 raise HTTPException(
