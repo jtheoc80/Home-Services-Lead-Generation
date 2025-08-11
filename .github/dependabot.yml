@@ -1,0 +1,94 @@
+version: 2
+updates:
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "jtheoc80"
+    assignees:
+      - "jtheoc80"
+    commit-message:
+      prefix: "chore(frontend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  # Root npm dependencies (workspace)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jtheoc80"
+    assignees:
+      - "jtheoc80"
+    commit-message:
+      prefix: "chore(workspace)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "workspace"
+
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "jtheoc80"
+    assignees:
+      - "jtheoc80"
+    commit-message:
+      prefix: "chore(backend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+
+  # Permit leads Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/permit_leads"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "jtheoc80"
+    assignees:
+      - "jtheoc80"
+    commit-message:
+      prefix: "chore(permit-leads)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "permit-leads"
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jtheoc80"
+    assignees:
+      - "jtheoc80"
+    commit-message:
+      prefix: "chore(actions)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
