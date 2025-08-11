@@ -29,6 +29,9 @@ twilio>=7.0.0
 # Testing
 pytest>=7.0.0
 
+# Prometheus metrics
+prometheus_client>=0.20.0
+
 # Supabase integration
 supabase>=2.6.0
 

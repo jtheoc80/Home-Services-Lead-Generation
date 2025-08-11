@@ -128,6 +128,25 @@ class Settings(BaseSettings):
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
     
+    # Metrics configuration
+    enable_metrics: bool = Field(
+        default=False,
+        env="ENABLE_METRICS",
+        description="Enable Prometheus metrics collection and /metrics endpoint"
+    )
+    
+    metrics_username: str = Field(
+        default="admin",
+        env="METRICS_USERNAME",
+        description="Basic auth username for /metrics endpoint"
+    )
+    
+    metrics_password: str = Field(
+        default="changeme",
+        env="METRICS_PASSWORD",
+        description="Basic auth password for /metrics endpoint"
+    )
+    
     class Config:
         """Pydantic configuration."""
         env_file = ".env"
