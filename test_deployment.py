@@ -43,7 +43,7 @@ def test_apply_schema_script():
                 print("⚠️  models.sql may be incomplete")
         else:
             print("❌ models.sql file not found")
-            return False
+            sys.exit(1)
             
         return True
         
