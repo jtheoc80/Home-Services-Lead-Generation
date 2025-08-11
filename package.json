@@ -11,6 +11,7 @@
     "lint": "cd frontend && npm run lint",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
+    "schema:drift": "tsx scripts/schema-drift-check.ts",
 
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
 
