@@ -126,7 +126,12 @@ jobs:
       - name: Audit permit_leads dependencies
         run: |
           echo "Auditing permit_leads Python dependencies..."
-          pip-audit --requirement permit_leads/requirements.txt --vulnerability-service=pypi --format=columns --timeout=300 || true
+          pip-audit --requirement backend/requirements.txt --vulnerability-service=pypi --format=columns --timeout=300
+
+      - name: Audit permit_leads dependencies
+        run: |
+          echo "Auditing permit_leads Python dependencies..."
+          pip-audit --requirement permit_leads/requirements.txt --vulnerability-service=pypi --format=columns --timeout=300
 
   license-compliance:
     name: OSS License Compliance
