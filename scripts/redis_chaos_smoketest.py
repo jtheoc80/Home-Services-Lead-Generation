@@ -153,7 +153,9 @@ async def chaos_redis_context():
                     await asyncio.sleep(delay)
                     return [1, True]
             
-            mock_redis.pipeline = lambda: MockPipeline()  # Direct function, not AsyncMock
+            from unittest.mock import Mock
+            mock_redis.pipeline = Mock()
+            mock_redis.pipeline.return_value = MockPipeline()
             
             return ChaosRedisWrapper(mock_redis)
         else:
