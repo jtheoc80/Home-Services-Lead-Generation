@@ -207,7 +207,7 @@ jobs:
           # Format scores for display
           if [ -n "$LCP_SCORE" ] && [ "$LCP_SCORE" != "null" ] && [ "$LCP_SCORE" != "" ]; then
             LCP_DISPLAY="${LCP_SCORE}ms"
-            if [ $(echo "$LCP_SCORE <= 2500" | bc -l) -eq 1 ]; then
+            if [ $(awk "BEGIN {print ($LCP_SCORE <= 2500)}" 2>/dev/null || echo 0) -eq 1 ]; then
               LCP_STATUS="✅"
             else
               LCP_STATUS="❌"
