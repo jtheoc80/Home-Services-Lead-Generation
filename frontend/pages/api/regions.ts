@@ -72,7 +72,10 @@ async function handleGetRegions(req: NextApiRequest, res: NextApiResponse) {
       available_metros: Object.values(activeRegions).flatMap((region: any) =>
         Object.entries(region.metros).map(([metroId, metroData]: [string, any]) => ({
           id: metroId,
-          region_id: Object.keys(activeRegions).find(rid => activeRegions[rid] === region),
+      available_metros: Object.entries(activeRegions).flatMap(([regionId, region]: [string, any]) =>
+        Object.entries(region.metros).map(([metroId, metroData]: [string, any]) => ({
+          id: metroId,
+          region_id: regionId,
           display_name: metroData.display_name,
           short_name: metroData.short_name,
           center_lat: metroData.center_lat,
