@@ -65,15 +65,14 @@ class ETLAwareArcGISAdapter:
             # Fetch permits from ArcGIS
             permits = self._fetch_permits_from_arcgis(since, limit)
             
-            if permits:
-                # Update ETL state with current timestamp on successful fetch
-                current_time = datetime.utcnow()
-                success = self.etl_state.update_last_run(self.source_name, current_time)
-                
-                if success:
-                    logger.info(f"Updated ETL state for {self.source_name}: {current_time}")
-                else:
-                    logger.warning(f"Failed to update ETL state for {self.source_name}")
+            # Update ETL state with current timestamp on successful fetch (regardless of result count)
+            current_time = datetime.utcnow()
+            success = self.etl_state.update_last_run(self.source_name, current_time)
+            
+            if success:
+                logger.info(f"Updated ETL state for {self.source_name}: {current_time}")
+            else:
+                logger.warning(f"Failed to update ETL state for {self.source_name}")
             
             return permits
             
