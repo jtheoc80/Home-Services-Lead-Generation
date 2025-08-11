@@ -73,7 +73,7 @@ def test_registry_yaml_field_mappings():
     active_jurisdictions = [j for j in registry["jurisdictions"] if j.get("active", False)]
     
     # All active jurisdictions should have the same field mapping structure
-    expected_fields = {"permit_number", "issued_date", "permit_type", "value", "contractor", "address"}
+    expected_fields = {"permit_id", "issue_date", "work_class", "value", "applicant", "address"}
     
     for jurisdiction in active_jurisdictions:
         field_map = jurisdiction["source_config"]["field_map"]
