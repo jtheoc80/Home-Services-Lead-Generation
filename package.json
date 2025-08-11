@@ -21,6 +21,9 @@
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
 
+    "redis:smoke": "python scripts/redis_smoketest.py",
+    "redis:chaos": "python scripts/redis_chaos_smoketest.py",
+    "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
 
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
 
