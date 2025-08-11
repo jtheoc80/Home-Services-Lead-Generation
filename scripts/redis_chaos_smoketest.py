@@ -318,7 +318,7 @@ async def test_graceful_degradation():
         
         # With latency, rate limiting should either work slowly or fallback to True
         if not allowed:
-            print("  ⚠️  Rate limiting denied request despite potential Redis issues")
+            print("  ⚠️  Rate limiting denied request (this may be expected during chaos testing; verify fallback behavior)")
     except asyncio.TimeoutError:
         print("  ✅ Rate limiting timed out gracefully (fallback behavior)")
     
