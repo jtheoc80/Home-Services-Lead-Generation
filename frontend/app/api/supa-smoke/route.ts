@@ -63,7 +63,7 @@ async function smokeTest() {
     // Step 4: Get total count of leads
     const { count, error: countError } = await supabase
       .from('leads')
-      .select('*', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true });
 
     if (countError) {
       return NextResponse.json(
