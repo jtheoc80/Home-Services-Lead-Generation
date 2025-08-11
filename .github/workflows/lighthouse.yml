@@ -159,7 +159,17 @@ jobs:
                 echo "❌ TBT budget exceeded: ${TBT_SCORE}ms > 300ms"
               fi
               
-              if [ $(echo "$CLS_SCORE > 0.1" | bc -l) -eq 1 ]; then
+              if [ $(awk "BEGIN {print ($LCP_SCORE > 2500)}" 2>/dev/null || echo 0) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ LCP budget exceeded: ${LCP_SCORE}ms > 2500ms"
+              fi
+              
+              if [ $(awk "BEGIN {print ($TBT_SCORE > 300)}" 2>/dev/null || echo 0) -eq 1 ]; then
+                BUDGET_PASSED="false"
+                echo "❌ TBT budget exceeded: ${TBT_SCORE}ms > 300ms"
+              fi
+              
+              if [ $(awk "BEGIN {print ($CLS_SCORE > 0.1)}" 2>/dev/null || echo 0) -eq 1 ]; then
                 BUDGET_PASSED="false"
                 echo "❌ CLS budget exceeded: $CLS_SCORE > 0.1"
               fi
