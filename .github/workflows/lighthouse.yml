@@ -219,7 +219,7 @@ jobs:
           
           if [ -n "$TBT_SCORE" ] && [ "$TBT_SCORE" != "null" ] && [ "$TBT_SCORE" != "" ]; then
             TBT_DISPLAY="${TBT_SCORE}ms"
-            if [ $(echo "$TBT_SCORE <= 300" | bc -l) -eq 1 ]; then
+            if [ $(awk "BEGIN {print ($TBT_SCORE <= 300)}" 2>/dev/null || echo 0) -eq 1 ]; then
               TBT_STATUS="✅"
             else
               TBT_STATUS="❌"
