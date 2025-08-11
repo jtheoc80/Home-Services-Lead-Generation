@@ -61,4 +61,8 @@ jobs:
         run: npm ci
 
       - name: Build project
+        env:
+          RED: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SRV: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run build
