@@ -85,7 +85,14 @@ cd ..
 
 # 7. Start frontend (runs on port 3000)
 cd frontend && npm run dev &
-cd ..
+# In a new terminal window/tab, run:
+cd backend
+python main.py
+
+# 7. Start frontend (runs on port 3000)
+# In another new terminal window/tab, run:
+cd frontend
+npm run dev
 
 # 8. Verify everything works
 curl http://localhost:8000/healthz  
