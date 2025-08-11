@@ -26,7 +26,6 @@
         "startCommand": "make db-init && make dev"
       }
     }
-  },
   "services": {
     "backend": {
       "build": {
