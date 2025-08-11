@@ -322,10 +322,19 @@ async def handle_webhook(request: Request) -> Dict[str, str]:
         except stripe.error.SignatureVerificationError:
             raise HTTPException(status_code=400, detail="Invalid signature")
         
-        # Log the event
+        # Log the event for idempotency (check for duplicates)
         client = get_supabase_client()
+        
+        # Check if event already exists
+        existing_event = client.table("billing_events").select("id").eq("event_id", event["id"]).execute()
+        if existing_event.data:
+            logger.info(f"Duplicate webhook event {event['id']}, skipping")
+            return {"status": "duplicate", "received": True}
+        
+        # Store new event
         client.table("billing_events").insert({
             "type": event["type"],
+            "event_id": event["id"],
             "payload": event,
             "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()

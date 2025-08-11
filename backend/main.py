@@ -253,15 +253,18 @@ async def healthz():
     
     # Check Stripe connectivity
     stripe_status = "missing"
+    stripe_rtt = None
     try:
         from app.stripe_client import get_stripe_client
         stripe_client = get_stripe_client()
         if stripe_client.is_configured:
-            # Test with a safe 200ms API call
+            # Test with a safe 200ms API call and measure RTT
+            start_time = time.time()
             if await asyncio.wait_for(
                 asyncio.create_task(asyncio.to_thread(stripe_client.test_connection)), 
                 timeout=0.2
             ):
+                stripe_rtt = round((time.time() - start_time) * 1000, 2)
                 stripe_status = "configured"
             else:
                 stripe_status = "error"
@@ -279,6 +282,7 @@ async def healthz():
         "redis": redis_status,
         "redis_rtt_ms": redis_rtt,
         "stripe": stripe_status,
+        "stripe_rtt_ms": stripe_rtt,
         "ts": int(time.time())
     }
 

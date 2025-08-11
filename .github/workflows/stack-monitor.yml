@@ -54,6 +54,22 @@ jobs:
           echo "Running stack health check..."
           node scripts/stack-health.js > health-summary.md 2>health-stderr.log || echo "Health check completed with issues"
           
+          # Check backend /healthz endpoint for Stripe status
+          if [ -n "${{ secrets.BACKEND_URL }}" ]; then
+            echo "Checking backend Stripe status..."
+            curl -s "${{ secrets.BACKEND_URL }}/healthz" | jq '.stripe' > stripe-status.txt
+            stripe_status=$(cat stripe-status.txt | tr -d '"')
+            
+            if [ "$stripe_status" != "configured" ]; then
+              echo "❌ Stripe health check failed: $stripe_status" >> health-summary.md
+              echo "stripe_health_failed=true" >> $GITHUB_OUTPUT
+              exit 1
+            else
+              echo "✅ Stripe health check passed" >> health-summary.md
+              echo "stripe_health_failed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+          
           # Check if health check passed based on exit code
           if [ $? -eq 0 ]; then
             echo "health_check_failed=false" >> $GITHUB_OUTPUT
@@ -74,6 +90,88 @@ jobs:
           echo "Running Redis smoketest..."
           python scripts/redis_smoketest.py || echo "Redis smoketest failed"
         
+      - name: Create Stripe Health Alert issue
+        if: steps.health_check.outputs.stripe_health_failed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Stripe Health Alert';
+            const body = `## ⚠️ Stripe Configuration Issue Detected
+            
+            The Stripe payment system is not properly configured or accessible.
+            
+            ### Remediation Steps:
+            
+            1. **Check Railway Environment Variables:**
+               \`\`\`bash
+               railway variables get STRIPE_SECRET_KEY
+               railway variables get STRIPE_WEBHOOK_SECRET
+               \`\`\`
+            
+            2. **Verify Stripe API Key:**
+               - Log into Stripe Dashboard
+               - Check that the API key is valid and has proper permissions
+               - Ensure you're using the correct environment (test vs live)
+            
+            3. **Test Connectivity:**
+               \`\`\`bash
+               curl "${{ secrets.BACKEND_URL }}/healthz"
+               \`\`\`
+            
+            4. **Check Logs:**
+               - Review Railway deployment logs for Stripe-related errors
+               - Look for authentication or network issues
+            
+            ### Environment Variables Required:
+            - \`STRIPE_SECRET_KEY\`: Server-side Stripe API key
+            - \`STRIPE_WEBHOOK_SECRET\`: Webhook signature verification secret
+            - \`STRIPE_PRICE_STARTER_MONTHLY\`: Starter plan price ID
+            - \`STRIPE_PRICE_PRO_MONTHLY\`: Pro plan price ID
+            - \`STRIPE_PRICE_LEAD_CREDIT_PACK\`: Credit pack price ID
+            
+            ---
+            **Detected at:** ${new Date().toISOString()}
+            **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            // Search for existing Stripe health issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'created',
+              direction: 'desc'
+            });
+            
+            const existingIssue = issues.find(issue => 
+              issue.title === title && 
+              issue.user.type === 'Bot'
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: body,
+                labels: ['bug', 'stripe', 'infrastructure', 'automated']
+              });
+              
+              console.log(\`Updated existing Stripe health issue #\${existingIssue.number}\`);
+            } else {
+              // Create new issue
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['bug', 'stripe', 'infrastructure', 'automated']
+              });
+              
+              console.log(\`Created new Stripe health issue #\${issue.number}\`);
+            }
+
       - name: Check for build/config issues and dispatch AI Auto PR
         if: steps.health_check.outputs.health_check_failed == 'true'
         id: check_build_issues

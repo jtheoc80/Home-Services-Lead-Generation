@@ -309,6 +309,7 @@ CREATE TABLE IF NOT EXISTS lead_credits (
 CREATE TABLE IF NOT EXISTS billing_events (
   id BIGSERIAL PRIMARY KEY,
   type TEXT NOT NULL,
+  event_id TEXT UNIQUE NOT NULL,
   payload JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -332,6 +333,7 @@ CREATE INDEX IF NOT EXISTS billing_subscriptions_status_idx ON billing_subscript
 CREATE INDEX IF NOT EXISTS billing_invoices_user_id_idx ON billing_invoices(user_id);
 CREATE INDEX IF NOT EXISTS billing_invoices_status_idx ON billing_invoices(status);
 CREATE INDEX IF NOT EXISTS billing_events_type_idx ON billing_events(type);
+CREATE INDEX IF NOT EXISTS billing_events_event_id_idx ON billing_events(event_id);
 CREATE INDEX IF NOT EXISTS billing_events_created_at_idx ON billing_events(created_at);
 CREATE INDEX IF NOT EXISTS lead_claims_user_id_idx ON lead_claims(user_id);
 CREATE INDEX IF NOT EXISTS lead_claims_lead_id_idx ON lead_claims(lead_id);
