@@ -132,7 +132,16 @@ class VisualRegressionTester {
       // Wait for specific content if specified
       if (waitFor) {
         try {
-          await this.page.waitForSelector(waitFor, { timeout: 10000 });
+          if (typeof waitFor === 'string' && waitFor.startsWith('text=')) {
+            const textToFind = waitFor.slice(5);
+            await this.page.waitForFunction(
+              text => document.body && document.body.innerText.includes(text),
+              textToFind,
+              { timeout: 10000 }
+            );
+          } else {
+            await this.page.waitForSelector(waitFor, { timeout: 10000 });
+          }
         } catch (waitError) {
           if (!allowError) {
             throw new Error(`Wait condition failed: ${waitFor} - ${waitError.message}`);
