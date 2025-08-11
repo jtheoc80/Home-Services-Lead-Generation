@@ -485,7 +485,53 @@ class SchemaDriftChecker {
           numeric_precision: null,
           numeric_scale: null
         });
+      // Skip comments and table-level constraints
+      if (line.startsWith('--') || /^CONSTRAINT\b/i.test(line)) {
+        continue;
       }
+
+      // Tokenize the line
+      const tokens = line.split(/\s+/);
+      if (tokens.length < 2) continue;
+
+      // Extract column name and data type
+      const columnName = tokens[0];
+      let dataType = tokens[1];
+      let i = 2;
+      // If data type is multi-word (e.g., "DOUBLE PRECISION", "CHARACTER VARYING")
+      while (i < tokens.length && !/^(NOT|NULL|DEFAULT|PRIMARY|UNIQUE|CHECK|REFERENCES)$/i.test(tokens[i])) {
+        dataType += ' ' + tokens[i];
+        i++;
+      }
+
+      // Initialize attributes
+      let isNullable = 'YES';
+      let columnDefault: string | null = null;
+
+      // Scan for constraints and attributes
+      for (; i < tokens.length; i++) {
+        const token = tokens[i].toUpperCase();
+        if (token === 'NOT' && tokens[i+1] && tokens[i+1].toUpperCase() === 'NULL') {
+          isNullable = 'NO';
+          i++;
+        } else if (token === 'NULL') {
+          isNullable = 'YES';
+        } else if (token === 'DEFAULT' && tokens[i+1]) {
+          columnDefault = tokens.slice(i+1).join(' ');
+          break;
+        }
+        // Ignore PRIMARY, UNIQUE, CHECK, REFERENCES for column-level parsing
+      }
+
+      columns.push({
+        column_name: columnName,
+        data_type: dataType.toUpperCase(),
+        is_nullable: isNullable,
+        column_default: columnDefault,
+        character_maximum_length: null,
+        numeric_precision: null,
+        numeric_scale: null
+      });
     }
     
     return columns;
