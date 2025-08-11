@@ -7,7 +7,7 @@ without making external API calls.
 
 import pytest
 import json
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
 from app.billing_api import (
