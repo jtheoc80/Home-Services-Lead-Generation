@@ -478,7 +478,7 @@ class SchemaDriftChecker {
         const [, columnName, dataType, nullable, defaultValue] = columnMatch;
         columns.push({
           column_name: columnName,
-          data_type: dataType.toUpperCase(),
+          data_type: dataType.toLowerCase(),
           is_nullable: nullable === 'NOT NULL' ? 'NO' : 'YES',
           column_default: defaultValue || null,
           character_maximum_length: null,
