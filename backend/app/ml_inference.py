@@ -103,7 +103,11 @@ class LeadMLInference:
         
         # Import cancellation service for personalized adjustments
         try:
-            from .cancellation_feedback import CancellationFeedbackService
+            # Try absolute import first, then fallback to relative import
+            try:
+                from cancellation_feedback import CancellationFeedbackService
+            except ImportError:
+                from .cancellation_feedback import CancellationFeedbackService
             cancellation_service = CancellationFeedbackService(os.getenv('DATABASE_URL'))
         except ImportError:
             cancellation_service = None
