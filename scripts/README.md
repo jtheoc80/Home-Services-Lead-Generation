@@ -119,73 +119,11 @@ export RAILWAY_SERVICE_ID="your_service_id"
 - **Automation friendly**: Outputs GitHub Actions compatible variables
 - **Progress monitoring**: Real-time deployment status updates
 
-## diagnose.sh
-
-System diagnosis script for the Home Services Lead Generation application. Performs comprehensive health checks and provides actionable hints for system issues.
-
-### Prerequisites
-
-- Bash shell (Linux/macOS compatible)
-- Python3 (for database connectivity checks)
-- sqlite3 (for permit database checks)
-
-### Usage
-
-```bash
-./scripts/diagnose.sh
-```
-
-### What it checks
-
-1. **Environment Variables**: Verifies critical and optional environment variables are set
-2. **Database Connectivity**: Tests Supabase and SQLite database connections
-3. **Migration Status**: Checks for pending database migrations
-4. **Scraper Last Run**: Monitors when scrapers were last executed and permit data freshness
-5. **Dependencies**: Verifies Python packages and Node.js dependencies
-
-### Exit Codes
-
-- `0`: All checks passed ✅
-- `1`: Warnings found (system operational but may have issues) ⚠️
-- `2`: Critical errors found (system likely non-operational) ❌
-
-### Features
-
-- **Color-coded output**: Easy to scan results with color indicators
-- **Actionable hints**: Specific suggestions for fixing detected issues
-- **Comprehensive checks**: Covers all major system components
-- **Environment awareness**: Loads `.env` file automatically if present
-- **Safe execution**: Read-only checks with no system modifications
-
-### Example Output
-
-```
-=============================================================================
-Home Services Lead Generation - System Diagnosis
-=============================================================================
-[PASS] Critical variable SUPABASE_URL is set
-[WARN] Missing optional environment variables: REDIS_URL GEOCODER
-[PASS] Supabase database connectivity verified
-[PASS] Last scraper run: 2025-01-10T15:30:00Z
-[INFO] Total permits in database: 1,234
-=============================================================================
-```
-
-### Troubleshooting
-
-Common issues and solutions:
-
-- **Missing .env file**: Create one based on `.env.example`
-- **Database connection failed**: Check Supabase credentials and network access
-- **No scraper data**: Run `python3 -m permit_leads` to collect permit data
-- **Missing dependencies**: Run `pip install -r backend/requirements.txt`
-
 ### Common Use Cases
 
-The diagnosis script and other remediation scripts are designed for:
+Both remediation scripts are designed for:
 
-- **Development setup**: Quick system health verification
-- **CI/CD pipelines**: Automated deployment recovery and health checks
+- **CI/CD pipelines**: Automated deployment recovery
 - **Monitoring systems**: Service health remediation
-- **Manual troubleshooting**: Quick deployment fixes and issue identification
-- **Scheduled maintenance**: Automated service restarts and health monitoring
+- **Manual troubleshooting**: Quick deployment fixes
+- **Scheduled maintenance**: Automated service restarts
