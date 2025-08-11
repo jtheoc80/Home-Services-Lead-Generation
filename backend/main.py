@@ -35,14 +35,20 @@ try:
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
-=======
+
 # Import export control
-from app.utils.export_control import get_export_controller, ExportType, ExportRequest
-
-
+try:
+    from app.utils.export_control import get_export_controller, ExportType, ExportRequest
+except ImportError:
+    get_export_controller = None
+    ExportType = None
+    ExportRequest = None
 
 # Import test Supabase router
-from test_supabase import router as test_supabase_router
+try:
+    from test_supabase import router as test_supabase_router
+except ImportError:
+    test_supabase_router = None
 
 # Load environment variables
 load_dotenv()
@@ -77,7 +83,8 @@ app.add_middleware(
 app.add_middleware(RequestLoggingMiddleware)
 
 # Include test Supabase router
-app.include_router(test_supabase_router, tags=["test", "supabase"])
+if test_supabase_router:
+    app.include_router(test_supabase_router, tags=["test", "supabase"])
 
 
 # Pydantic models for request/response validation
@@ -205,8 +212,8 @@ async def healthz():
                 supabase = get_supabase_client()
                 # Simple query to test connectivity - try to query any table with minimal data
                 # This is a lightweight operation that tests database connection
-                # Query a valid user table to test connectivity (replace 'users' with a table that exists in your schema)
-                result = supabase.table('users').select('id').limit(1).execute()
+                # Query a valid table to test connectivity - use leads table which exists
+                result = supabase.table('leads').select('id').limit(1).execute()
                 return result is not None
             except Exception:
                 return False
@@ -367,10 +374,7 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
                 admin_user(user)  # This will raise HTTPException if not admin
                 is_admin_override = True
                 logger.info(f"Admin override requested by {user.email} for {export_type.value}")
-            if is_admin(user):
-                is_admin_override = True
-                logger.info(f"Admin override requested by {user.email} for {export_type.value}")
-            else:
+            except HTTPException:
                 # User is not admin but requested override
                 logger.warning(f"Non-admin user {user.email} attempted admin override for export")
                 raise HTTPException(

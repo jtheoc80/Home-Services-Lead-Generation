@@ -4,6 +4,7 @@ Tests for the healthz endpoint.
 """
 
 import os
+import asyncio
 import pytest
 from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
@@ -24,7 +25,7 @@ class TestHealthzEndpoint:
             mock_table = Mock()
             mock_table.select.return_value = mock_table
             mock_table.limit.return_value = mock_table
-            mock_table.execute.return_value = {'data': [{'table_name': 'test'}]}
+            mock_table.execute.return_value = {'data': [{'id': 1}]}
             mock_client.table.return_value = mock_table
             mock_supabase.return_value = mock_client
             
@@ -47,8 +48,6 @@ class TestHealthzEndpoint:
                 mock_client = Mock()
                 
                 # Mock table method that raises an exception after delay
-                def timeout_operation(*args, **kwargs):
-                    import time
                 async def timeout_operation(*args, **kwargs):
                     await asyncio.sleep(0.5)  # Longer than 300ms timeout
                     raise Exception("Operation timed out")
