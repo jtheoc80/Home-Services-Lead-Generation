@@ -983,7 +983,7 @@ ERROR last 15 minutes
 
 | Error Code | Meaning | Description |
 |------------|---------|-------------|
-| `401` | Wrong key | Invalid or missing API key authentication |
+| `401` | Invalid API Key | Invalid or missing API key authentication |
 | `403` | Permission Denied | Row Level Security policy blocking access |
 | `23502` | NOT NULL | Required field is missing or null |
 | `FK violations` | Foreign Key | Referenced record doesn't exist or constraint failed |
