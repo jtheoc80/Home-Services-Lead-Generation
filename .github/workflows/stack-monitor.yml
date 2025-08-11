@@ -47,6 +47,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
           AUTO_REMEDIATE: ${{ vars.AUTO_REMEDIATE || 'false' }}
         run: |
           # Run health check and capture output
@@ -64,6 +65,14 @@ jobs:
           if [ -f "health-summary.md" ]; then
             cat health-summary.md >> $GITHUB_STEP_SUMMARY
           fi
+      
+      - name: Redis smoketest
+        if: env.REDIS_URL != ''
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: |
+          echo "Running Redis smoketest..."
+          python scripts/redis_smoketest.py || echo "Redis smoketest failed"
         
       - name: Check for build/config issues and dispatch AI Auto PR
         if: steps.health_check.outputs.health_check_failed == 'true'

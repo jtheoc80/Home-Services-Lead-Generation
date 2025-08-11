@@ -664,4 +664,74 @@ const healthChecks = {
 
 ---
 
+## Redis Troubleshooting
+
+### REDIS_DOWN Steps
+
+**Symptoms:**
+- Health check shows `"redis": "down"`
+- Rate limiting not working (all requests pass through)
+- Cache misses increase dramatically
+- Lock operations fail silently
+
+**Diagnosis:**
+```bash
+# Check Redis connectivity
+python scripts/redis_smoketest.py
+
+# Check environment variable
+echo $REDIS_URL
+
+# Test basic connection
+redis-cli -u $REDIS_URL ping
+```
+
+**Recovery Steps:**
+
+1. **Check provider status**:
+   - Upstash: https://status.upstash.com
+   - Redis Cloud: https://status.redislabs.com
+
+2. **Rotate REDIS_URL** (if credentials compromised):
+   ```bash
+   # Update in GitHub Secrets
+   gh secret set REDIS_URL --body "rediss://new-connection-string"
+   
+   # Update in Railway (if used)
+   railway variables set REDIS_URL=rediss://new-connection-string
+   
+   # Update in Vercel (if backend deployed there)
+   vercel env add REDIS_URL production
+   ```
+
+3. **Clear stuck locks** (if Redis was down):
+   ```bash
+   # Connect to Redis and clear all locks
+   redis-cli -u $REDIS_URL --scan --pattern "lock:*" | xargs redis-cli -u $REDIS_URL DEL
+   ```
+
+4. **Rebuild consumer groups** (if using queues):
+   ```bash
+   # Delete and recreate consumer groups
+   redis-cli -u $REDIS_URL XGROUP DESTROY queue:scrape scrapegrp
+   # Groups will be auto-recreated by workers
+   ```
+
+5. **Restart services** to re-establish connections:
+   ```bash
+   # Railway restart
+   railway service restart
+   
+   # Or trigger new deployment
+   git commit --allow-empty -m "force redeploy after Redis recovery"
+   git push
+   ```
+
+**Prevention:**
+- Monitor Redis memory usage and set appropriate eviction policies
+- Set up Redis provider alerts for connection failures
+- Use Redis cluster setup for high availability in production
+
+---
+
 *Last updated: January 2025*
