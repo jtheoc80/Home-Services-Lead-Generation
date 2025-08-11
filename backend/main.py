@@ -106,7 +106,7 @@ def verify_metrics_auth(authorization: str = Header(None)) -> bool:
         HTTPException: If authentication fails
     """
     if not METRICS_AVAILABLE or not getattr(settings, 'enable_metrics', False):
-        raise HTTPException(status_code=404, detail="Metrics not available")
+        raise HTTPException(status_code=503, detail="Metrics not available")
     
     if not authorization:
         raise HTTPException(
