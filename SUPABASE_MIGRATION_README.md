@@ -27,9 +27,9 @@ This migration creates the necessary database tables and Row Level Security (RLS
 ## Row Level Security (RLS) Policies
 
 ### Leads Table
-- **Anonymous INSERT**: Allows anonymous users to insert leads (for public lead forms)
-  - *Note: This is optional - remove if using service key from backend only*
-- **Authenticated SELECT**: Allows authenticated users to view all leads
+- **Authenticated INSERT**: Allows authenticated users to insert leads (auth_can_insert policy)
+- **Authenticated SELECT**: Allows authenticated users to view all leads (auth_can_select policy)
+  - *Note: Anonymous policies have been removed for enhanced security*
 
 ### Contractors Table
 - **Own Profile Access**: Contractors can SELECT, INSERT, and UPDATE their own profile only
@@ -66,8 +66,8 @@ Use the queries in `supabase_migration_tests.sql` to verify the migration worked
 ## Important Notes
 
 ### Security Considerations
-- **Service Key vs Anonymous Access**: The anonymous INSERT policy for leads is optional
-- **Remove Anonymous Policy**: If you're using a service key from your backend, remove the anonymous INSERT policy for better security
+- **Authenticated-Only Access**: All lead operations now require authentication for enhanced security
+- **Service Key Backend**: Use service key from your backend for secure server-side operations
 - **User Isolation**: All user data is isolated using `auth.uid()` - users cannot access other users' data
 
 ### Database Dependencies
@@ -115,12 +115,11 @@ public.contractor_engagement (contractor_id = auth.uid())
 2. **"duplicate key value"**: Foreign key constraints may fail if data integrity issues exist
 3. **"permission denied"**: Ensure you're running as a database owner/admin
 
-### If Anonymous Insert Fails
-If you don't want anonymous users to insert leads, remove or comment out this policy:
-```sql
--- Remove this policy for backend-only lead insertion
-DROP POLICY IF EXISTS "Allow anonymous insert on leads" ON public.leads;
-```
+### Authentication Required
+All operations on the leads table now require authentication. Ensure your application:
+- Uses authenticated Supabase client for lead operations
+- Has proper user authentication setup
+- Uses service role key for backend operations
 
 ### Policy Conflicts
 If policies already exist with different names, you may need to drop them manually:

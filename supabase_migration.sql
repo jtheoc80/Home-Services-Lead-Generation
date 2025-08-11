@@ -61,21 +61,34 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
+/*
+ * IMPORTANT: Run this migration AFTER smoke tests pass
+ * 
+ * This migration replaces temporary anonymous policies with authenticated-only policies.
+ * The anonymous policies were temporary and are now being replaced with secure 
+ * authenticated access for both INSERT and SELECT operations on the leads table.
+ */
+
 -- Policies for leads table
--- Allow anonymous users to insert leads (for public lead forms) - OPTIONAL: remove if using service key only
--- If you want to use service key from backend only, comment out or remove the next policy
+-- Drop temporary anonymous policies (these were for initial testing only)
 DROP POLICY IF EXISTS "Allow anonymous insert on leads" ON public.leads;
-CREATE POLICY "Allow anonymous insert on leads"
+DROP POLICY IF EXISTS "anon_can_insert_leads" ON public.leads;
+
+-- Create authenticated-only policies that allow all rows for authenticated users
+DROP POLICY IF EXISTS "auth_can_insert" ON public.leads;
+CREATE POLICY "auth_can_insert"
   ON public.leads FOR INSERT
-  TO anon
+  TO authenticated
   WITH CHECK (true);
 
--- Allow authenticated users to select all leads
-DROP POLICY IF EXISTS "Allow authenticated select on leads" ON public.leads;
-CREATE POLICY "Allow authenticated select on leads"
+DROP POLICY IF EXISTS "auth_can_select" ON public.leads;
+CREATE POLICY "auth_can_select"
   ON public.leads FOR SELECT
   TO authenticated
   USING (true);
+
+-- Remove legacy authenticated policies (replaced by the new standardized ones above)
+DROP POLICY IF EXISTS "Allow authenticated select on leads" ON public.leads;
 
 -- Policies for contractors table
 -- Allow authenticated users to select and update their own contractor profile
