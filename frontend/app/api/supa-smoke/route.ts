@@ -43,6 +43,7 @@ async function smokeTest() {
       name: "Smoke",
       email: "smoke@test.com",
       source: "api"
+    };
 
     const { error: insertError } = await supabase
       .from('leads')
