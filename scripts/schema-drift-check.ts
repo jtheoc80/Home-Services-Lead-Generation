@@ -486,7 +486,13 @@ class SchemaDriftChecker {
     const lines = this.splitColumns(tableBody);
     
     for (const line of lines) {
-      if (line.startsWith('--') || line.includes('CONSTRAINT') || line.includes('UNIQUE') || line.includes('PRIMARY KEY')) {
+      const trimmedLine = line.trim().toUpperCase();
+      if (
+        trimmedLine.startsWith('--') ||
+        trimmedLine.startsWith('CONSTRAINT') ||
+        trimmedLine.startsWith('UNIQUE') ||
+        trimmedLine.startsWith('PRIMARY KEY')
+      ) {
         continue;
       }
       
