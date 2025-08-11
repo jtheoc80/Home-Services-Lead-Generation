@@ -1,3 +1,4 @@
+
 # Multi-region jurisdiction registry
 # Defines regions, jurisdictions, and their data source configurations
 
@@ -114,3 +115,151 @@ plans:
     credits: 2000
     scope: "national"
     regions: ["usa"]
+
+regions:
+  - slug: usa
+    name: United States
+    level: national
+    parent: null
+    timezone: America/Chicago
+
+  - slug: tx
+    name: Texas
+    level: state
+    parent: usa
+    timezone: America/Chicago
+
+  - slug: tx-houston
+    name: Houston Metro
+    level: metro
+    parent: tx
+    timezone: America/Chicago
+
+  - slug: tx-san-antonio
+    name: San Antonio Metro
+    level: metro
+    parent: tx
+    timezone: America/Chicago
+
+  - slug: tx-austin
+    name: Austin Metro
+    level: metro
+    parent: tx
+    timezone: America/Chicago
+
+  - slug: tx-dallas
+    name: Dallas-Fort Worth Metro
+    level: metro
+    parent: tx
+    timezone: America/Chicago
+
+jurisdictions:
+  # Houston area (active)
+  - slug: tx-harris
+    name: Harris County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://harris.maps.arcgis.com/arcgis/rest/services/BuildingPermits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  - slug: tx-fort-bend
+    name: Fort Bend County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://fortbend.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  - slug: tx-brazoria
+    name: Brazoria County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://brazoria.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  - slug: tx-galveston
+    name: Galveston County
+    state: TX
+    region: tx-houston
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://galveston.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_type: "type"
+        value: "value"
+        contractor: "contractor_name"
+        address: "address"
+
+  # San Antonio area (inactive - commented out for Houston-first launch)
+  # - slug: tx-bexar
+  #   name: Bexar County
+  #   state: TX
+  #   region: tx-san-antonio
+  #   active: false
+  #   provider: arcgis
+  #   source_config:
+  #     url: "https://bexar.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+  #     date_field: "issue_date"
+  #     field_map:
+  #       permit_type: "type"
+  #       value: "value"
+  #       contractor: "contractor_name"
+  #       address: "address"
+
+  # Austin area (inactive - commented out for Houston-first launch)
+  # - slug: tx-travis
+  #   name: Travis County
+  #   state: TX
+  #   region: tx-austin
+  #   active: false
+  #   provider: arcgis
+  #   source_config:
+  #     url: "https://travis.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+  #     date_field: "issue_date"
+  #     field_map:
+  #       permit_type: "type"
+  #       value: "value"
+  #       contractor: "contractor_name"
+  #       address: "address"
+
+  # Dallas-Fort Worth area (inactive - commented out for Houston-first launch)
+  # - slug: tx-dallas
+  #   name: Dallas County
+  #   state: TX
+  #   region: tx-dallas
+  #   active: false
+  #   provider: arcgis
+  #   source_config:
+  #     url: "https://dallas.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+  #     date_field: "issue_date"
+  #     field_map:
+  #       permit_type: "type"
+  #       value: "value"
+  #       contractor: "contractor_name"
+  #       address: "address"
+

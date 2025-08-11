@@ -10,12 +10,37 @@ import os
 import sys
 import csv
 import logging
+import tempfile
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+from io import StringIO
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+# Import Supabase client
+from .supabase_client import get_supabase_client
+
+# Import Redis deduplication
+from .redis_client import dedupe_sadd
+
+# Import metrics tracking (optional)
+try:
+    from .metrics import track_ingestion
+    from .settings import settings
+    METRICS_AVAILABLE = True
+    
+    def is_metrics_enabled():
+        """Check if metrics are enabled."""
+        return getattr(settings, 'enable_metrics', False)
+        
+except ImportError:
+    METRICS_AVAILABLE = False
+    track_ingestion = lambda x, y, z: None
+    
+    def is_metrics_enabled():
+        return False
 
 # Configure logging
 logging.basicConfig(
@@ -26,9 +51,15 @@ logger = logging.getLogger(__name__)
 
 
 class LeadIngestor:
-    def __init__(self, db_url: str):
-        """Initialize ingestor with database connection."""
+    def __init__(self, db_url: str, use_copy: bool = True):
+        """Initialize ingestor with database connection.
+        
+        Args:
+            db_url: PostgreSQL connection URL
+            use_copy: Whether to use PostgreSQL COPY for bulk inserts (default: True)
+        """
         self.db_url = db_url
+        self.use_copy = use_copy
         
     def connect_db(self):
         """Create database connection."""
@@ -150,9 +181,239 @@ class LeadIngestor:
             
         return parsed
     
+    def ingest_csv_with_copy(self, csv_file_path: str) -> int:
+        """
+        Ingest leads from CSV file using PostgreSQL COPY for better performance.
+        
+        This method uses COPY FROM with a temporary table approach to handle
+        conflicts and provide transaction safety.
+        
+        Returns:
+            Number of records successfully ingested
+        """
+        if not os.path.exists(csv_file_path):
+            raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
+            
+        logger.info(f"Starting COPY-based ingest from {csv_file_path}")
+        
+        conn = self.connect_db()
+        try:
+            cur = conn.cursor()
+            
+            # Create temporary table with same structure as leads table
+            temp_table_sql = """
+                CREATE TEMPORARY TABLE temp_leads (
+                    jurisdiction TEXT,
+                    permit_id TEXT,
+                    address TEXT,
+                    description TEXT,
+                    work_class TEXT,
+                    category TEXT,
+                    status TEXT,
+                    issue_date DATE,
+                    applicant TEXT,
+                    owner TEXT,
+                    value NUMERIC,
+                    is_residential BOOLEAN,
+                    scraped_at TIMESTAMPTZ,
+                    latitude NUMERIC,
+                    longitude NUMERIC,
+                    apn TEXT,
+                    year_built INTEGER,
+                    heated_sqft NUMERIC,
+                    lot_size NUMERIC,
+                    land_use TEXT,
+                    owner_kind TEXT,
+                    trade_tags TEXT[],
+                    budget_band TEXT,
+                    start_by_estimate DATE,
+                    lead_score NUMERIC,
+                    score_recency NUMERIC,
+                    score_trade_match NUMERIC,
+                    score_value NUMERIC,
+                    score_parcel_age NUMERIC,
+                    score_inspection NUMERIC,
+                    scoring_version TEXT
+                )
+            """
+            cur.execute(temp_table_sql)
+            
+            # Prepare cleaned data for COPY
+            copy_buffer = StringIO()
+            records_processed = 0
+            
+            with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                
+                for row in reader:
+                    try:
+                        parsed_row = self.parse_csv_row(row)
+                        
+                        # Format row for COPY (tab-separated, handling NULL values)
+                        row_values = []
+                        for field in [
+                            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
+                            'category', 'status', 'issue_date', 'applicant', 'owner', 'value',
+                            'is_residential', 'scraped_at', 'latitude', 'longitude', 'apn',
+                            'year_built', 'heated_sqft', 'lot_size', 'land_use', 'owner_kind',
+                            'trade_tags', 'budget_band', 'start_by_estimate', 'lead_score',
+                            'score_recency', 'score_trade_match', 'score_value', 'score_parcel_age',
+                            'score_inspection', 'scoring_version'
+                        ]:
+                            value = parsed_row.get(field)
+                            if value is None:
+                                row_values.append('\\N')  # PostgreSQL NULL representation
+                            elif field == 'trade_tags' and isinstance(value, list):
+                                # Format array for PostgreSQL
+                                formatted_array = '{' + ','.join(f'"{tag}"' for tag in value) + '}'
+                                row_values.append(formatted_array)
+                            elif isinstance(value, bool):
+                                row_values.append('t' if value else 'f')
+                            elif isinstance(value, (int, float)):
+                                row_values.append(str(value))
+                            elif isinstance(value, datetime):
+                                row_values.append(value.strftime('%Y-%m-%d %H:%M:%S'))
+                            else:
+                                # Escape tabs and newlines in string values
+                                escaped_value = str(value).replace('\t', '\t').replace('\n', '\n').replace('\r', '\r')
+                                row_values.append(escaped_value)
+                        
+                        copy_buffer.write('\t'.join(row_values) + '\n')
+                        records_processed += 1
+                        
+                        if records_processed % 1000 == 0:
+                            logger.info(f"Prepared {records_processed} records for COPY...")
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing row {records_processed + 1}: {e}")
+                        logger.error(f"Row data: {row}")
+                        continue
+            
+            # Reset buffer to beginning
+            copy_buffer.seek(0)
+            
+            # Perform COPY operation
+            logger.info(f"Executing COPY operation for {records_processed} records...")
+            cur.copy_from(
+                copy_buffer,
+                'temp_leads',
+                sep='\t',
+                null='\\N',
+                columns=[
+                    'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
+                    'category', 'status', 'issue_date', 'applicant', 'owner', 'value',
+                    'is_residential', 'scraped_at', 'latitude', 'longitude', 'apn',
+                    'year_built', 'heated_sqft', 'lot_size', 'land_use', 'owner_kind',
+                    'trade_tags', 'budget_band', 'start_by_estimate', 'lead_score',
+                    'score_recency', 'score_trade_match', 'score_value', 'score_parcel_age',
+                    'score_inspection', 'scoring_version'
+                ]
+            )
+            
+            # Insert from temporary table with conflict resolution
+            insert_from_temp_sql = """
+                INSERT INTO leads (
+                    jurisdiction, permit_id, address, description, work_class, category,
+                    status, issue_date, applicant, owner, value, is_residential, scraped_at,
+                    latitude, longitude, apn, year_built, heated_sqft, lot_size, land_use,
+                    owner_kind, trade_tags, budget_band, start_by_estimate,
+                    lead_score, score_recency, score_trade_match, score_value,
+                    score_parcel_age, score_inspection, scoring_version
+                )
+                SELECT * FROM temp_leads
+                ON CONFLICT (jurisdiction, permit_id) 
+                DO UPDATE SET
+                    address = EXCLUDED.address,
+                    description = EXCLUDED.description,
+                    work_class = EXCLUDED.work_class,
+                    category = EXCLUDED.category,
+                    status = EXCLUDED.status,
+                    issue_date = EXCLUDED.issue_date,
+                    applicant = EXCLUDED.applicant,
+                    owner = EXCLUDED.owner,
+                    value = EXCLUDED.value,
+                    is_residential = EXCLUDED.is_residential,
+                    scraped_at = EXCLUDED.scraped_at,
+                    latitude = EXCLUDED.latitude,
+                    longitude = EXCLUDED.longitude,
+                    apn = EXCLUDED.apn,
+                    year_built = EXCLUDED.year_built,
+                    heated_sqft = EXCLUDED.heated_sqft,
+                    lot_size = EXCLUDED.lot_size,
+                    land_use = EXCLUDED.land_use,
+                    owner_kind = EXCLUDED.owner_kind,
+                    trade_tags = EXCLUDED.trade_tags,
+                    budget_band = EXCLUDED.budget_band,
+                    start_by_estimate = EXCLUDED.start_by_estimate,
+                    lead_score = EXCLUDED.lead_score,
+                    score_recency = EXCLUDED.score_recency,
+                    score_trade_match = EXCLUDED.score_trade_match,
+                    score_value = EXCLUDED.score_value,
+                    score_parcel_age = EXCLUDED.score_parcel_age,
+                    score_inspection = EXCLUDED.score_inspection,
+                    scoring_version = EXCLUDED.scoring_version,
+                    updated_at = now()
+            """
+            cur.execute(insert_from_temp_sql)
+            
+            # Get count of affected rows
+            rows_affected = cur.rowcount
+            
+            # Commit the transaction
+            conn.commit()
+            
+            # Get the total count in the database
+            cur.execute("SELECT COUNT(*) FROM leads")
+            total_records = cur.fetchone()[0]
+            
+            logger.info(f"COPY ingest completed successfully!")
+            logger.info(f"Records processed: {records_processed}")
+            logger.info(f"Rows affected (inserted/updated): {rows_affected}")
+            logger.info(f"Total records in database: {total_records}")
+            
+            # Track metrics if enabled
+            if METRICS_AVAILABLE and is_metrics_enabled():
+                track_ingestion('csv_copy', records_processed, 'success')
+            
+            copy_buffer.close()
+            return records_processed
+            
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error during COPY ingest: {e}")
+            
+            # Track failed ingestion if metrics enabled
+            if METRICS_AVAILABLE and is_metrics_enabled():
+                track_ingestion('csv_copy', 0, 'error')
+            
+            raise
+        finally:
+            conn.close()
+    
     def ingest_csv(self, csv_file_path: str) -> int:
         """
         Ingest leads from CSV file into PostgreSQL database.
+        
+        Uses PostgreSQL COPY for better performance when enabled, otherwise
+        falls back to individual INSERT statements.
+        
+        Returns:
+            Number of records successfully ingested
+        """
+        if self.use_copy:
+            try:
+                return self.ingest_csv_with_copy(csv_file_path)
+            except Exception as e:
+                logger.warning(f"COPY method failed: {e}. Falling back to INSERT method.")
+                self.use_copy = False
+        
+        return self.ingest_csv_with_insert(csv_file_path)
+    
+    def ingest_csv_with_insert(self, csv_file_path: str) -> int:
+        """
+        Ingest leads from CSV file using individual INSERT statements.
+        
+        This is the fallback method when COPY is not available or fails.
         
         Returns:
             Number of records successfully ingested
@@ -233,6 +494,23 @@ class LeadIngestor:
                 for row in reader:
                     try:
                         parsed_row = self.parse_csv_row(row)
+                        
+                        # Create unique ID for deduplication
+                        unique_id = f"{parsed_row.get('jurisdiction', '')}:{parsed_row.get('permit_id', '')}"
+                        
+                        # Check Redis deduplication (use asyncio.run for sync context)
+                        try:
+                            import asyncio
+                        # Check Redis deduplication (use await for async context)
+                        try:
+                            is_new = await dedupe_sadd("dedupe:permits", unique_id)
+                            if not is_new:
+                                logger.debug(f"Skipping duplicate permit: {unique_id}")
+                                continue
+                        except Exception as e:
+                            # If Redis fails, continue with database-level deduplication
+                            logger.warning(f"Redis deduplication failed for {unique_id}: {e}")
+                        
                         cur.execute(insert_sql, parsed_row)
                         records_processed += 1
                         
@@ -254,24 +532,183 @@ class LeadIngestor:
             logger.info(f"Records processed: {records_processed}")
             logger.info(f"Total records in database: {total_records}")
             
+            # Track metrics if enabled
+            if METRICS_AVAILABLE and is_metrics_enabled():
+                track_ingestion('csv_insert', records_processed, 'success')
+            
             return records_processed
             
         except Exception as e:
             conn.rollback()
             logger.error(f"Error during ingest: {e}")
+            
+            # Track failed ingestion if metrics enabled
+            if METRICS_AVAILABLE and is_metrics_enabled():
+                track_ingestion('csv_insert', 0, 'error')
+            
             raise
         finally:
             conn.close()
 
 
+def insert_lead(lead: dict) -> dict:
+    """
+    Insert a lead into the Supabase 'leads' table.
+    
+    This function uses the Supabase service client to insert a lead record
+    into the leads table and returns the inserted data or raises an error.
+    
+    Args:
+        lead: Dictionary containing lead data with the following expected fields:
+            - jurisdiction (str): The jurisdiction/region
+            - permit_id (str): Unique permit identifier
+            - address (str, optional): Property address
+            - description (str, optional): Work description
+            - work_class (str, optional): Class of work
+            - category (str, optional): Category classification
+            - status (str, optional): Permit status
+            - issue_date (str, optional): Date issued (ISO format)
+            - applicant (str, optional): Applicant name
+            - owner (str, optional): Property owner
+            - value (float, optional): Project value
+            - is_residential (bool, optional): Whether residential
+            - scraped_at (str, optional): Timestamp scraped (ISO format)
+            - latitude (float, optional): Latitude coordinate
+            - longitude (float, optional): Longitude coordinate
+            - apn (str, optional): Assessor's parcel number
+            - year_built (int, optional): Year property was built
+            - heated_sqft (float, optional): Heated square footage
+            - lot_size (float, optional): Lot size
+            - land_use (str, optional): Land use designation
+            - owner_kind (str, optional): Type of owner
+            - trade_tags (list, optional): List of trade tags
+            - budget_band (str, optional): Budget band classification
+            - start_by_estimate (str, optional): Estimated start date (ISO format)
+            - lead_score (float, optional): Overall lead score
+            - score_recency (float, optional): Recency score component
+            - score_trade_match (float, optional): Trade match score component
+            - score_value (float, optional): Value score component
+            - score_parcel_age (float, optional): Parcel age score component
+            - score_inspection (float, optional): Inspection score component
+            - scoring_version (str, optional): Version of scoring algorithm used
+    
+    Returns:
+        dict: The inserted lead record as returned by Supabase
+        
+    Raises:
+        ValueError: If required fields are missing
+        Exception: If insertion fails
+    """
+    # Validate required fields
+    if not isinstance(lead, dict):
+        raise ValueError("Lead must be a dictionary")
+    
+    if not lead.get('jurisdiction'):
+        raise ValueError("jurisdiction is required")
+    
+    if not lead.get('permit_id'):
+        raise ValueError("permit_id is required")
+    
+    try:
+        # Get Supabase client
+        supabase = get_supabase_client()
+        
+        # Prepare lead data for insertion
+        # Clean up the data to match expected types
+        clean_lead = {}
+        
+        # String fields
+        string_fields = [
+            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
+            'category', 'status', 'applicant', 'owner', 'apn', 'land_use',
+            'owner_kind', 'budget_band', 'scoring_version'
+        ]
+        
+        for field in string_fields:
+            value = lead.get(field)
+            clean_lead[field] = str(value) if value is not None else None
+        
+        # Numeric fields
+        numeric_fields = [
+            'value', 'latitude', 'longitude', 'heated_sqft', 'lot_size',
+            'lead_score', 'score_recency', 'score_trade_match', 'score_value',
+            'score_parcel_age', 'score_inspection'
+        ]
+        
+        for field in numeric_fields:
+            value = lead.get(field)
+            if value is not None:
+                try:
+                    clean_lead[field] = float(value)
+                except (ValueError, TypeError):
+                    clean_lead[field] = None
+            else:
+                clean_lead[field] = None
+        
+        # Integer fields
+        year_built = lead.get('year_built')
+        if year_built is not None:
+            try:
+                clean_lead['year_built'] = int(year_built)
+            except (ValueError, TypeError):
+                clean_lead['year_built'] = None
+        else:
+            clean_lead['year_built'] = None
+        
+        # Boolean field
+        is_residential = lead.get('is_residential')
+        if is_residential is not None:
+            clean_lead['is_residential'] = bool(is_residential)
+        else:
+            clean_lead['is_residential'] = None
+        
+        # Date/timestamp fields - expect ISO format strings
+        date_fields = ['issue_date', 'start_by_estimate', 'scraped_at']
+        for field in date_fields:
+            value = lead.get(field)
+            clean_lead[field] = value if value else None
+        
+        # Array field (trade_tags)
+        trade_tags = lead.get('trade_tags')
+        if trade_tags is not None:
+            if isinstance(trade_tags, list):
+                clean_lead['trade_tags'] = trade_tags
+            elif isinstance(trade_tags, str):
+                # Try to parse as comma-separated values
+                clean_lead['trade_tags'] = [tag.strip() for tag in trade_tags.split(',') if tag.strip()]
+            else:
+                clean_lead['trade_tags'] = None
+        else:
+            clean_lead['trade_tags'] = None
+        
+        # Insert the lead into Supabase
+        result = supabase.table('leads').insert(clean_lead).execute()
+        
+        # Check if insertion was successful
+        if result.data:
+            logger.info(f"Successfully inserted lead: {clean_lead.get('jurisdiction')}/{clean_lead.get('permit_id')}")
+            return result.data[0]  # Return the first (and only) inserted record
+        else:
+            raise Exception("No data returned from Supabase insert operation")
+            
+    except Exception as e:
+        logger.error(f"Failed to insert lead via Supabase: {e}")
+        logger.error(f"Lead data: {lead}")
+        raise Exception(f"Failed to insert lead: {e}")
+
+
 def main():
     """Main entry point for the ingest script."""
-    if len(sys.argv) != 2:
-        print("Usage: python -m backend.app.ingest <csv_file_path>")
-        print("Example: python -m backend.app.ingest out/leads_recent.csv")
+    # Default path if no argument provided
+    default_csv_path = "permit_leads/out/leads_recent.csv"
+    
+    if len(sys.argv) > 2:
+        print("Usage: python -m backend.app.ingest [csv_file_path]")
+        print(f"Example: python -m backend.app.ingest {default_csv_path}")
+        print("If no path is provided, defaults to permit_leads/out/leads_recent.csv")
         sys.exit(1)
-        
-    csv_file_path = sys.argv[1]
+    
+    csv_file_path = sys.argv[1] if len(sys.argv) == 2 else default_csv_path
     
     # Get database URL from environment
     db_url = os.environ.get('DATABASE_URL')

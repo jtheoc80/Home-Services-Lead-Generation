@@ -152,13 +152,14 @@ def test_database_schema():
     print("\nTesting database schema...")
     
     try:
-        schema_file = Path(__file__).parent / "app" / "migrations" / "001_feedback_tables.sql"
-        assert schema_file.exists(), "Missing migration file"
+        # Test feedback tables migration
+        feedback_schema_file = Path(__file__).parent / "app" / "migrations" / "001_feedback_tables.sql"
+        assert feedback_schema_file.exists(), "Missing feedback migration file"
         
-        content = schema_file.read_text()
+        feedback_content = feedback_schema_file.read_text()
         
-        # Check for required tables and types
-        required_elements = [
+        # Check for required tables and types in feedback migration
+        feedback_required_elements = [
             'CREATE TYPE lead_rating',
             'CREATE TABLE IF NOT EXISTS lead_feedback',
             'CREATE TABLE IF NOT EXISTS lead_outcomes',
@@ -166,10 +167,41 @@ def test_database_schema():
             'PRIMARY KEY'
         ]
         
-        for element in required_elements:
-            assert element in content, f"Missing schema element: {element}"
+        for element in feedback_required_elements:
+            assert element in feedback_content, f"Missing feedback schema element: {element}"
         
-        print("✓ Database schema is valid")
+        print("✓ Feedback tables schema is valid")
+        
+        # Test notifications table migration
+        notifications_schema_file = Path(__file__).parent / "app" / "migrations" / "002_notifications_table.sql"
+        assert notifications_schema_file.exists(), "Missing notifications migration file"
+        
+        notifications_content = notifications_schema_file.read_text()
+        
+        # Check for required elements in notifications migration
+        notifications_required_elements = [
+            'CREATE TABLE IF NOT EXISTS notifications',
+            'account_id UUID NOT NULL',
+            'lead_id BIGINT NOT NULL',
+            'channel TEXT NOT NULL',
+            'status TEXT NOT NULL DEFAULT',
+            'PRIMARY KEY',
+            'CREATE INDEX'
+        ]
+        
+        for element in notifications_required_elements:
+            assert element in notifications_content, f"Missing notifications schema element: {element}"
+        
+        print("✓ Notifications table schema is valid")
+        
+        # Test main models.sql file includes notifications
+        models_file = Path(__file__).parent / "app" / "models.sql"
+        assert models_file.exists(), "Missing models.sql file"
+        
+        models_content = models_file.read_text()
+        assert 'CREATE TABLE IF NOT EXISTS notifications' in models_content, "Notifications table missing from models.sql"
+        
+        print("✓ Main models schema includes notifications")
         return True
         
     except Exception as e:
@@ -211,7 +243,7 @@ def main():
     if passed == total:
         print("🎉 All validations passed!")
         print("\nNext steps:")
-        print("1. Run database migration: psql $DATABASE_URL < backend/app/migrations/001_feedback_tables.sql")
+        print("1. Run database migration: psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -b -e -f backend/app/models.sql")
         print("2. Install Python dependencies: pip install -r backend/requirements.txt")
         print("3. Configure environment variables in frontend/.env")
         print("4. Start the Next.js development server: npm run dev")

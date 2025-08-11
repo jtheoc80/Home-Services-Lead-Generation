@@ -9,6 +9,7 @@ import sys
 import json
 import pickle
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -80,6 +81,14 @@ class LeadMLInference:
                         feature_row[col] = False
                     elif col == 'feedback_hour':
                         feature_row[col] = 12
+                    elif col in ['source_cancellation_rate', 'source_avg_cancellation_score']:
+                        feature_row[col] = 0.0
+                    elif col in ['contractor_canceled', 'canceled_for_quality', 'canceled_for_wrong_type']:
+                        feature_row[col] = False
+                    elif col == 'contractor_win_rate':
+                        feature_row[col] = 0.1  # Default reasonable win rate
+                    elif col == 'lead_value_log':
+                        feature_row[col] = 0.0
                     else:
                         feature_row[col] = 0
                         
@@ -87,10 +96,22 @@ class LeadMLInference:
         
         return pd.DataFrame(features_list)
     
-    def predict(self, leads: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Generate predictions for leads."""
+    def predict(self, leads: List[Dict[str, Any]], account_id: str = None) -> List[Dict[str, Any]]:
+        """Generate predictions for leads with optional personalized cancellation adjustments."""
         if not self.model:
             raise RuntimeError("Model not loaded")
+        
+        # Import cancellation service for personalized adjustments
+        try:
+            # Try absolute import first, then fallback to relative import
+            try:
+                from cancellation_feedback import CancellationFeedbackService
+            except ImportError:
+                from .cancellation_feedback import CancellationFeedbackService
+            cancellation_service = CancellationFeedbackService(os.getenv('DATABASE_URL'))
+        except ImportError:
+            cancellation_service = None
+            logger.warning("Cancellation feedback service not available")
         
         # Prepare features
         features_df = self.prepare_features(leads)
@@ -105,16 +126,32 @@ class LeadMLInference:
         # Prepare results
         results = []
         for i, lead in enumerate(leads):
-            # Convert probability to calibrated score (0-100)
-            calibrated_score = min(100, max(0, probabilities[i] * 100))
+            base_probability = probabilities[i]
+            
+            # Apply personalized cancellation adjustment if available
+            personalized_adjustment = 0.0
+            if cancellation_service and account_id:
+                try:
+                    personalized_adjustment = cancellation_service.calculate_personalized_adjustments(
+                        account_id, lead
+                    )
+                except Exception as e:
+                    logger.warning(f"Error calculating personalized adjustment: {e}")
+            
+            # Apply adjustment to probability (convert to score, adjust, convert back)
+            adjusted_score = (base_probability * 100) + personalized_adjustment
+            adjusted_score = max(0, min(100, adjusted_score))  # Clamp to 0-100
+            adjusted_probability = adjusted_score / 100.0
             
             results.append({
                 'lead_id': lead['id'],
-                'win_probability': float(probabilities[i]),
-                'calibrated_score': float(calibrated_score),
-                'predicted_success': bool(predictions[i]),
+                'win_probability': float(base_probability),
+                'adjusted_probability': float(adjusted_probability),
+                'calibrated_score': float(adjusted_score),
+                'personalized_adjustment': float(personalized_adjustment),
+                'predicted_success': bool(adjusted_probability > 0.5),
                 'model_version': self.model_metadata['model_version'],
-                'confidence': self._calculate_confidence(probabilities[i])
+                'confidence': self._calculate_confidence(adjusted_probability)
             })
         
         return results
@@ -143,7 +180,8 @@ def main():
             sys.exit(1)
         
         # Run inference
-        results = inference.predict(input_data['leads'])
+        account_id = input_data.get('account_id')
+        results = inference.predict(input_data['leads'], account_id)
         
         # Output results
         print(json.dumps({

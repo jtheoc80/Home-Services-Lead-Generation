@@ -1,0 +1,212 @@
+name: Vercel Log Digest
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+jobs:
+  vercel-log-digest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Validate required secrets
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "❌ Error: VERCEL_TOKEN secret is not set"
+            echo "Please add your Vercel API token to repository secrets"
+            exit 1
+          fi
+          echo "✅ VERCEL_TOKEN is configured"
+      
+      - name: Install Vercel CLI and dependencies
+        run: |
+          npm install -g vercel@latest
+          # Verify jq is available (should be pre-installed on ubuntu-latest)
+          if ! command -v jq &> /dev/null; then
+            echo "Installing jq..."
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+          echo "✅ Dependencies installed"
+      
+      - name: Pull Vercel project configuration
+        run: |
+          echo "🔄 Pulling Vercel project configuration..."
+          vercel pull --yes --environment=production
+          echo "✅ Project configuration pulled successfully"
+      
+      - name: Get latest READY deployment
+        id: deployment
+        run: |
+          echo "🔍 Fetching latest READY deployment..."
+          
+          # Get deployments and find the latest READY one
+          DEPLOYMENT_DATA=$(vercel ls --json)
+          
+          # Extract URL of the latest READY deployment
+          DEPLOYMENT_URL=$(echo "$DEPLOYMENT_DATA" | jq -r '[.deployments[] | select(.state=="READY")] | sort_by(.createdAt) | reverse | first | .url // empty')
+          
+          if [ -z "$DEPLOYMENT_URL" ] || [ "$DEPLOYMENT_URL" = "null" ]; then
+            echo "❌ Error: No READY deployment found"
+            echo "Please ensure you have at least one successful deployment on Vercel"
+            echo ""
+            echo "## ❌ Vercel Log Digest Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Error:** No READY deployment found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please ensure you have at least one successful deployment on Vercel before running this workflow." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Ensure URL has https:// prefix
+          if [[ "$DEPLOYMENT_URL" != https://* ]]; then
+            DEPLOYMENT_URL="https://$DEPLOYMENT_URL"
+          fi
+          
+          # Save URL to file and output
+          echo "$DEPLOYMENT_URL" > vercel_url.txt
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          
+          echo "✅ Latest READY deployment found: $DEPLOYMENT_URL"
+          
+          # Add to step summary
+          echo "## 🚀 Vercel Deployment Found" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest READY Deployment:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Fetch deployment logs
+        id: logs
+        run: |
+          DEPLOYMENT_URL=$(cat vercel_url.txt)
+          echo "📥 Fetching logs for deployment: $DEPLOYMENT_URL"
+          
+          # Fetch logs for the last 60 minutes (1h)
+          if ! vercel logs "$DEPLOYMENT_URL" --since 1h > vercel_logs.txt; then
+            echo "⚠️  Warning: Failed to fetch logs for deployment"
+            echo "Creating empty log file..."
+            echo "No logs available or failed to fetch logs" > vercel_logs.txt
+          fi
+          
+          # Check if logs were retrieved
+          if [ -s vercel_logs.txt ]; then
+            LOG_COUNT=$(wc -l < vercel_logs.txt)
+            echo "✅ Retrieved $LOG_COUNT lines of logs"
+            echo "log_count=$LOG_COUNT" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  No logs retrieved"
+            echo "log_count=0" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Process and display logs
+        run: |
+          LOG_COUNT=${{ steps.logs.outputs.log_count }}
+          DEPLOYMENT_URL=${{ steps.deployment.outputs.deployment_url }}
+          
+          echo "## 📋 Deployment Logs Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment URL:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "**Log Lines Retrieved:** $LOG_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "**Time Period:** Last 60 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -s vercel_logs.txt ]; then
+            echo "### 📄 Last 200 Lines of Logs" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -200 vercel_logs.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️  No Logs Available" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No logs were available for the specified time period." >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-logs-${{ github.run_number }}
+          path: vercel_logs.txt
+          retention-days: 7
+          if-no-files-found: warn
+      
+      - name: Post PR comment (if in PR)
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEPLOYMENT_URL=${{ steps.deployment.outputs.deployment_url }}
+          LOG_COUNT=${{ steps.logs.outputs.log_count }}
+          
+          # Create log digest for PR comment
+          if [ -s vercel_logs.txt ]; then
+            # Get first 40 lines
+            FIRST_40=$(head -40 vercel_logs.txt)
+            # Get last 40 lines
+            LAST_40=$(tail -40 vercel_logs.txt)
+            
+            # Create comment body
+            cat > pr_comment.md << EOF
+          ## 🚀 Vercel Deployment Update
+          
+          **Latest Deployment:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)
+          **Logs Retrieved:** $LOG_COUNT lines (last 60 minutes)
+          
+          ### 📄 Log Digest
+          
+          **First 40 lines:**
+          \`\`\`
+          $FIRST_40
+          \`\`\`
+          
+          **Last 40 lines:**
+          \`\`\`
+          $LAST_40
+          \`\`\`
+          
+          Full logs are available as a [workflow artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          EOF
+          else
+            cat > pr_comment.md << EOF
+          ## 🚀 Vercel Deployment Update
+          
+          **Latest Deployment:** [$DEPLOYMENT_URL]($DEPLOYMENT_URL)
+          **Logs:** No logs available for the last 60 minutes
+          EOF
+          fi
+          
+          # Post comment using GitHub API
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d @- \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" << EOF
+          {
+            "body": $(cat pr_comment.md | jq -Rs .)
+          }
+          EOF
+          
+          echo "💬 Posted comment on PR #${{ github.event.pull_request.number }}"
+      
+      - name: Output summary
+        run: |
+          echo ""
+          echo "🎉 Vercel log digest completed successfully!"
+          echo "🔗 Deployment URL: ${{ steps.deployment.outputs.deployment_url }}"
+          echo "📊 Log lines retrieved: ${{ steps.logs.outputs.log_count }}"
+          echo ""
