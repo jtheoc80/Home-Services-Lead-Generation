@@ -502,6 +502,7 @@ class LeadIngestor:
                         try:
                             import asyncio
                             # For sync context, we skip Redis deduplication and rely on database constraints
+                            pass
                             # is_new = await dedupe_sadd("dedupe:permits", unique_id)
                             # if not is_new:
                             #     logger.debug(f"Skipping duplicate permit: {unique_id}")
