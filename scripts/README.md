@@ -189,3 +189,61 @@ The diagnosis script and other remediation scripts are designed for:
 - **Monitoring systems**: Service health remediation
 - **Manual troubleshooting**: Quick deployment fixes and issue identification
 - **Scheduled maintenance**: Automated service restarts and health monitoring
+
+## scrape-harris.cjs
+
+Harris County permit scraping wrapper script that provides a convenient npm interface for scraping Harris County permit data.
+
+### Prerequisites
+
+- Node.js 20+
+- Python 3.11+
+- permit_leads dependencies installed (`pip install -r permit_leads/requirements.txt`)
+
+### Usage
+
+Use via npm script:
+
+```bash
+# Scrape permits from the last 3 days
+npm run scrape:harris -- --since=3d
+
+# Scrape permits from the last 24 hours  
+npm run scrape:harris -- --since=24h
+
+# Scrape permits from the last 30 minutes
+npm run scrape:harris -- --since=30m
+
+# Additional options can be passed through
+npm run scrape:harris -- --since=1d --dry-run --verbose --sample
+```
+
+### Time Format Support
+
+- `Xd` - X days
+- `Xh` - X hours (rounded up to days)
+- `Xm` - X minutes (rounded up to days)
+
+### What it does
+
+1. Parses the `--since` parameter and converts time formats to `--days`
+2. Calls `python -m permit_leads scrape --jurisdiction tx-harris` with appropriate arguments
+3. Passes through all other command-line arguments to the underlying scraper
+
+### Features
+
+- **Flexible time formats**: Supports days, hours, and minutes
+- **Argument pass-through**: All permit_leads arguments work seamlessly
+- **Error handling**: Clear error messages for invalid time formats
+- **No external dependencies**: Uses only Node.js built-ins
+
+### GitHub Actions Integration
+
+The Harris County scraper is integrated with GitHub Actions via `.github/workflows/permits-harris.yml`:
+
+- **Scheduled runs**: Executes every hour (`0 * * * *`)
+- **Manual dispatch**: Can be triggered manually with custom parameters
+- **Environment secrets**: Uses `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `HC_ISSUED_PERMITS_URL`
+- **Failure detection**: Fails if no results found for 24 hours
+- **Automated commits**: Pushes new permit data to repository
+- **Detailed summaries**: Posts comprehensive scraping reports
