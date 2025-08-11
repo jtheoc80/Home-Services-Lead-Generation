@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import LeadCard from '@/components/LeadCard'
+import HealthStatus from '@/components/HealthStatus'
 
 interface Lead {
   id: number
@@ -180,8 +181,11 @@ export default function Dashboard() {
                 </Link>
                 <h1 className="text-2xl font-bold text-gray-900">Lead Dashboard</h1>
               </div>
-              <div className="text-sm text-gray-600">
-                {leads.length} leads available
+              <div className="flex items-center space-x-4">
+                <HealthStatus />
+                <div className="text-sm text-gray-600">
+                  {leads.length} leads available
+                </div>
               </div>
             </div>
           </div>

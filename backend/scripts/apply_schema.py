@@ -9,6 +9,7 @@ the schema from models.sql idempotently (skipping objects that already exist).
 import os
 import sys
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 

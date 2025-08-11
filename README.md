@@ -87,7 +87,21 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
    cd frontend && npm install
    ```
 
-4. **Setup database:**
+4. **Setup Git Secrets (Security)**
+   ```bash
+   # Install git-secrets to prevent committing sensitive data
+   ./scripts/setup-git-secrets.sh
+   ```
+   
+   This sets up pre-commit hooks to block accidental commits of:
+   - Supabase service role keys and JWT tokens
+   - Vercel API tokens and deploy hooks  
+   - Railway API keys and tokens
+   - AWS credentials
+   
+   📖 [Full Git Secrets Documentation](docs/GIT_SECRETS_SETUP.md)
+
+5. **Setup database:**
    ```bash
    # Run database migrations with error handling
    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -b -e -f backend/app/models.sql
@@ -292,6 +306,26 @@ To add repository secrets:
 2. Navigate to Secrets and variables → Actions
 3. Click "New repository secret"
 4. Add the secret name and value
+
+**Or use GitHub CLI:**
+
+> **Prerequisite:** You must have the [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) before running these commands.
+```bash
+gh secret set DATABASE_URL
+gh secret set SENDGRID_API_KEY
+
+> **Note:** If you do not provide a value, `gh secret set` will prompt you interactively for the secret value. For automation or scripting, you can pass the value directly using the `--body` flag or via stdin.
+
+```bash
+# Interactive prompt (will ask for value)
+gh secret set DATABASE_URL
+
+# Pass value directly using --body
+gh secret set DATABASE_URL --body "your_database_url_here"
+
+# Pass value via stdin
+echo "your_database_url_here" | gh secret set DATABASE_URL --body -
+```
 
 
 **Problem:** Contractors waste countless hours chasing cold leads, often competing for the same opportunities everyone else already knows about.
