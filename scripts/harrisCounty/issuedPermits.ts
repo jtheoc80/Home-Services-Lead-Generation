@@ -136,7 +136,7 @@ async function fetchPermits(baseUrl: string, since: Date): Promise<PermitRecord[
         
         // Map ArcGIS attributes to our schema
         const permit: PermitRecord = {
-          event_id: attrs.EVENTID?.toString() || attrs.OBJECTID?.toString() || `unknown_${Date.now()}_${Math.random()}`,
+          event_id: attrs.EVENTID?.toString() || attrs.OBJECTID?.toString() || `unknown_${randomUUID()}`,
           permit_number: attrs.PERMITNUMBER || null,
           permit_name: attrs.PERMITNAME || attrs.PROJECTNAME || null,
           app_type: attrs.APPTYPE || null,
