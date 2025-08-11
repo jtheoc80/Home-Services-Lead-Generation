@@ -23,7 +23,7 @@ export default function ClientInsertPage() {
         .from('leads')
         .insert([{ name: "Client", source: "client" }])
         .select('*')
-        .single();
+        .select('*');
 
       if (error) {
         setResult({ error: error.message, details: error });
