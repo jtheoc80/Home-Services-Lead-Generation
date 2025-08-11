@@ -157,7 +157,7 @@ export class HoustonSoldPermitsScraper {
     // const data = await response.json();
     // return this.parseApiResponse(data);
 
-    throw new Error('API approach not yet implemented');
+    throw new Error('API approach not yet implemented - research Houston data endpoints and implement API-based permit fetching');
   }
 
   /**
