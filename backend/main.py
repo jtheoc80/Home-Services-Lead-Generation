@@ -225,7 +225,8 @@ async def healthz():
     return {
         "status": "ok",
         "version": version,
-        "db": db_status
+        "db": db_status,
+        "ts": time.time()
     }
 
 @app.get("/metrics")

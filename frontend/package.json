@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "preflight": "node scripts/preflight.js"
+    "preflight": "node scripts/preflight.js",
+    "health:check": "node scripts/health-check.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.54.0",
