@@ -72,7 +72,7 @@ cd frontend && npm install && cd ..
 python -m permit_leads --source city_of_houston --sample --days 7 --formats csv
 
 # 5. Optional: Ingest sample data (requires database setup)
-# python backend/app/ingest.py data/leads/leads_recent.csv
+# python backend/app/ingest.py data/leads/by_jurisdiction/city_of_houston_leads.csv
 
 # 6. Start backend server (runs on port 8000)
 cd backend && python main.py &
@@ -96,14 +96,23 @@ open http://localhost:3000/dashboard  # Dashboard (requires login setup for full
 - ✅ **Backend Health**: `http://localhost:8000/healthz` returns status "ok"
 - ✅ **API Docs**: `http://localhost:8000/docs` shows FastAPI documentation 
 - ✅ **Frontend**: `http://localhost:3000` displays LeadLedgerPro homepage
-- ✅ **Sample Data**: Check `data/leads/leads_recent.csv` for generated sample permits
+- ✅ **Sample Data**: Check `data/leads/by_jurisdiction/city_of_houston_leads.csv` for 6 generated sample permits
 - ⚠️ **Database**: Shows "down" status for demo (database setup optional for quickstart)
 
 ### What You'll See
 
+![LeadLedgerPro Homepage](quickstart-homepage-demo.png)
+*Professional homepage with feature overview*
+
+![LeadLedgerPro Dashboard](quickstart-dashboard-demo.png)  
+*Lead management dashboard interface*
+
+![LeadLedgerPro API Documentation](quickstart-api-docs-demo.png)
+*FastAPI Swagger documentation*
+
 - **Homepage**: Professional landing page with feature overview
 - **Dashboard**: Lead management interface (login required for full features)
-- **Sample Data**: 6 Houston building permits in CSV format
+- **Sample Data**: 6 Houston building permits with realistic details
 - **API**: FastAPI backend with health checks and Swagger docs
 
 ### Next Steps After Quickstart
