@@ -4,7 +4,15 @@ import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 export default function ClientInsertPage() {
-  const [result, setResult] = useState<{ error?: string; details?: any; success?: boolean; data?: any } | null>(null);
+type ResultState = {
+  error?: string;
+  details?: unknown;
+  success?: boolean;
+  data?: unknown;
+};
+
+export default function ClientInsertPage() {
+  const [result, setResult] = useState<ResultState | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleInsert = async () => {
