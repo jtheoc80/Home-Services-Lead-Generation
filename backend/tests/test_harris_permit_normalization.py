@@ -19,7 +19,18 @@ os.environ['DATABASE_URL'] = os.environ.get('DATABASE_URL', 'postgresql://test_u
 
 class TestHarrisPermitNormalization:
     """Test class for Harris County permit normalization functionality."""
-    
+# Set test environment variables via pytest fixture (see below)
+
+class TestHarrisPermitNormalization:
+    """Test class for Harris County permit normalization functionality."""
+
+    @pytest.fixture(autouse=True)
+    def database_url_env(self, monkeypatch):
+        """Fixture to set DATABASE_URL environment variable for tests."""
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            os.environ.get("DATABASE_URL", "postgresql://test_user:test_pass@localhost:5432/test_db")
+        )
     @pytest.fixture
     def test_harris_permits(self):
         """Fixture providing sample Harris County permit records for testing."""
