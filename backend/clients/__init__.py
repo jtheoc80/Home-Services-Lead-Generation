@@ -23,6 +23,8 @@ try:
     from .leadledderpro_client.models.cancellation_request import CancellationRequest
     from .leadledderpro_client.models.reactivation_request import ReactivationRequest
     from .leadledderpro_client.models.export_data_request import ExportDataRequest
+    from .leadledderpro_client.models.http_validation_error import HTTPValidationError
+    from .leadledderpro_client.models.validation_error import ValidationError
     
     class LeadLedgerProClient:
         """
@@ -70,6 +72,8 @@ try:
         'CancellationRequest',
         'ReactivationRequest',
         'ExportDataRequest',
+        'HTTPValidationError',
+        'ValidationError',
     ]
 
 except ImportError as import_error:
