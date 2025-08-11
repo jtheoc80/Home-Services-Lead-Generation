@@ -305,7 +305,12 @@ gh secret set HC_ISSUED_PERMITS_URL --body "https://www.gis.hctx.net/arcgishcpid
 
 # Method 3: Set from file or environment variable
 echo "https://your-project-id.supabase.co" | gh secret set SUPABASE_URL --body -
+gh secret set HC_ISSUED_PERMITS_URL --body "$HARRIS_COUNTY_PERMITS_URL"
+
+# Method 3: Set from file or environment variable
+echo "https://your-project-id.supabase.co" | gh secret set SUPABASE_URL --body -
 gh secret set SUPABASE_SERVICE_ROLE_KEY --body "$SUPABASE_SERVICE_ROLE_KEY"
+echo "$HARRIS_COUNTY_PERMITS_URL" | gh secret set HC_ISSUED_PERMITS_URL --body -
 ```
 
 **Verify secrets are set:**
