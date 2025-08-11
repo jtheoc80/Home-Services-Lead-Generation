@@ -466,7 +466,7 @@ class SchemaDriftChecker {
 
   private parseTableColumns(tableBody: string): TableColumn[] {
     const columns: TableColumn[] = [];
-    const lines = tableBody.split(',').map(line => line.trim());
+    const lines = this.splitColumns(tableBody);
     
     for (const line of lines) {
       if (line.startsWith('--') || line.includes('CONSTRAINT') || line.includes('UNIQUE') || line.includes('PRIMARY KEY')) {
