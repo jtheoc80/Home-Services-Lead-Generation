@@ -177,7 +177,29 @@ jobs:
         run: |
           echo "🔍 Testing npm dependency compatibility..."
           cd frontend
-          node -e 'require("next"); require("react"); require("react-dom"); require("@supabase/supabase-js"); console.log("✅ All major npm dependencies import successfully");' || echo "⚠️ NPM dependency compatibility test failed"
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const pkgPath = path.resolve("package.json");
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+            const deps = Object.keys(pkg.dependencies || {}).concat(Object.keys(pkg.devDependencies || {}));
+            let failed = [];
+            for (const dep of deps) {
+              try {
+                require(dep);
+                console.log(`✅ Imported ${dep}`);
+              } catch (e) {
+                console.error(`❌ Failed to import ${dep}:`, e.message);
+                failed.push(dep);
+              }
+            }
+            if (failed.length === 0) {
+              console.log("✅ All npm dependencies import successfully");
+            } else {
+              console.error("⚠️ NPM dependency compatibility test failed for:", failed.join(", "));
+              process.exit(1);
+            }
+          ' || echo "⚠️ NPM dependency compatibility test failed"
 
       - name: Test status
         run: echo "All tests completed successfully!"
