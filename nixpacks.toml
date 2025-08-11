@@ -1,15 +1,12 @@
-# Nixpacks configuration for Home Services Lead Generation Frontend
+# Nixpacks configuration for Home Services Lead Generation Backend
 [variables]
-NODE_ENV = "production"
+PYTHONPATH = "/app/backend"
 
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm-9_x"]
+nixPkgs = ["python310", "postgresql"]
 
 [phases.install]
-cmd = "cd frontend && npm ci"
-
-[phases.build]
-cmd = "cd frontend && npm run build"
+cmd = "cd backend && pip install -r requirements.txt"
 
 [start]
-cmd = "cd frontend && npm start"
+cmd = "cd backend && python main.py"
