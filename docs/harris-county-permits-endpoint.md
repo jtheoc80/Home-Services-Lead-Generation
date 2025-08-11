@@ -217,7 +217,7 @@ The LeadLedgerPro system already integrates with this endpoint through:
       permit_id: "PERMITNUMBER"
       issue_date: "ISSUEDDATE"
       address: "FULLADDRESS"
-      description: "PROJECTNAME"
+      description: "PERMITNAME"
       status: "STATUS"
       work_class: "APPTYPE"
       category: "APPTYPE"
