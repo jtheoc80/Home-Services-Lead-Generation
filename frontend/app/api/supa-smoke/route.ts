@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
  * Inserts a test record into the leads table and returns the total count.
  * Uses service role key for elevated permissions.
  */
-export async function POST() {
+async function smokeTest() {
   try {
     // Step 1: Validate environment variables
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -92,4 +92,13 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+// Export both GET and POST for flexibility
+export async function GET() {
+  return smokeTest();
+}
+
+export async function POST() {
+  return smokeTest();
 }
