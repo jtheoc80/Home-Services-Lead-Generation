@@ -66,7 +66,7 @@ git secrets --add --allowed 'railway_example_key'
 # Add allowed patterns for test values (used in documentation and tests)
 echo "Adding allowed patterns for test/documentation examples..."
 git secrets --add --allowed 'sb-1234567890abcdef1234567890abcdef12345678'
-git secrets --add --allowed 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ'
+git secrets --add --allowed 'test_jwt_token_placeholder'
 git secrets --add --allowed 'vercel_1234567890abcdef1234567890'
 # echo "Adding allowed patterns for test/documentation examples..."
 # If you need to allow test/documentation secrets, add them only in test-specific setup or local configuration.
