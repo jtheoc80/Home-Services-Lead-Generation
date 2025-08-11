@@ -157,7 +157,7 @@ jobs:
           
           ---
           
-          Generated at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Generated at: ${{ steps.current-time.outputs.time }}
           Workflow: Schema Drift Detection
           EOF
 
