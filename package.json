@@ -11,14 +11,11 @@
     "lint": "cd frontend && npm run lint",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
-
+    "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
+    "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
-
-
     "scrape:harris": "node scripts/scrape-harris.cjs",
-
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
-
   },
   "workspaces": [
     "frontend"
@@ -32,6 +29,7 @@
     "undici": "^7.13.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "tsx": "^4.0.0"
   },
   "private": true
