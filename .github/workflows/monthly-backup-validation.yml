@@ -1,0 +1,419 @@
+name: Monthly Supabase Backup Validation
+
+on:
+  schedule:
+    # Run on the 1st of each month at 2:00 AM UTC
+    - cron: "0 2 1 * *"
+  workflow_dispatch:
+    inputs:
+      force_export:
+        description: 'Force new backup export (default: use existing recent backup)'
+        type: boolean
+        default: false
+      skip_cleanup:
+        description: 'Skip cleanup of staging environment after tests'
+        type: boolean
+        default: false
+      notification_channel:
+        description: 'Where to post results (github, slack, both)'
+        type: choice
+        options:
+          - github
+          - slack
+          - both
+        default: github
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+jobs:
+  backup-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    env:
+      # Production Supabase (source)
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+      
+      # Staging Supabase (destination)
+      STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_SERVICE_ROLE: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE }}
+      
+      # Notification settings
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      
+      # Backup settings
+      BACKUP_DIR: ./backups
+      TEST_RESULTS_DIR: ./test-results
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq bc curl
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install psycopg2-binary requests
+
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.BACKUP_DIR }}
+          mkdir -p ${{ env.TEST_RESULTS_DIR }}
+
+      - name: Validate environment variables
+        run: |
+          echo "Validating required environment variables..."
+          
+          # Check production Supabase
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE" ]; then
+            echo "❌ Production Supabase credentials missing"
+            exit 1
+          fi
+          
+          # Check staging Supabase
+          if [ -z "$STAGING_SUPABASE_URL" ] || [ -z "$STAGING_SUPABASE_SERVICE_ROLE" ]; then
+            echo "❌ Staging Supabase credentials missing"
+            exit 1
+          fi
+          
+          echo "✅ All required environment variables are set"
+          echo "Production URL: $SUPABASE_URL"
+          echo "Staging URL: $STAGING_SUPABASE_URL"
+
+      - name: Check for recent backup
+        id: check_backup
+        run: |
+          echo "Checking for recent backups..."
+          
+          # Look for backups from the last 7 days
+          recent_backup=""
+          if [ -d "$BACKUP_DIR" ]; then
+            recent_backup=$(find $BACKUP_DIR -name "supabase_backup_*.tar.gz" -mtime -7 | sort -r | head -n1)
+          fi
+          
+          force_export="${{ github.event.inputs.force_export || 'false' }}"
+          
+          if [ -n "$recent_backup" ] && [ "$force_export" = "false" ]; then
+            echo "use_existing=true" >> $GITHUB_OUTPUT
+            echo "backup_file=$recent_backup" >> $GITHUB_OUTPUT
+            echo "✅ Found recent backup: $(basename $recent_backup)"
+          else
+            echo "use_existing=false" >> $GITHUB_OUTPUT
+            echo "backup_file=" >> $GITHUB_OUTPUT
+            if [ "$force_export" = "true" ]; then
+              echo "🔄 Force export requested - will create new backup"
+            else
+              echo "📦 No recent backup found - will create new backup"
+            fi
+          fi
+
+      - name: Export production backup
+        if: steps.check_backup.outputs.use_existing == 'false'
+        run: |
+          echo "Starting production backup export..."
+          ./scripts/supabase-backup-export.sh
+          
+          # Find the newly created backup
+          latest_backup=$(ls -t $BACKUP_DIR/supabase_backup_*.tar.gz | head -n1)
+          echo "backup_file=$latest_backup" >> $GITHUB_ENV
+          echo "✅ Backup export completed: $(basename $latest_backup)"
+
+      - name: Set backup file for existing backup
+        if: steps.check_backup.outputs.use_existing == 'true'
+        run: |
+          echo "backup_file=${{ steps.check_backup.outputs.backup_file }}" >> $GITHUB_ENV
+
+      - name: Restore to staging environment
+        id: restore
+        run: |
+          echo "Starting staging environment restoration..."
+          backup_name=$(basename "$backup_file" .tar.gz)
+          
+          echo "Restoring backup: $backup_name"
+          ./scripts/supabase-staging-restore.sh "$backup_name"
+          
+          echo "restore_status=success" >> $GITHUB_OUTPUT
+          echo "✅ Staging restoration completed"
+
+      - name: Run backup validation smoke tests
+        id: smoke_tests
+        run: |
+          echo "Starting backup validation smoke tests..."
+          
+          # Run smoke tests and capture exit code
+          if ./scripts/supabase-backup-smoke-tests.sh; then
+            echo "tests_status=pass" >> $GITHUB_OUTPUT
+            echo "✅ All smoke tests passed"
+          else
+            echo "tests_status=fail" >> $GITHUB_OUTPUT
+            echo "❌ Some smoke tests failed"
+          fi
+
+      - name: Generate validation summary
+        id: summary
+        if: always()
+        run: |
+          echo "Generating validation summary..."
+          
+          # Create summary report
+          timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          backup_name=$(basename "$backup_file" .tar.gz)
+          
+          # Determine overall status
+          restore_status="${{ steps.restore.outputs.restore_status || 'failed' }}"
+          tests_status="${{ steps.smoke_tests.outputs.tests_status || 'failed' }}"
+          
+          if [ "$restore_status" = "success" ] && [ "$tests_status" = "pass" ]; then
+            overall_status="✅ PASS"
+            status_emoji="✅"
+            status_color="good"
+          else
+            overall_status="❌ FAIL"
+            status_emoji="❌"
+            status_color="danger"
+          fi
+          
+          # Create GitHub step summary
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🔄 Monthly Supabase Backup Validation
+          
+          **Overall Status:** $overall_status
+          
+          ## 📊 Validation Results
+          
+          | Component | Status | Details |
+          |-----------|--------|---------|
+          | 💾 Backup Export | ${{ steps.check_backup.outputs.use_existing == 'true' && '✅ Used Recent' || '✅ Success' }} | $backup_name |
+          | 🔄 Staging Restore | $([ "$restore_status" = "success" ] && echo "✅ Success" || echo "❌ Failed") | Restored to staging environment |
+          | 🧪 Smoke Tests | $([ "$tests_status" = "pass" ] && echo "✅ Pass" || echo "❌ Fail") | Database validation tests |
+          
+          ## 📈 Summary
+          
+          - **Timestamp:** $timestamp
+          - **Backup:** $backup_name
+          - **Production URL:** $SUPABASE_URL
+          - **Staging URL:** $STAGING_SUPABASE_URL
+          - **Workflow:** [Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          $([ "$tests_status" = "pass" ] && [ "$restore_status" = "success" ] && echo "✅ **Backup system validation successful!** Your production backups are restorable and functional." || echo "❌ **Backup validation failed!** Please investigate the issues and fix the backup system.")
+          EOF
+          
+          # Set outputs for notifications
+          echo "overall_status=$overall_status" >> $GITHUB_OUTPUT
+          echo "status_emoji=$status_emoji" >> $GITHUB_OUTPUT
+          echo "status_color=$status_color" >> $GITHUB_OUTPUT
+          echo "backup_name=$backup_name" >> $GITHUB_OUTPUT
+          echo "timestamp=$timestamp" >> $GITHUB_OUTPUT
+
+      - name: Upload backup artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-validation-${{ github.run_number }}
+          path: |
+            ${{ env.BACKUP_DIR }}/**/*
+            ${{ env.TEST_RESULTS_DIR }}/**/*
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Create/update GitHub issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const overallStatus = '${{ steps.summary.outputs.overall_status }}';
+            const backupName = '${{ steps.summary.outputs.backup_name }}';
+            const timestamp = '${{ steps.summary.outputs.timestamp }}';
+            const restoreStatus = '${{ steps.restore.outputs.restore_status || 'failed' }}';
+            const testsStatus = '${{ steps.smoke_tests.outputs.tests_status || 'failed' }}';
+            
+            const title = 'Monthly Backup Validation Report';
+            const issueBody = `# 🔄 Monthly Supabase Backup Validation Report
+            
+            **Overall Status:** ${overallStatus}
+            
+            ## 📊 Validation Results
+            
+            | Component | Status | Details |
+            |-----------|--------|---------|
+            | 💾 Backup Export | ${{ steps.check_backup.outputs.use_existing == 'true' ? '✅ Used Recent' : '✅ Success' }} | ${backupName} |
+            | 🔄 Staging Restore | ${restoreStatus === 'success' ? '✅ Success' : '❌ Failed'} | Restored to staging environment |
+            | 🧪 Smoke Tests | ${testsStatus === 'pass' ? '✅ Pass' : '❌ Fail'} | Database validation tests |
+            
+            ## 📈 Details
+            
+            - **Timestamp:** ${timestamp}
+            - **Backup:** ${backupName}
+            - **Production URL:** ${{ env.SUPABASE_URL }}
+            - **Staging URL:** ${{ env.STAGING_SUPABASE_URL }}
+            - **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ## 📋 Next Steps
+            
+            ${testsStatus === 'pass' && restoreStatus === 'success' 
+              ? '✅ **Backup system validation successful!** Your production backups are restorable and functional. No action required.'
+              : '❌ **Backup validation failed!** Please investigate the issues and fix the backup system. Check the workflow logs for details.'}
+            
+            ---
+            
+            *This report was automatically generated by the Monthly Backup Validation workflow on ${timestamp}.*
+            `;
+            
+            // Search for existing issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['backup-validation', 'automated']
+            });
+            
+            const existingIssue = issues.find(issue => issue.title === title);
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: issueBody,
+                labels: ['backup-validation', 'automated', overallStatus.includes('PASS') ? 'status:pass' : 'status:fail']
+              });
+              
+              // Add comment with latest update
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `### 🔄 Monthly Validation Update - Run #${{ github.run_number }}
+                
+                **Status:** ${overallStatus}  
+                **Timestamp:** ${timestamp}
+                
+                See updated issue description for complete details.`
+              });
+              
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: issueBody,
+                labels: ['backup-validation', 'automated', overallStatus.includes('PASS') ? 'status:pass' : 'status:fail']
+              });
+              
+              console.log(`Created new issue #${issue.number}`);
+            }
+
+      - name: Send Slack notification
+        if: always() && (env.SLACK_WEBHOOK != '' && (github.event.inputs.notification_channel == 'slack' || github.event.inputs.notification_channel == 'both' || github.event.inputs.notification_channel == ''))
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const overallStatus = '${{ steps.summary.outputs.overall_status }}';
+            const statusEmoji = '${{ steps.summary.outputs.status_emoji }}';
+            const statusColor = '${{ steps.summary.outputs.status_color }}';
+            const backupName = '${{ steps.summary.outputs.backup_name }}';
+            const timestamp = '${{ steps.summary.outputs.timestamp }}';
+            
+            const payload = {
+              "text": `${statusEmoji} Monthly Backup Validation ${overallStatus.includes('PASS') ? 'Completed Successfully' : 'Failed'}`,
+              "attachments": [
+                {
+                  "color": statusColor,
+                  "title": "Supabase Backup Validation Report",
+                  "title_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                  "fields": [
+                    {
+                      "title": "Overall Status",
+                      "value": overallStatus,
+                      "short": true
+                    },
+                    {
+                      "title": "Backup Name",
+                      "value": backupName,
+                      "short": true
+                    },
+                    {
+                      "title": "Restore Status", 
+                      "value": "${{ steps.restore.outputs.restore_status === 'success' && '✅ Success' || '❌ Failed' }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Smoke Tests",
+                      "value": "${{ steps.smoke_tests.outputs.tests_status === 'pass' && '✅ Pass' || '❌ Fail' }}",
+                      "short": true
+                    }
+                  ],
+                  "footer": "LeadLedgerPro Backup Validation",
+                  "ts": Math.floor(Date.now() / 1000)
+                }
+              ]
+            };
+            
+            try {
+              const response = await fetch('${{ env.SLACK_WEBHOOK }}', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+              });
+              
+              if (response.ok) {
+                console.log('Slack notification sent successfully');
+              } else {
+                console.log('Failed to send Slack notification:', response.status);
+              }
+            } catch (error) {
+              console.log('Error sending Slack notification:', error.message);
+            }
+
+      - name: Cleanup staging environment
+        if: always() && github.event.inputs.skip_cleanup != 'true'
+        run: |
+          echo "Cleaning up staging environment..."
+          
+          # Optional: Clear staging database to save resources
+          # This is safe since it's a staging environment used only for testing
+          if ./scripts/supabase-staging-restore.sh --clear-only 2>/dev/null; then
+            echo "✅ Staging environment cleaned up"
+          else
+            echo "⚠️ Staging cleanup failed or not supported"
+          fi
+
+      - name: Report workflow summary
+        if: always()
+        run: |
+          echo "## 🔄 Monthly Backup Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Overall Status:** ${{ steps.summary.outputs.overall_status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backup:** ${{ steps.summary.outputs.backup_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** ${{ steps.summary.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next scheduled run:** 1st of next month at 02:00 UTC" >> $GITHUB_STEP_SUMMARY
