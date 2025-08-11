@@ -1,15 +1,11 @@
 {
-  "buildCommand": "cd frontend && npm run build:production",
-  "outputDirectory": "frontend/.next",
-  "installCommand": "cd frontend && npm install",
   "framework": "nextjs",
-  "functions": {
-    "frontend/pages/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
-  },
+  "installCommand": "cd frontend && npm install",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/.next",
   "env": {
-    "SKIP_ENV_VALIDATION": "1",
-    "DISABLE_ESLINT": "true"
+    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key", 
+    "NEXT_PUBLIC_API_BASE": "@next_public_api_base"
   }
 }
