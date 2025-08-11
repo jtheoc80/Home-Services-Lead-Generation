@@ -888,13 +888,37 @@ The enrichment pipeline significantly improves lead quality by providing locatio
 
 ## GitHub Actions & Automation
 
-This repository includes automated workflows for daily permit scraping:
+This repository includes automated workflows for daily permit scraping and performance monitoring:
 
 - **Scheduled Runs**: Automated daily at 6 AM UTC (1 AM CST/2 AM CDT)
 - **Manual Runs**: Trigger via GitHub Actions UI with custom parameters
 - **Data Storage**: Results committed to repository and available as downloadable artifacts
+- **Performance Monitoring**: Lighthouse audits on every PR with budget enforcement
 
 See [`docs/github-actions-runbook.md`](docs/github-actions-runbook.md) for complete setup instructions, troubleshooting, and workflow details.
+
+### Performance Monitoring
+
+#### Workflow: `lighthouse.yml`
+- **Trigger**: Every pull request to `main` or `develop` branches
+- **Purpose**: Audit Vercel preview deployments for performance budgets
+- **Budgets**: LCP ≤ 2.5s, TBT ≤ 300ms, CLS ≤ 0.1
+- **Output**: Detailed performance report posted as PR comment
+
+**Performance Steps:**
+1. Get latest Vercel deployment URL
+2. Run Lighthouse CI with 3 test runs
+3. Check performance budgets (LCP, TBT, CLS)
+4. Generate markdown report with metrics and status
+5. Post report to PR as comment
+6. Fail job if any budget is exceeded
+
+**Performance Budgets:**
+- **Largest Contentful Paint (LCP)**: ≤ 2.5 seconds
+- **Total Blocking Time (TBT)**: ≤ 300 milliseconds  
+- **Cumulative Layout Shift (CLS)**: ≤ 0.1
+
+The workflow ensures every PR maintains performance standards before merge.
 
 ### Nightly Pipeline
 
