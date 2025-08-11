@@ -47,7 +47,15 @@ async def cache_setex(key: str, ttl_s: int, value: str) -> None:
     r = get_redis()
     None if not r else await r.setex(key, ttl_s, value)
 
-
+async def cache_setex(key: str, ttl_s: int, value: str) -> bool:
+    r = get_redis()
+    if not r:
+        return False
+    try:
+        await r.setex(key, ttl_s, value)
+        return True
+    except Exception:
+        return False
 async def rate_limit(key: str, limit: int, window_s: int) -> bool:
     r = get_redis()
     if not r:
