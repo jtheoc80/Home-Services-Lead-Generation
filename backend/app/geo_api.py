@@ -288,7 +288,7 @@ class GeoAPI:
                 ) <= ?
                 ORDER BY scraped_at DESC 
                 LIMIT ?
-            """, (center_lat, center_lon, center_lat, radius_miles, limit))
+            """, (min_lat, max_lat, min_lon, max_lon, center_lat, center_lon, center_lat, radius_miles, limit))
             
             columns = [description[0] for description in cursor.description]
             results = [dict(zip(columns, row)) for row in cursor.fetchall()]
