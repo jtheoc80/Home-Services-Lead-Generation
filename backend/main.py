@@ -19,11 +19,14 @@ from dotenv import load_dotenv
 
 # Import existing subscription API
 from app.subscription_api import get_subscription_api
-from app.auth import auth_user, AuthUser
+from app.auth import auth_user, admin_user, AuthUser
 
 from app.middleware import RequestLoggingMiddleware, setup_json_logging
 
 from app.supabase_client import get_supabase_client
+
+# Import export control
+from app.utils.export_control import get_export_controller, ExportType, ExportRequest
 
 
 # Import test Supabase router
@@ -74,6 +77,12 @@ class CancellationRequest(BaseModel):
 
 class ReactivationRequest(BaseModel):
     user_id: str
+
+class ExportDataRequest(BaseModel):
+    export_type: str  # leads, permits, scored_leads, analytics, feedback
+    format: Optional[str] = "csv"  # csv, json, xlsx
+    filters: Optional[Dict[str, Any]] = None
+    admin_override: Optional[bool] = False
 
 @app.get("/")
 async def root():
@@ -235,6 +244,140 @@ async def get_cancellation_records(request: Request, admin_user_id: str = Query(
             )
     except Exception as e:
         logger.error(f"Error getting cancellation records: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/api/export/data")
+async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_user)):
+    """
+    Export data with ALLOW_EXPORTS enforcement and admin override capability.
+    
+    This endpoint enforces ALLOW_EXPORTS=false server-side and only allows 
+    exports when:
+    1. ALLOW_EXPORTS=true in environment, OR
+    2. User has admin role and explicitly requests admin_override=true
+    
+    All export attempts are logged for audit purposes.
+    """
+    try:
+        export_controller = get_export_controller()
+        
+        # Validate export type
+        try:
+            export_type = ExportType(request.export_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid export_type: {request.export_type}"
+            )
+        
+        # Check if this is an admin override request first
+        is_admin_override = False
+        if request.admin_override:
+            # Verify user has admin privileges for override
+            try:
+                admin_user(user)  # This will raise HTTPException if not admin
+                is_admin_override = True
+                logger.info(f"Admin override requested by {user.email} for {export_type.value}")
+            except HTTPException as e:
+                # User is not admin but requested override
+                logger.warning(f"Non-admin user {user.email} attempted admin override for export")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Admin privileges required for export override"
+                )
+        
+        # Check if export is allowed (skip normal check if admin override)
+        if is_admin_override:
+            allowed = True
+            reason = f"Admin override by {user.email}"
+            logger.info(f"Export allowed via admin override: {user.email} exporting {export_type.value}")
+        else:
+            allowed, reason = export_controller.is_export_allowed(
+                export_type, 
+                user.email,
+                request.filters
+            )
+        
+        if not allowed:
+            # Log blocked export attempt for audit
+            logger.warning(f"Export blocked for {user.email}: {reason}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Export not allowed: {reason}"
+            )
+        
+        # Create and process export request
+        export_request = export_controller.create_export_request(
+            export_type=export_type,
+            requester=user.email,
+            parameters={
+                "format": request.format,
+                "filters": request.filters,
+                "admin_override": request.admin_override,
+                "user_id": user.account_id,
+                "allowed_via_override": is_admin_override
+            }
+        )
+        
+        # Process the export (skip is_export_allowed check if admin override)
+        if is_admin_override:
+            # For admin override, manually create a successful result
+            result = export_controller._create_admin_override_result(export_request)
+        else:
+            # Normal processing
+            result = export_controller.process_export_request(export_request)
+        
+        if not result.success:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Export failed: {result.reason}"
+            )
+        
+        return {
+            "message": "Export completed successfully",
+            "export_id": result.export_id,
+            "export_type": export_type.value,
+            "record_count": result.record_count,
+            "allowed_via": "admin_override" if is_admin_override else "normal_permissions",
+            "timestamp": result.timestamp.isoformat() if result.timestamp else None
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 403, 400) as-is
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in export endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/export/status")
+async def get_export_status(user: AuthUser = Depends(auth_user)):
+    """
+    Get export configuration status for the current user.
+    
+    Returns information about export permissions and available types.
+    """
+    try:
+        export_controller = get_export_controller()
+        status_info = export_controller.get_export_status()
+        
+        # Add user-specific information
+        is_admin = False
+        try:
+            admin_user(user)
+            is_admin = True
+        except HTTPException:
+            pass
+        
+        return {
+            **status_info,
+            "user_email": user.email,
+            "user_is_admin": is_admin,
+            "admin_override_available": is_admin,
+            "message": "Admin override available" if is_admin else "Standard export permissions apply"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting export status: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 # Global exception handler
