@@ -15,7 +15,7 @@
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
 
 
-    "scrape:harris": "node scripts/scrape-harris.cjs"
+    "scrape:harris": "node scripts/scrape-harris.cjs",
 
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
 
