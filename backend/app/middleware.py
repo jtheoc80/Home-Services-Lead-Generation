@@ -29,7 +29,13 @@ try:
 except ImportError:
     METRICS_AVAILABLE = False
     track_request_start = lambda x: None
-    track_request_end = lambda w, x, y, z: None
+    def track_request_start(request_id):
+        """No-op fallback for track_request_start when metrics are unavailable."""
+        return None
+
+    def track_request_end(request_id, method, path, status_code):
+        """No-op fallback for track_request_end when metrics are unavailable."""
+        return None
     
     def is_metrics_enabled():
         return False
