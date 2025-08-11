@@ -75,3 +75,6 @@ remediation-summary.md
 # Stack health monitoring output
 stack-health.json
 
+# Stack health monitoring outputs
+stack-health.json
+health-summary.md
