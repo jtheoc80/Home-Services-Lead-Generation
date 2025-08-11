@@ -36,8 +36,8 @@ def apply_billing_schema():
             print("⚠️  Manual application required:")
             print("Please run the following SQL in your database:")
             print("=" * 50)
-            print(billing_schema)
-            print("=" * 50)
+            print("The billing schema SQL section has been found in models.sql after the marker '-- ===== STRIPE BILLING TABLES ====='.")
+            print("Please open the file and copy the relevant section to apply it manually. The schema content is not printed here for security reasons.")
             
         else:
             print("❌ No billing schema found in models.sql")
