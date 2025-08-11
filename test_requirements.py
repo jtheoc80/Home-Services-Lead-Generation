@@ -31,7 +31,7 @@ def test_requirement_1_table_schema():
     logger.info("✅ Requirement 1: ETL state table schema")
     
     # Check migration file exists
-    migration_file = Path(__file__).parent / "backend/app/migrations/005_etl_state_table.sql"
+    migration_file = Path(__file__).parent.parent / "backend/app/migrations/005_etl_state_table.sql"
     assert migration_file.exists(), f"Migration file should exist at {migration_file}"
     
     # Check schema content
