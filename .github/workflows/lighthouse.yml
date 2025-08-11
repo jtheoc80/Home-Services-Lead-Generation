@@ -320,7 +320,9 @@ jobs:
           echo "|--------|-------|--------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| LCP | ${LCP_SCORE}ms | ≤ 2500ms | $(if [ $(echo "$LCP_SCORE <= 2500" | bc -l) -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
           echo "| TBT | ${TBT_SCORE}ms | ≤ 300ms | $(if [ $(echo "$TBT_SCORE <= 300" | bc -l) -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
-          echo "| CLS | $CLS_SCORE | ≤ 0.1 | $(if [ $(echo "$CLS_SCORE <= 0.1" | bc -l) -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| LCP | ${LCP_SCORE}ms | ≤ 2500ms | $(if [ $(awk "BEGIN {print (${LCP_SCORE} <= 2500)}") -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| TBT | ${TBT_SCORE}ms | ≤ 300ms | $(if [ $(awk "BEGIN {print (${TBT_SCORE} <= 300)}") -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "| CLS | $CLS_SCORE | ≤ 0.1 | $(if [ $(awk "BEGIN {print (${CLS_SCORE} <= 0.1)}") -eq 1 ]; then echo "✅"; else echo "❌"; fi) |" >> $GITHUB_STEP_SUMMARY
 
       - name: Fail job if budgets exceeded
         if: steps.results.outputs.budget_passed == 'false'
