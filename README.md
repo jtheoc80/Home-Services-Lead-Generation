@@ -389,7 +389,7 @@ print('Service role key configured:', bool(os.getenv('SUPABASE_SERVICE_ROLE_KEY'
 "
 ```
 
-**Test permit scraper:**
+python scripts/test-config.py
 ```bash
 cd permit_leads
 python -c "
