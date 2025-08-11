@@ -41,7 +41,20 @@ function runPreflightChecks() {
     const localKeys = envLocalContent
       .split('\n')
       .filter(line => line.trim() && !line.trim().startsWith('#'))
-      .map(line => line.split('=')[0])
+      .map(line => {
+        const idx = line.indexOf('=');
+        return idx === -1 ? null : line.substring(0, idx).trim();
+      })
+      .filter(key => key);
+    
+    // Extract keys from .env.local
+    const localKeys = envLocalContent
+      .split('\n')
+      .filter(line => line.trim() && !line.trim().startsWith('#'))
+      .map(line => {
+        const idx = line.indexOf('=');
+        return idx === -1 ? null : line.substring(0, idx).trim();
+      })
       .filter(key => key);
     
     // Check for missing keys
