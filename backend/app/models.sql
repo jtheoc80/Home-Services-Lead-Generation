@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS leads (
   score_inspection NUMERIC,
   scoring_version TEXT,
   
+  -- Cancellation feedback fields
+  source_cancellation_rate NUMERIC DEFAULT 0,
+  source_avg_cancellation_score NUMERIC DEFAULT 0,
+  personalized_cancellation_adjustment NUMERIC DEFAULT 0,
+  
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   
@@ -120,6 +125,43 @@ CREATE TABLE IF NOT EXISTS user_subscriptions (
   amount_cents INTEGER,
   payment_method TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
+
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TYPE cancellation_reason AS ENUM (
+  'poor_lead_quality',
+  'wrong_lead_type', 
+  'leads_too_expensive',
+  'leads_too_far',
+  'leads_not_qualified',
+  'too_many_competitors',
+  'seasonal_business',
+  'financial_issues',
+  'business_closure',
+  'other'
+);
+
+CREATE TABLE IF NOT EXISTS cancellations (
+  id BIGSERIAL PRIMARY KEY,
+  account_id UUID NOT NULL,
+  canceled_at TIMESTAMPTZ DEFAULT now(),
+  primary_reason cancellation_reason NOT NULL,
+  secondary_reasons cancellation_reason[],
+  feedback_text TEXT,
+  
+  -- Lead source analysis at time of cancellation
+  total_leads_purchased INTEGER DEFAULT 0,
+  leads_contacted INTEGER DEFAULT 0,
+  leads_quoted INTEGER DEFAULT 0,
+  leads_won INTEGER DEFAULT 0,
+  avg_lead_score NUMERIC,
+  
+  -- Geographic and trade preferences
+  preferred_service_areas TEXT[],
+  preferred_trade_types TEXT[],
+  
+
   updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE (user_id)
 );
@@ -137,5 +179,6 @@ CREATE TABLE IF NOT EXISTS cancellation_records (
   processed_by UUID,
   refund_issued BOOLEAN DEFAULT false,
   refund_amount_cents INTEGER,
+
   created_at TIMESTAMPTZ DEFAULT now()
 );

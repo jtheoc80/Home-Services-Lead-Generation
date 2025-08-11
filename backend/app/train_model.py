@@ -53,13 +53,26 @@ class LeadMLTrainer:
         query = """
         SELECT 
             lf.lead_id,
+            lf.account_id,
             lf.rating,
             lf.deal_band,
             lf.reason_codes,
             lf.created_at as feedback_date,
-            lo.win_label
+            lo.win_label,
+            l.jurisdiction,
+            l.trade_tags,
+            l.value,
+            l.source_cancellation_rate,
+            l.source_avg_cancellation_score,
+            -- Cancellation data for the contractor
+            c.primary_reason as cancellation_reason,
+            c.avg_lead_score as contractor_avg_score,
+            c.total_leads_purchased as contractor_total_leads,
+            c.leads_won as contractor_leads_won
         FROM lead_feedback lf
         LEFT JOIN lead_outcomes lo ON lf.lead_id = lo.lead_id
+        LEFT JOIN leads l ON lf.lead_id = l.id
+        LEFT JOIN cancellations c ON lf.account_id = c.account_id
         WHERE lf.created_at >= %s
         ORDER BY lf.created_at DESC
         """
@@ -111,13 +124,35 @@ class LeadMLTrainer:
         df['is_weekend_feedback'] = pd.to_datetime(df['feedback_date']).dt.weekday >= 5
         df['feedback_hour'] = pd.to_datetime(df['feedback_date']).dt.hour
         
+        # Cancellation-based features
+        df['source_cancellation_rate'] = df['source_cancellation_rate'].fillna(0)
+        df['source_avg_cancellation_score'] = df['source_avg_cancellation_score'].fillna(0)
+        
+        # Contractor cancellation features
+        df['contractor_canceled'] = df['cancellation_reason'].notna()
+        df['canceled_for_quality'] = df['cancellation_reason'] == 'poor_lead_quality'
+        df['canceled_for_wrong_type'] = df['cancellation_reason'] == 'wrong_lead_type'
+        
+        # Contractor performance features
+        df['contractor_win_rate'] = (
+            df['contractor_leads_won'].fillna(0) / 
+            df['contractor_total_leads'].fillna(1).replace(0, 1)
+        ).fillna(0)
+        
+        # Lead value features
+        df['lead_value'] = df['value'].fillna(0)
+        df['lead_value_log'] = np.log1p(df['lead_value'])
+        
         # Target variable
         df['success'] = df['win_label'].fillna(df['rating'].isin(['quoted', 'won']))
         
         feature_cols = [
             'rating_numeric', 'estimated_deal_value', 'feedback_age_days',
             'has_contact_issues', 'has_qualification_issues', 
-            'is_weekend_feedback', 'feedback_hour'
+            'is_weekend_feedback', 'feedback_hour',
+            'source_cancellation_rate', 'source_avg_cancellation_score',
+            'contractor_canceled', 'canceled_for_quality', 'canceled_for_wrong_type',
+            'contractor_win_rate', 'lead_value_log'
         ]
         
         self.feature_columns = feature_cols
