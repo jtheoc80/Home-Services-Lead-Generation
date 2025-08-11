@@ -100,7 +100,7 @@ jobs:
           fi
           
           echo "Running TypeScript type check..."
-          npm run typecheck 2>&1 || echo "type_issues=true" >> $GITHUB_OUTPUT
+          if ! npm run typecheck 2>&1; then echo "type_issues=true" >> $GITHUB_OUTPUT; fi
 
       - name: Run tests
         id: tests
