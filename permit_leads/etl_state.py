@@ -14,7 +14,11 @@ from pathlib import Path
 # Import Supabase client from backend if available
 try:
     import sys
-    backend_path = Path(__file__).parent.parent / "backend"
+    backend_path_env = os.environ.get("BACKEND_PATH")
+    if backend_path_env:
+        backend_path = Path(backend_path_env)
+    else:
+        backend_path = Path(__file__).parent.parent / "backend"
     sys.path.append(str(backend_path))
     from app.supabase_client import get_supabase_client
     SUPABASE_AVAILABLE = True
