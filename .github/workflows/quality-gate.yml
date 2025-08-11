@@ -124,7 +124,21 @@ jobs:
           verbose: true
 
       - name: Auto-fix formatting issues (bot branch)
-        if: steps.check-changes.outputs.formatting_only == 'true' && (steps.python-format.outputs.python_formatting_needed == 'true' || steps.python-format.outputs.python_lint_needed == 'true' || steps.node-checks.outputs.lint_issues == 'true')
+      - name: Set autofix output
+        id: set-autofix
+        run: |
+          formatting_only="${{ steps.check-changes.outputs.formatting_only }}"
+          python_formatting_needed="${{ steps.python-format.outputs.python_formatting_needed }}"
+          python_lint_needed="${{ steps.python-format.outputs.python_lint_needed }}"
+          lint_issues="${{ steps.node-checks.outputs.lint_issues }}"
+          if [ "$formatting_only" == "true" ] && { [ "$python_formatting_needed" == "true" ] || [ "$python_lint_needed" == "true" ] || [ "$lint_issues" == "true" ]; }; then
+            echo "should_autofix=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_autofix=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Auto-fix formatting issues (bot branch)
+        if: steps.set-autofix.outputs.should_autofix == 'true'
         run: |
           # Create a new branch for auto-fixes
           fix_branch="autofix/formatting-$(date +%s)"
