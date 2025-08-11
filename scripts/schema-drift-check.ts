@@ -95,104 +95,217 @@ class SchemaDriftChecker {
     const tables = new Map<string, TableInfo>();
 
     try {
-      // Get all user tables (excluding system tables)
-      const { data: tableList, error: tableError } = await this.supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public')
-        .eq('table_type', 'BASE TABLE')
-        .order('table_name');
-
-      if (tableError) {
-        throw new Error(`Failed to fetch table list: ${tableError.message}`);
+      // First, try to use the custom schema functions if they exist
+      const schemaData = await this.tryCustomSchemaFunctions();
+      if (schemaData) {
+        return schemaData;
       }
 
-      if (!tableList || tableList.length === 0) {
-        console.warn('⚠️ No tables found in public schema');
-        return tables;
+      // Fallback: Try to access system views directly  
+      console.log('🔄 Trying direct system view access...');
+      const directSchemaData = await this.tryDirectSchemaAccess();
+      if (directSchemaData && directSchemaData.size > 0) {
+        return directSchemaData;
       }
 
-      for (const table of tableList) {
-        const tableName = table.table_name;
-        
-        try {
-          // Get columns using direct SQL query since information_schema might not be accessible via REST API
-          const { data: columns, error: columnsError } = await this.supabase
-            .from('information_schema.columns')
-            .select(`
-              column_name,
-              data_type,
-              is_nullable,
-              column_default,
-              character_maximum_length,
-              numeric_precision,
-              numeric_scale
-            `)
-            .eq('table_schema', 'public')
-            .eq('table_name', tableName)
-            .order('ordinal_position');
-
-          if (columnsError) {
-            console.warn(`Warning: Could not fetch columns for table ${tableName}: ${columnsError.message}`);
-            continue;
-          }
-
-          // For now, we'll create minimal table info since full schema introspection 
-          // may require custom SQL functions or direct database access
-          tables.set(tableName, {
-            table_name: tableName,
-            columns: columns || [],
-            indexes: [], // TODO: Implement index extraction
-            constraints: [] // TODO: Implement constraint extraction
-          });
-
-        } catch (error) {
-          console.warn(`Warning: Could not process table ${tableName}: ${error}`);
-          continue;
-        }
-      }
-
-      console.log(`✅ Extracted schema for ${tables.size} tables`);
-      return tables;
+      // Final fallback: Table discovery method
+      console.log('🔄 Using table discovery method...');
+      return await this.discoverTablesFromModels();
 
     } catch (error) {
-      // If information_schema is not accessible, fall back to a simpler approach
-      console.warn('⚠️ Could not access information_schema directly. Using table discovery...');
+      console.error('❌ Failed to extract live schema:', error);
+      throw new Error(`Could not extract schema from Supabase: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Try to use custom PostgreSQL functions for schema introspection
+   */
+  private async tryCustomSchemaFunctions(): Promise<Map<string, TableInfo> | null> {
+    try {
+      console.log('🔍 Trying custom schema functions...');
       
-      // Try to discover tables by attempting to query known tables from models.sql
-      const localSchema = await this.extractLocalSchema();
-      const knownTables = Array.from(localSchema.keys());
+      const { data: schemaData, error } = await this.supabase
+        .rpc('get_table_schema_info');
+
+      if (error) {
+        console.log('⚠️ Custom schema functions not available:', error.message);
+        return null;
+      }
+
+      if (!schemaData || schemaData.length === 0) {
+        console.log('⚠️ Custom schema functions returned no data');
+        return null;
+      }
+
+      console.log('✅ Using custom schema functions');
+      return this.parseSchemaFunctionData(schemaData);
+
+    } catch (error) {
+      console.log('⚠️ Custom schema functions failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Try to access information_schema directly
+   */
+  private async tryDirectSchemaAccess(): Promise<Map<string, TableInfo> | null> {
+    try {
+      // This is a simplified approach that might work with some Supabase configurations
+      const tables = new Map<string, TableInfo>();
+      
+      // Try to get table list using a simple approach
+      const knownTables = ['leads', 'regions', 'jurisdictions', 'plans', 'notifications'];
       
       for (const tableName of knownTables) {
         try {
-          // Test if table exists by attempting to query it with limit 0
-          const { error } = await this.supabase
+          // Test table existence with a simple query
+          const { data, error } = await this.supabase
             .from(tableName)
             .select('*')
-            .limit(0);
+            .limit(1);
 
           if (!error) {
-            // Table exists, create minimal info
+            // Table exists - extract column info from the data structure
+            const columns: TableColumn[] = [];
+            if (data && data.length > 0) {
+              const sampleRow = data[0];
+              Object.keys(sampleRow).forEach((colName, index) => {
+                columns.push({
+                  column_name: colName,
+                  data_type: this.inferDataType(sampleRow[colName]),
+                  is_nullable: 'YES', // Default assumption
+                  column_default: null,
+                  character_maximum_length: null,
+                  numeric_precision: null,
+                  numeric_scale: null
+                });
+              });
+            }
+
             tables.set(tableName, {
               table_name: tableName,
-              columns: [], // Will be detected as differences
+              columns,
               indexes: [],
               constraints: []
             });
-            console.log(`✅ Confirmed table exists: ${tableName}`);
+            
+            console.log(`✅ Discovered table: ${tableName} (${columns.length} columns)`);
           }
         } catch (tableError) {
-          console.warn(`Table ${tableName} may not exist in live schema`);
+          console.log(`⚠️ Table ${tableName} not accessible:`, tableError);
         }
       }
 
-      if (tables.size === 0) {
-        throw new Error('Could not extract any schema information from Supabase. Please check service role permissions.');
-      }
+      return tables.size > 0 ? tables : null;
 
-      console.log(`✅ Discovered ${tables.size} tables using fallback method`);
-      return tables;
+    } catch (error) {
+      console.log('⚠️ Direct schema access failed:', error);
+      return null;
     }
+  }
+
+  /**
+   * Discover tables by attempting to query known tables from models.sql
+   */
+  private async discoverTablesFromModels(): Promise<Map<string, TableInfo>> {
+    console.log('🔍 Discovering tables from models.sql definitions...');
+    
+    const tables = new Map<string, TableInfo>();
+    const localSchema = await this.extractLocalSchema();
+    const knownTables = Array.from(localSchema.keys());
+    
+    for (const tableName of knownTables) {
+      try {
+        // Test if table exists by attempting to query it
+        const { error } = await this.supabase
+          .from(tableName)
+          .select('*')
+          .limit(0);
+
+        if (!error) {
+          // Table exists, but we can't get detailed schema info
+          // So we'll mark it as existing with minimal info
+          tables.set(tableName, {
+            table_name: tableName,
+            columns: [], // Will be detected as differences in comparison
+            indexes: [],
+            constraints: []
+          });
+          console.log(`✅ Confirmed table exists: ${tableName}`);
+        } else {
+          console.log(`⚠️ Table ${tableName} may not exist or is not accessible`);
+        }
+      } catch (tableError) {
+        console.log(`⚠️ Could not check table ${tableName}:`, tableError);
+      }
+    }
+
+    if (tables.size === 0) {
+      throw new Error('Could not discover any tables. Please check Supabase connection and permissions.');
+    }
+
+    console.log(`✅ Discovered ${tables.size} tables using fallback method`);
+    return tables;
+  }
+
+  /**
+   * Parse data from custom schema functions
+   */
+  private parseSchemaFunctionData(schemaData: any[]): Map<string, TableInfo> {
+    const tables = new Map<string, TableInfo>();
+    
+    // Group data by table name
+    const tableGroups = new Map<string, any[]>();
+    
+    for (const row of schemaData) {
+      const tableName = row.table_name;
+      if (!tableGroups.has(tableName)) {
+        tableGroups.set(tableName, []);
+      }
+      tableGroups.get(tableName)!.push(row);
+    }
+
+    // Convert to TableInfo objects
+    const tableNames = Array.from(tableGroups.keys());
+    for (const tableName of tableNames) {
+      const rows = tableGroups.get(tableName)!;
+      const columns: TableColumn[] = rows.map(row => ({
+        column_name: row.column_name,
+        data_type: row.data_type,
+        is_nullable: row.is_nullable,
+        column_default: row.column_default,
+        character_maximum_length: null,
+        numeric_precision: null,
+        numeric_scale: null
+      }));
+
+      tables.set(tableName, {
+        table_name: tableName,
+        columns,
+        indexes: [], // TODO: Implement with get_index_info function
+        constraints: []
+      });
+    }
+
+    return tables;
+  }
+
+  /**
+   * Infer data type from a sample value
+   */
+  private inferDataType(value: any): string {
+    if (value === null || value === undefined) return 'unknown';
+    if (typeof value === 'string') return 'text';
+    if (typeof value === 'number') {
+      return Number.isInteger(value) ? 'integer' : 'numeric';
+    }
+    if (typeof value === 'boolean') return 'boolean';
+    if (value instanceof Date) return 'timestamp';
+    if (Array.isArray(value)) return 'array';
+    if (typeof value === 'object') return 'jsonb';
+    return 'unknown';
   }
 
   /**

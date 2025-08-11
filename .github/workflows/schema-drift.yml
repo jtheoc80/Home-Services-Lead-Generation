@@ -65,10 +65,11 @@ jobs:
           # Set up output variables
           echo "drift_detected=false" >> $GITHUB_OUTPUT
           echo "pr_needed=false" >> $GITHUB_OUTPUT
+          echo "error_occurred=false" >> $GITHUB_OUTPUT
           
           # Run the drift detection script
           set +e  # Don't exit on error, we want to handle exit codes
-          tsx scripts/schema-drift-check.ts
+          tsx scripts/schema-drift-check.ts 2>&1 | tee schema-drift-output.log
           exit_code=$?
           set -e
           
@@ -81,8 +82,23 @@ jobs:
             echo "⚠️ Schema drift detected!"
             echo "drift_detected=true" >> $GITHUB_OUTPUT
             echo "pr_needed=true" >> $GITHUB_OUTPUT
+            
+            # Verify migration files were created
+            if [ ! -f "schema-drift-migration.sql" ]; then
+              echo "❌ Migration file was not created despite drift detection"
+              echo "error_occurred=true" >> $GITHUB_OUTPUT
+              exit 1
+            fi
           else
-            echo "❌ Schema drift check failed"
+            echo "❌ Schema drift check failed with exit code $exit_code"
+            echo "error_occurred=true" >> $GITHUB_OUTPUT
+            
+            # Include error output in summary
+            echo "## Error Output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -20 schema-drift-output.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            
             exit $exit_code
           fi
 
