@@ -218,7 +218,7 @@ export class HoustonSoldPermitsScraper {
     // await browser.close();
     // return permits;
 
-    throw new Error('HTML scraping approach not yet implemented');
+    throw new Error('HTML scraping approach not yet implemented - implement headless browser automation for Houston Permitting Center');
   }
 
   /**
