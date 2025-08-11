@@ -23,7 +23,8 @@ SELECT * FROM public.contractors WHERE id = auth.uid();
 SELECT * FROM public.contractors WHERE id != auth.uid();
 */
 
--- Test 4: Insert a lead as anonymous user (should work if policy is enabled)
+-- Test 4: Insert a lead as authenticated user (anonymous access no longer supported)
+-- This test should be run as an authenticated user since anonymous policies have been removed
 /*
 INSERT INTO public.leads (jurisdiction, permit_id, address, description, work_class, category, status, issue_date, applicant, owner, value, is_residential)
 VALUES (
