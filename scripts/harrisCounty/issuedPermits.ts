@@ -215,7 +215,7 @@ async function upsertPermits(supabase: any, permits: PermitRecord[]): Promise<vo
   console.log(`Successfully upserted ${upsertedCount} permits`);
 }
 
-async function ensureTableExists(supabase: any): Promise<void> {
+async function ensureTableExists(supabase: SupabaseClient<any>): Promise<void> {
   // Check if the table exists by trying to query it
   try {
     const { error } = await supabase
