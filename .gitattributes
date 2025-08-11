@@ -1,0 +1,34 @@
+# Ensure consistent line endings across platforms
+* text=auto
+
+# Explicitly set text files to LF
+*.py text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
+
+# Binary files - do not convert
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.sqlite binary
+
+# Configuration files that may contain secrets
+*.env filter=git-secrets diff=git-secrets
+.env.* filter=git-secrets diff=git-secrets
+*secrets* filter=git-secrets diff=git-secrets
+*config*.json filter=git-secrets diff=git-secrets
+vercel.json filter=git-secrets diff=git-secrets

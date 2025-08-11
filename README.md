@@ -87,7 +87,21 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
    cd frontend && npm install
    ```
 
-4. **Setup database:**
+4. **Setup Git Secrets (Security)**
+   ```bash
+   # Install git-secrets to prevent committing sensitive data
+   ./scripts/setup-git-secrets.sh
+   ```
+   
+   This sets up pre-commit hooks to block accidental commits of:
+   - Supabase service role keys and JWT tokens
+   - Vercel API tokens and deploy hooks  
+   - Railway API keys and tokens
+   - AWS credentials
+   
+   📖 [Full Git Secrets Documentation](docs/GIT_SECRETS_SETUP.md)
+
+5. **Setup database:**
    ```bash
    # Run database migrations with error handling
    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -b -e -f backend/app/models.sql
