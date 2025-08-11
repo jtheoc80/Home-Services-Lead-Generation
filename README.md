@@ -455,8 +455,20 @@ The system runs a **nightly pipeline** that:
 3. Ingests leads into PostgreSQL database
 4. Generates notifications for matching user preferences
 5. Stores audit artifacts for compliance
+6. **Captures key page screenshots and detects visual regressions**
 
 **Pipeline Schedule**: Daily at 5:00 AM UTC (Midnight Central Time)
+
+### Visual Regression Testing
+
+The platform includes automated visual regression testing to ensure UI stability:
+
+- 📸 **Nightly Screenshots**: Captures key pages (homepage, dashboard, login, admin) 
+- 🔍 **Pixel Diff Analysis**: Compares against baseline images with configurable threshold
+- 🚨 **Automated Alerts**: Opens GitHub Issues when visual drift exceeds threshold
+- 📁 **Before/After Images**: Stores artifacts for easy review and debugging
+
+See [`docs/VISUAL_REGRESSION.md`](docs/VISUAL_REGRESSION.md) for complete setup and usage instructions.
 
 ### Manual Pipeline Execution
 
@@ -930,6 +942,12 @@ The automated permit scraping pipeline runs daily via GitHub Actions:
 - **Output**: CSV, SQLite, and JSONL files with permit data
 - **Storage**: Results are committed to the repository and available as artifacts
 
+#### Workflow: `visual-regression.yml`
+- **Schedule**: Daily at 9 AM UTC (3 AM CST/4 AM CDT)  
+- **Purpose**: Capture screenshots and detect visual regressions on production
+- **Output**: Current screenshots, difference images, and test results
+- **Alerts**: Opens GitHub Issues when visual drift exceeds threshold
+
 **Pipeline Steps:**
 1. Set up Python 3.11 environment
 2. Install dependencies from `permit_leads/requirements.txt`
@@ -938,10 +956,12 @@ The automated permit scraping pipeline runs daily via GitHub Actions:
 5. Check for new data and commit to repository
 6. Upload data artifacts for download
 7. Generate summary report
+8. **[NEW] Capture page screenshots and compare to baselines**
 
 **Data Location:**
 - Raw data: `data/permits/raw/`
 - Processed data: `data/permits/aggregate/`
+- **Screenshots**: `screenshots/` (artifacts only, not committed)
 - Artifacts available for 30 days after each run
 
 ### Manual Run Steps

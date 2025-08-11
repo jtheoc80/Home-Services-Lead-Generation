@@ -20,7 +20,17 @@
 
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
+
+
+    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+
+    "visual:test": "node scripts/visual-regression.js",
+    "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
+    "visual:install": "npx playwright install chromium",
+    "visual:dry-run": "node scripts/visual-regression-dry-run.js"
+
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
+
   },
   "workspaces": [
     "frontend"
@@ -29,6 +39,7 @@
     "@supabase/supabase-js": "^2.0.0",
     "axios": "^1.11.0",
     "next": "^14.0.0",
+    "playwright": "^1.40.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "undici": "^7.13.0"
