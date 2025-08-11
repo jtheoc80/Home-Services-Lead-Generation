@@ -1,3 +1,121 @@
+
+# Multi-region jurisdiction registry
+# Defines regions, jurisdictions, and their data source configurations
+
+regions:
+  # Texas State
+  - slug: "tx"
+    name: "Texas"
+    level: "state"
+    parent: null
+    timezone: "America/Chicago"
+  
+  # Houston Metro
+  - slug: "tx-houston"
+    name: "Houston Metro"
+    level: "metro"
+    parent: "tx"
+    timezone: "America/Chicago"
+  
+  # National (future)
+  - slug: "usa"
+    name: "United States"
+    level: "national"
+    parent: null
+    timezone: "America/New_York"
+
+jurisdictions:
+  # Harris County (Houston area)
+  - slug: "tx-harris"
+    name: "Harris County"
+    region_slug: "tx-houston"
+    state: "TX"
+    fips: "48201"
+    timezone: "America/Chicago"
+    provider: "arcgis"
+    active: true
+    source_config:
+      feature_server: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+      date_field: "ISSUEDDATE"
+      field_map:
+        permit_id: "PERMITNUMBER"
+        issue_date: "ISSUEDDATE"
+        address: "FULLADDRESS"
+        description: "PROJECTNAME"
+        status: "STATUS"
+        work_class: "APPTYPE"
+        category: "APPTYPE"
+        value: "PERMITVALUATION"
+        applicant: "APPLICANTNAME"
+        owner: "OWNERNAME"
+  
+  # City of Houston
+  - slug: "tx-houston-city"
+    name: "City of Houston"
+    region_slug: "tx-houston"
+    state: "TX"
+    fips: null
+    timezone: "America/Chicago"
+    provider: "accela"
+    active: true
+    source_config:
+      base_url: "https://www.cohtora.houstontx.gov/approot/soldpermits/online_permit.htm"
+      table_selector: "table"
+      header_selector: "thead th"
+      row_selector: "tbody tr"
+      cell_selector: "td"
+      field_map:
+        permit_id: 0  # column index
+        issue_date: 1
+        address: 2
+        description: 3
+        work_class: 4
+        value: 5
+  
+  # City of Galveston  
+  - slug: "tx-galveston-city"
+    name: "City of Galveston"
+    region_slug: "tx-houston"
+    state: "TX"
+    fips: null
+    timezone: "America/Chicago"
+    provider: "arcgis"
+    active: true
+    source_config:
+      feature_server: "https://gis.galvestontx.gov/server/rest/services/Accela/Building_Permits/MapServer/0"
+      date_field: "GAL_REC_DATE"
+      field_map:
+        permit_id: "ID"
+        issue_date: "GAL_REC_DATE"
+        address: "SITUS"
+        description: "GAL_WORK_DESC"
+        status: "GAL_STATUS"
+        work_class: "GAL_PER_SUB_TYPE"
+        category: "GAL_PER_CATEGORY"
+
+# Initial starter plans
+plans:
+  - slug: "metro-starter"
+    name: "Metro Starter"
+    monthly_price_cents: 9900  # $99/month
+    credits: 100
+    scope: "metro"
+    regions: ["tx-houston"]
+  
+  - slug: "state-pro"
+    name: "Texas Pro"
+    monthly_price_cents: 29900  # $299/month
+    credits: 500
+    scope: "state"
+    regions: ["tx"]
+  
+  - slug: "national-enterprise"
+    name: "National Enterprise"
+    monthly_price_cents: 99900  # $999/month
+    credits: 2000
+    scope: "national"
+    regions: ["usa"]
+
 regions:
   - slug: usa
     name: United States
@@ -144,3 +262,4 @@ jurisdictions:
   #       value: "value"
   #       contractor: "contractor_name"
   #       address: "address"
+

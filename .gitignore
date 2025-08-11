@@ -21,6 +21,11 @@ data/permits/
 data/leads/
 !data/.gitkeep
 
+# ML models and calibration data
+models/
+*.pkl
+*.joblib
+
 # Archive files (should not be committed)
 *.zip
 *.tar.gz

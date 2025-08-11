@@ -10,7 +10,7 @@ import json
 
 class PermitRecord(BaseModel):
     """
-    Normalized building permit record.
+    Normalized building permit record with multi-region support.
     
     Core fields that should be present in most permit systems.
     Additional fields can be stored in the `extra_data` dict.
@@ -20,10 +20,21 @@ class PermitRecord(BaseModel):
     jurisdiction: str = Field(..., description="Source jurisdiction/city name")
     permit_id: str = Field(..., description="Permit number/ID from source system")
     
+    # Multi-region support
+    jurisdiction_slug: Optional[str] = Field(None, description="Jurisdiction slug from registry")
+    jurisdiction_id: Optional[str] = Field(None, description="Jurisdiction UUID reference")
+    region_slug: Optional[str] = Field(None, description="Region slug from registry")
+    region_id: Optional[str] = Field(None, description="Region UUID reference")
+    state: Optional[str] = Field(None, description="State code (e.g., 'TX')")
+    jurisdiction_name: Optional[str] = Field(None, description="Full jurisdiction name")
+    region_name: Optional[str] = Field(None, description="Full region name")
+    
     # Address and location
     address: Optional[str] = Field(None, description="Full street address")
     latitude: Optional[float] = Field(None, description="Latitude coordinate")
     longitude: Optional[float] = Field(None, description="Longitude coordinate")
+    lat: Optional[float] = Field(None, description="Latitude (PostGIS compatible)")
+    lon: Optional[float] = Field(None, description="Longitude (PostGIS compatible)")
     
     # Parcel/assessor data
     apn: Optional[str] = Field(None, description="Assessor's Parcel Number")

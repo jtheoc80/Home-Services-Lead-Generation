@@ -73,16 +73,22 @@ class LeadIngestor:
         string_fields = [
             'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
             'category', 'status', 'applicant', 'owner', 'apn', 'land_use',
-            'owner_kind', 'budget_band', 'scoring_version'
+            'owner_kind', 'budget_band', 'scoring_version', 'state'
         ]
         
         for field in string_fields:
             value = row.get(field, '').strip()
             parsed[field] = value if value else None
             
-        # Numeric fields
+        # UUID fields for region/jurisdiction references
+        uuid_fields = ['jurisdiction_id', 'region_id']
+        for field in uuid_fields:
+            value = row.get(field, '').strip()
+            parsed[field] = value if value and value != 'None' else None
+            
+        # Numeric fields (including new lat/lon fields)
         numeric_fields = [
-            'value', 'latitude', 'longitude', 'heated_sqft', 'lot_size',
+            'value', 'latitude', 'longitude', 'lat', 'lon', 'heated_sqft', 'lot_size',
             'lead_score', 'score_recency', 'score_trade_match', 'score_value',
             'score_parcel_age', 'score_inspection'
         ]
@@ -426,6 +432,7 @@ class LeadIngestor:
                 INSERT INTO leads (
                     jurisdiction, permit_id, address, description, work_class, category,
                     status, issue_date, applicant, owner, value, is_residential, scraped_at,
+                    jurisdiction_id, region_id, state, lat, lon,
                     latitude, longitude, apn, year_built, heated_sqft, lot_size, land_use,
                     owner_kind, trade_tags, budget_band, start_by_estimate,
                     lead_score, score_recency, score_trade_match, score_value,
@@ -433,6 +440,7 @@ class LeadIngestor:
                 ) VALUES (
                     %(jurisdiction)s, %(permit_id)s, %(address)s, %(description)s, %(work_class)s, %(category)s,
                     %(status)s, %(issue_date)s, %(applicant)s, %(owner)s, %(value)s, %(is_residential)s, %(scraped_at)s,
+                    %(jurisdiction_id)s, %(region_id)s, %(state)s, %(lat)s, %(lon)s,
                     %(latitude)s, %(longitude)s, %(apn)s, %(year_built)s, %(heated_sqft)s, %(lot_size)s, %(land_use)s,
                     %(owner_kind)s, %(trade_tags)s, %(budget_band)s, %(start_by_estimate)s,
                     %(lead_score)s, %(score_recency)s, %(score_trade_match)s, %(score_value)s,
@@ -451,6 +459,11 @@ class LeadIngestor:
                     value = EXCLUDED.value,
                     is_residential = EXCLUDED.is_residential,
                     scraped_at = EXCLUDED.scraped_at,
+                    jurisdiction_id = EXCLUDED.jurisdiction_id,
+                    region_id = EXCLUDED.region_id,
+                    state = EXCLUDED.state,
+                    lat = EXCLUDED.lat,
+                    lon = EXCLUDED.lon,
                     latitude = EXCLUDED.latitude,
                     longitude = EXCLUDED.longitude,
                     apn = EXCLUDED.apn,
