@@ -202,6 +202,56 @@ After setup, verify these work:
 3. Configure subscription plan benefits (lead limits, features)
 4. Test the complete payment flow end-to-end
 
+### 🔧 Post-Merge Deployment Checklist
+
+After merging this PR, follow these steps to configure Stripe in your environments:
+
+**GitHub Repository Secrets:**
+```bash
+# Add these secrets in GitHub repo settings for CI workflows
+gh secret set STRIPE_SECRET_KEY --body "sk_live_xxx"  # Use live key for production
+gh secret set STRIPE_WEBHOOK_SECRET --body "whsec_xxx"
+gh secret set STRIPE_PUBLISHABLE_KEY --body "pk_live_xxx"
+```
+
+**Vercel Environment Variables (Frontend):**
+```bash
+# Set frontend publishable key only (safe for client exposure)
+vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY pk_live_xxx production
+vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY pk_test_xxx development
+```
+
+**Railway/Backend Environment Variables:**
+```bash
+# Set server-side Stripe configuration
+railway variables set STRIPE_SECRET_KEY=sk_live_xxx
+railway variables set STRIPE_WEBHOOK_SECRET=whsec_xxx
+railway variables set STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+railway variables set STRIPE_PRICE_STARTER_MONTHLY=price_xxx
+railway variables set STRIPE_PRICE_PRO_MONTHLY=price_xxx  
+railway variables set STRIPE_PRICE_LEAD_CREDIT_PACK=price_xxx
+railway variables set BILLING_SUCCESS_URL=https://your-domain.com/billing/success
+railway variables set BILLING_CANCEL_URL=https://your-domain.com/billing/cancel
+```
+
+**Database Setup:**
+```bash
+# Apply billing schema to production database
+make db-billing  # or run the SQL from backend/app/models.sql manually
+```
+
+**Stripe Configuration:**
+```bash
+# Seed products and prices in live Stripe account
+make billing-seed  # copy the price IDs to your environment variables
+```
+
+**Verification:**
+- ✅ Health endpoint shows Stripe configured: `/healthz`
+- ✅ Billing page loads without errors: `/billing`
+- ✅ Test webhook endpoint receives events
+- ✅ Test checkout flow end-to-end
+
 ---
 
 ## 🔍 5-Minute Quickstart (Monitoring)

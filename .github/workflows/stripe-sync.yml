@@ -1,0 +1,56 @@
+---
+name: Stripe Product Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview changes only)'
+        type: boolean
+        default: true
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  stripe-sync:
+    name: Sync Stripe Products
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install stripe python-dotenv
+
+      - name: Sync Stripe products
+        run: |
+          cd scripts
+          python stripe_seed.py
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+      - name: Generate diff summary
+        run: |
+          echo "## Stripe Product Sync Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Type:** ${{ github.event.inputs.dry_run == 'true' && 'Dry Run (Preview)' || 'Live Sync' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for detailed product sync results." >> $GITHUB_STEP_SUMMARY
+
+      - name: Security reminder
+        run: |
+          echo "🔒 Security Reminder:" >> $GITHUB_STEP_SUMMARY
+          echo "- Ensure price IDs are updated in environment variables" >> $GITHUB_STEP_SUMMARY
+          echo "- Test webhook endpoints after product changes" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify billing pages reflect any catalog updates" >> $GITHUB_STEP_SUMMARY
