@@ -63,7 +63,7 @@ class StackHealthChecker {
         'Houston Metro',
         'Houston metropolitan area',
         'Harris County',
-        'Houston-First Scope'
+        'Harris County'
       ];
       
       const hasHoustonScope = houstonScopeTexts.some(text => 
