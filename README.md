@@ -4,6 +4,7 @@
 Automated building permit intelligence platform for contractors – fresh leads daily, scored for conversion.
 
 [![Nightly Scrape](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/nightly-scrape.yml/badge.svg)](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/nightly-scrape.yml)
+[![Security Checks](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/security.yml/badge.svg)](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 1. Overview
@@ -134,6 +135,39 @@ open http://localhost:3000/dashboard  # Dashboard (requires login setup for full
 2. Configure Supabase for authentication 
 3. Run full scraper against live permit data
 4. Set up data ingestion pipeline
+
+---
+
+## 🛡️ Security
+
+This project includes comprehensive security measures to protect against vulnerabilities and ensure license compliance:
+
+### Security Features
+- **CodeQL SAST Analysis**: Automated static analysis for JavaScript/TypeScript and Python code
+- **Dependency Vulnerability Scanning**: Daily scans using npm audit and pip-audit
+- **License Compliance Checking**: Automated verification of dependency licenses
+- **Scheduled Security Scans**: Daily automated security checks
+
+### Running Security Checks Locally
+```bash
+# Run comprehensive security check
+npm run security:check
+
+# Individual security commands
+npm run security:audit    # Check for vulnerabilities
+npm run security:licenses # Check license compliance
+
+# Or use the detailed script directly
+./scripts/security-check.sh
+```
+
+### Security Workflow
+The security workflow runs automatically on:
+- Push to main/develop branches
+- Pull request creation
+- Daily at 2 AM UTC
+
+For detailed security configuration and troubleshooting, see [`docs/SECURITY.md`](docs/SECURITY.md).
 
 ---
 
