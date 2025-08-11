@@ -21,7 +21,7 @@ pydantic-settings>=2.0.0
 
 
 # Redis caching
-redis>=4.0.0
+redis[async]>=5.0.4
 
 # Email notifications (SendGrid)
 sendgrid>=6.0.0

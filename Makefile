@@ -17,6 +17,7 @@ help:
 	@echo "  make backend-deps    - Install backend Python dependencies"
 	@echo "  make backend-test    - Run backend tests"
 	@echo "  make backend-lint    - Run backend linting (if available)"
+	@echo "  make redis-test      - Run Redis smoke test"
 	@echo "  make setup           - Run full setup (same as install)"
 	@echo "  make test            - Run tests"
 	@echo "  make clean           - Clean Python cache files"
@@ -106,3 +107,8 @@ clean:
 	find . -type d -name "__pycache__" -delete
 	find . -type d -name "*.egg-info" -exec rm -rf {} + || true
 	@echo "✅ Cleanup completed!"
+
+# Redis smoke test
+redis-test:
+	@echo "🔴 Running Redis smoke test..."
+	python scripts/redis_smoketest.py

@@ -45,6 +45,9 @@ from app.utils.export_control import get_export_controller, ExportType, ExportRe
 # Import test Supabase router
 from test_supabase import router as test_supabase_router
 
+# Import Redis client
+from app.redis_client import ping_ms
+
 # Load environment variables
 load_dotenv()
 
@@ -76,6 +79,17 @@ app.add_middleware(
 
 # Add request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
+
+# Add rate limiting middleware (avoid /healthz)
+from app.middleware_rate_limit import RateLimitMiddleware
+
+@app.middleware("http")
+async def rate_limit_selected_routes(request, call_next):
+    """Apply rate limiting to API routes but skip health checks"""
+    if request.url.path.startswith("/api/") and not request.url.path == "/healthz":
+        middleware = RateLimitMiddleware(app, limit=60, window=60)
+        return await middleware.dispatch(request, call_next)
+    return await call_next(request)
 
 # Include test Supabase router
 app.include_router(test_supabase_router, tags=["test", "supabase"])
@@ -189,16 +203,17 @@ async def health_check():
 @app.get("/healthz")
 async def healthz():
     """
-    Health check endpoint with database connectivity check.
+    Health check endpoint with database and Redis connectivity check.
     
     Returns:
-        Dict containing status, version, and database connectivity status
+        Dict containing status, version, database and Redis connectivity status
     """
     # Get version from app metadata
     version = app.version
     
     # Check database connectivity with 300ms timeout
     db_status = "down"
+    db_rtt = None
     try:
         # Create a timeout task for DB check
         async def check_db():
@@ -223,11 +238,16 @@ async def healthz():
         logger.error(f"Database health check failed: {str(e)}")
         db_status = "down"
     
+    # Check Redis connectivity
+    redis_status, redis_rtt = await ping_ms()
+    
     return {
         "status": "ok",
-        "version": version,
         "db": db_status,
-        "ts": time.time()
+        "db_rtt_ms": db_rtt,
+        "redis": redis_status,
+        "redis_rtt_ms": redis_rtt,
+        "ts": int(time.time())
     }
 
 @app.get("/metrics")

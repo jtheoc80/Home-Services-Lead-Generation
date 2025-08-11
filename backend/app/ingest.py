@@ -22,6 +22,9 @@ from psycopg2.extras import RealDictCursor
 # Import Supabase client
 from .supabase_client import get_supabase_client
 
+# Import Redis deduplication
+from .redis_client import dedupe_sadd
+
 # Import metrics tracking (optional)
 try:
     from .metrics import track_ingestion
@@ -478,6 +481,21 @@ class LeadIngestor:
                 for row in reader:
                     try:
                         parsed_row = self.parse_csv_row(row)
+                        
+                        # Create unique ID for deduplication
+                        unique_id = f"{parsed_row.get('jurisdiction', '')}:{parsed_row.get('permit_id', '')}"
+                        
+                        # Check Redis deduplication (use asyncio.run for sync context)
+                        try:
+                            import asyncio
+                            is_new = asyncio.run(dedupe_sadd("dedupe:permits", unique_id))
+                            if not is_new:
+                                logger.debug(f"Skipping duplicate permit: {unique_id}")
+                                continue
+                        except Exception as e:
+                            # If Redis fails, continue with database-level deduplication
+                            logger.warning(f"Redis deduplication failed for {unique_id}: {e}")
+                        
                         cur.execute(insert_sql, parsed_row)
                         records_processed += 1
                         
