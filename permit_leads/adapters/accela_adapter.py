@@ -33,7 +33,6 @@ class AccelaAdapter:
             permits = scraper.scrape_permits(since, limit=limit)
             
             # Update jurisdiction name
-            for permit in permits:
             permits = [replace(permit, jurisdiction=self.jurisdiction.name) for permit in permits]
             
             return permits
