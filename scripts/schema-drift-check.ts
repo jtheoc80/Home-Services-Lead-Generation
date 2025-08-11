@@ -158,7 +158,24 @@ class SchemaDriftChecker {
       // Try to get table list using a simple approach
       const knownTables = ['leads', 'regions', 'jurisdictions', 'plans', 'notifications'];
       
-      for (const tableName of knownTables) {
+      // Dynamically fetch table names from information_schema.tables
+      const { data: tableRows, error: tableError } = await this.supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public');
+
+      if (tableError) {
+        console.log('⚠️ Failed to fetch table names from information_schema:', tableError.message);
+        return null;
+      }
+
+      if (!tableRows || tableRows.length === 0) {
+        console.log('⚠️ No tables found in public schema');
+        return null;
+      }
+
+      for (const row of tableRows) {
+        const tableName = row.table_name;
         try {
           // Test table existence with a simple query
           const { data, error } = await this.supabase
