@@ -1,0 +1,312 @@
+openapi: 3.1.0
+info:
+  title: LeadLedgerPro API
+  description: Home Services Lead Generation API with Supabase Authentication
+  version: 1.0.0
+  contact:
+    name: LeadLedgerPro Support
+    email: support@leadledderpro.com
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.leadledderpro.com
+    description: Production server
+paths:
+  /:
+    get:
+      tags:
+      - root
+      summary: Root
+      description: Root endpoint with API information.
+      operationId: root__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/me:
+    get:
+      tags:
+      - auth
+      summary: Get Current User
+      description: Get current authenticated user information.
+      operationId: get_current_user_api_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /health:
+    get:
+      tags:
+      - health
+      summary: Health Check
+      description: Health check endpoint.
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /healthz:
+    get:
+      tags:
+      - health
+      summary: Healthz
+      description: Extended health check endpoint with database and Redis connectivity
+        check.
+      operationId: healthz_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /metrics:
+    get:
+      tags:
+      - monitoring
+      summary: Metrics Endpoint
+      description: Prometheus metrics endpoint with basic authentication.
+      operationId: metrics_endpoint_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/subscription/cancel:
+    post:
+      tags:
+      - subscription
+      summary: Cancel Subscription
+      description: Cancel a user's subscription.
+      operationId: cancel_subscription_api_subscription_cancel_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancellationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/subscription/reactivate:
+    post:
+      tags:
+      - subscription
+      summary: Reactivate Subscription
+      description: Reactivate a user's subscription.
+      operationId: reactivate_subscription_api_subscription_reactivate_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReactivationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/subscription/status/{user_id}:
+    get:
+      tags:
+      - subscription
+      summary: Get Subscription Status
+      description: Get subscription status for a user.
+      operationId: get_subscription_status_api_subscription_status__user_id__get
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/cancellations:
+    get:
+      tags:
+      - admin
+      summary: Get Cancellation Records
+      description: Get cancellation records for admin review.
+      operationId: get_cancellation_records_api_admin_cancellations_get
+      parameters:
+      - name: admin_user_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Admin User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/export/data:
+    post:
+      tags:
+      - export
+      summary: Export Data
+      description: Export data with ALLOW_EXPORTS enforcement and admin override capability.
+      operationId: export_data_api_export_data_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportDataRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/export/status:
+    get:
+      tags:
+      - export
+      summary: Get Export Status
+      description: Get export configuration status for the current user.
+      operationId: get_export_status_api_export_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    CancellationRequest:
+      properties:
+        user_id:
+          type: string
+          title: User Id
+        reason_category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason Category
+        reason_notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason Notes
+        processed_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Processed By
+      type: object
+      required:
+      - user_id
+      title: CancellationRequest
+    ExportDataRequest:
+      properties:
+        export_type:
+          type: string
+          title: Export Type
+        format:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Format
+          default: csv
+        filters:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Filters
+        admin_override:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Admin Override
+          default: false
+      type: object
+      required:
+      - export_type
+      title: ExportDataRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ReactivationRequest:
+      properties:
+        user_id:
+          type: string
+          title: User Id
+      type: object
+      required:
+      - user_id
+      title: ReactivationRequest
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

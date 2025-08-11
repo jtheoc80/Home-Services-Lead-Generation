@@ -13,8 +13,10 @@
     "test": "cd frontend && npm run test",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
+
     "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
     "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
+
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
@@ -31,7 +33,12 @@
     "undici": "^7.13.0"
   },
   "devDependencies": {
+
+    "@apidevtools/swagger-parser": "^12.0.0",
+    "@redocly/cli": "^2.0.2",
+
     "@playwright/test": "^1.54.2",
+
     "tsx": "^4.0.0"
   },
   "private": true
