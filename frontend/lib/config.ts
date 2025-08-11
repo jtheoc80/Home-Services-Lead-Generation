@@ -9,6 +9,7 @@
 interface AppConfig {
   // API and backend configuration
   apiBaseUrl: string;
+  apiBase: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
   
@@ -64,6 +65,7 @@ function parseArrayEnv(value: string | undefined, defaultValue: string[] = []): 
 export const config: AppConfig = {
   // API and backend configuration
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
+  apiBase: process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000',
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   
@@ -139,6 +141,14 @@ export function isFeatureEnabled(feature: keyof AppConfig['features']): boolean 
 export function getApiUrl(endpoint: string): string {
   const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
   return config.apiBaseUrl + path;
+}
+
+/**
+ * Get external API endpoint URL
+ */
+export function getExternalApiUrl(endpoint: string): string {
+  const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+  return config.apiBase + path;
 }
 
 /**
