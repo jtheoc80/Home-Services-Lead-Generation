@@ -76,7 +76,7 @@ python -m unittest tests.test_git_secrets.GitSecretsTest.test_supabase_service_r
 
 3. **Create a test file with a fake secret**:
    ```bash
-   echo "SUPABASE_KEY=sb-1234567890abcdef1234567890abcdef12345678" > test_secret.txt
+   echo "SUPABASE_KEY=sb-example-fake-key-for-testing-only" > test_secret.txt
    git secrets --scan test_secret.txt
    # Should fail with exit code 1
    rm test_secret.txt
