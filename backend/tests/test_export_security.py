@@ -276,7 +276,18 @@ class TestAuditLogging:
             "exp": (datetime.utcnow() + timedelta(hours=1)).timestamp(),
             "user_metadata": {"role": role}
         }
-        return jwt.encode(payload, os.environ['SUPABASE_JWT_SECRET'], algorithm="HS256")
+# Shared utility function for creating JWT tokens for tests
+def create_jwt_token(user_id: str, email: str, role: str = "user") -> str:
+    """Create a test JWT token."""
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "aud": "authenticated",
+        "iat": datetime.utcnow().timestamp(),
+        "exp": (datetime.utcnow() + timedelta(hours=1)).timestamp(),
+        "user_metadata": {"role": role}
+    }
+    return jwt.encode(payload, os.environ['SUPABASE_JWT_SECRET'], algorithm="HS256")
     
     @patch('app.utils.export_control.logger')
     def test_blocked_export_is_audited(self, mock_logger, setup_env):
