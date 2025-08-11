@@ -33,6 +33,109 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
 - **Dashboard-Only Access**: No CSV exports - all data accessible through the web dashboard
 - **Real-Time Updates**: Live notifications when new matching leads are available
 
+## ⚡ 5-Minute Quickstart
+
+Get LeadLedgerPro running locally in 5 minutes with sample data:
+
+### Prerequisites
+- Python 3.11+ and Node.js 16+
+- PostgreSQL (not required for demo - uses SQLite)
+
+### Quick Setup Commands
+
+```bash
+# 1. Clone and setup environment
+git clone https://github.com/jtheoc80/Home-Services-Lead-Generation.git
+cd Home-Services-Lead-Generation
+
+# 2. Set up environment variables
+cp .env.example .env
+cp backend/.env.example backend/.env  
+cp frontend/.env.local.example frontend/.env.local
+
+# Edit backend/.env - for demo, use SQLite:
+# DATABASE_URL=sqlite:///leadledger_demo.db
+# SUPABASE_URL=https://demo.supabase.co
+# SUPABASE_SERVICE_ROLE=demo_key
+# SUPABASE_JWT_SECRET=demo_jwt_secret
+
+# Edit frontend/.env.local:
+# SUPABASE_URL=https://demo.example.com
+# SUPABASE_SERVICE_ROLE=demo_key
+# SUPABASE_JWT_SECRET=demo_jwt_secret
+
+# Edit frontend/.env.local:
+# NEXT_PUBLIC_SUPABASE_URL=https://demo.example.com
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=demo_anon_key
+
+# 3. Install dependencies
+pip install -r permit_leads/requirements.txt
+pip install -r backend/requirements.txt
+cd frontend && npm install && cd ..
+
+# 4. Run scraper with sample data (generates ~6 sample permits)
+python -m permit_leads --source city_of_houston --sample --days 7 --formats csv
+
+# 5. Optional: Ingest sample data (requires database setup)
+# python backend/app/ingest.py data/leads/by_jurisdiction/city_of_houston_leads.csv
+
+# 6. Start backend server (runs on port 8000)
+cd backend && python main.py &
+cd ..
+
+# 7. Start frontend (runs on port 3000)
+cd frontend && npm run dev &
+# In a new terminal window/tab, run:
+cd backend
+python main.py
+
+# 7. Start frontend (runs on port 3000)
+# In another new terminal window/tab, run:
+cd frontend
+npm run dev
+
+# 8. Verify everything works
+curl http://localhost:8000/healthz  
+# Expected: {"status":"ok","version":"1.0.0","db":"down"}  (db down is OK for demo)
+
+# 9. View demo application
+open http://localhost:3000  # Homepage with nice UI
+open http://localhost:3000/dashboard  # Dashboard (requires login setup for full functionality)
+```
+
+### Quick Verification Checklist
+
+- ✅ **Backend Health**: `http://localhost:8000/healthz` returns status "ok"
+- ✅ **API Docs**: `http://localhost:8000/docs` shows FastAPI documentation 
+- ✅ **Frontend**: `http://localhost:3000` displays LeadLedgerPro homepage
+- ✅ **Sample Data**: Check `data/leads/by_jurisdiction/city_of_houston_leads.csv` for 6 generated sample permits
+- ⚠️ **Database**: Shows "down" status for demo (database setup optional for quickstart)
+
+### What You'll See
+
+![LeadLedgerPro Homepage](quickstart-homepage-demo.png)
+*Professional homepage with feature overview*
+
+![LeadLedgerPro Dashboard](quickstart-dashboard-demo.png)  
+*Lead management dashboard interface*
+
+![LeadLedgerPro API Documentation](quickstart-api-docs-demo.png)
+*FastAPI Swagger documentation*
+
+- **Homepage**: Professional landing page with feature overview
+- **Dashboard**: Lead management interface (login required for full features)
+- **Sample Data**: 6 Houston building permits with realistic details
+- **API**: FastAPI backend with health checks and Swagger docs
+
+### Next Steps After Quickstart
+
+1. Set up real PostgreSQL database (see full installation guide below)
+2. Configure Supabase for authentication 
+3. Run full scraper against live permit data
+4. Set up data ingestion pipeline
+
+---
+
 ## ⚡ Quick Start
 
 ### Prerequisites
