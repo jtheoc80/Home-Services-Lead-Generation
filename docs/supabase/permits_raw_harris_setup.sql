@@ -16,7 +16,7 @@ create table if not exists public.permits_raw_harris (
   issue_date timestamptz,
   project_number text,
   full_address text,
-  street_number numeric,
+  street_number text,
   street_name text,
   status text,
   raw jsonb,
