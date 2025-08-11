@@ -148,7 +148,7 @@ class ETLAwareArcGISAdapter:
                             mapped_data[permit_field] = datetime.fromtimestamp(value / 1000)
                         except (ValueError, OSError):
                             # If conversion fails, try as-is
-                            mapped_data[permit_field] = value
+                        mapped_data[permit_field] = self._convert_epoch_millis_to_datetime(value)
                     else:
                         mapped_data[permit_field] = value
                 else:
