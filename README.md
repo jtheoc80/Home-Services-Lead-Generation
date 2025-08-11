@@ -981,6 +981,33 @@ SUPABASE_SERVICE_ROLE=your_service_role_key_here
 
 ---
 
+## Supabase Debugging
+
+When troubleshooting issues with your Supabase integration, check these specific locations for detailed error information:
+
+### API Logs
+Navigate to **Logs → API** and filter with:
+```
+route:/rest/v1/leads and status 401|403|5xx
+```
+
+### Database Logs  
+Navigate to **Logs → Database** and filter:
+```
+ERROR last 15 minutes
+```
+
+### Common Failures and Meanings
+
+| Error Code | Meaning | Description |
+|------------|---------|-------------|
+| `401` | Invalid API Key | Invalid or missing API key authentication |
+| `403` | Permission Denied | Row Level Security policy blocking access |
+| `23502` | NOT NULL | Required field is missing or null |
+| `FK violations` | Foreign Key | Referenced record doesn't exist or constraint failed |
+
+---
+
 ## Legal Notices
 
 - LeadLedgerPro uses publicly available building permit data.
