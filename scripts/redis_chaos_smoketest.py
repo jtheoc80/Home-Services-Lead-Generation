@@ -300,7 +300,7 @@ async def test_timeout_enforcement():
         except asyncio.TimeoutError:
             elapsed = time.perf_counter() - start_time
             # TimeoutError at 1s is acceptable
-            if elapsed > 1.1:  # Allow small tolerance for cleanup
+            if elapsed > TIMEOUT_CLEANUP_TOLERANCE:  # Allow small tolerance for cleanup
                 raise Exception(f"{op_name} cleanup took {elapsed:.3f}s after timeout")
             print(f"  ✅ {op_name}: timed out at {elapsed:.3f}s (acceptable)")
 
