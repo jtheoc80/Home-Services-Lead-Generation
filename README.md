@@ -299,7 +299,18 @@ To add repository secrets:
 ```bash
 gh secret set DATABASE_URL
 gh secret set SENDGRID_API_KEY
-gh secret set REDIS_URL
+
+> **Note:** If you do not provide a value, `gh secret set` will prompt you interactively for the secret value. For automation or scripting, you can pass the value directly using the `--body` flag or via stdin.
+
+```bash
+# Interactive prompt (will ask for value)
+gh secret set DATABASE_URL
+
+# Pass value directly using --body
+gh secret set DATABASE_URL --body "your_database_url_here"
+
+# Pass value via stdin
+echo "your_database_url_here" | gh secret set DATABASE_URL --body -
 ```
 
 
