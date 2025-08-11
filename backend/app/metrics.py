@@ -9,7 +9,6 @@ HTTP requests, request durations, and data ingestion metrics.
 import time
 from typing import Optional, Dict, Any
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-from prometheus_client.multiprocess import MultiProcessCollector
 from prometheus_client.registry import REGISTRY
 import logging
 
