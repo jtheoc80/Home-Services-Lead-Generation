@@ -731,7 +731,30 @@ python -m pytest tests/
 # Frontend tests  
 cd frontend
 npm test
+
+# Redis smoke tests
+npm run redis:smoke
+
+# Redis chaos tests (simulates provider slowness)
+npm run redis:chaos
+
+# Combined Redis tests (standard + chaos)
+npm run redis:smoke:all
 ```
+
+### Chaos Testing
+
+The platform includes chaos engineering tests to validate resilience against Redis provider slowness:
+
+```bash
+# Test Redis operations with 250-500ms latency injection
+npm run redis:chaos
+
+# Verify graceful degradation and timeout compliance
+python scripts/redis_chaos_smoketest.py
+```
+
+See [Redis Chaos Testing Documentation](docs/REDIS_CHAOS_TESTING.md) for detailed information.
 
 ### Manual Pipeline Trigger
 ```bash
