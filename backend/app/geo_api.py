@@ -260,7 +260,6 @@ class GeoAPI:
             # Note: For production, consider using PostGIS or more accurate geospatial library
             cursor.execute("""
                 SELECT * FROM permits 
-        """Filter permits by radius from center point, using bounding box pre-filter for performance."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
