@@ -375,7 +375,16 @@ class TestPermitIntegration:
             
             # Verify permits were inserted
             assert len(inserted_permits) == 2
-            assert mock_table.insert.call_count == 2
+            
+            # Verify first permit data  
+            first_permit = inserted_permits[0]
+            assert first_permit['jurisdiction'] == 'test_city_1'
+            assert first_permit['permit_id'] == 'TEST001'
+            
+            # Verify second permit data
+            second_permit = inserted_permits[1] 
+            assert second_permit['jurisdiction'] == 'test_city_2'
+            assert second_permit['permit_id'] == 'TEST002'
             
             # Step 2: Call backend list endpoint
             print("2️⃣ Testing backend list endpoint...")
