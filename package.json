@@ -11,14 +11,12 @@
     "lint": "cd frontend && npm run lint",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
-
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
-
-
     "scrape:harris": "node scripts/scrape-harris.cjs",
-
-    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
-
+    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+    "security:check": "./scripts/security-check.sh",
+    "security:audit": "npm audit && cd frontend && npm audit",
+    "security:licenses": "license-checker --summary && cd frontend && license-checker --summary"
   },
   "workspaces": [
     "frontend"
