@@ -44,7 +44,6 @@ export async function GET() {
         }
       }
     );
-  } catch {
   } catch (error) {
     console.error('Error in supa-env-check occurred:', error);
     
