@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "echo 'No tests configured yet for frontend' && exit 0",
     "preflight": "node scripts/preflight.js",
     "health:check": "node scripts/health-check.js"
   },

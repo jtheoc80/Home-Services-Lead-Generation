@@ -4,6 +4,7 @@
 Automated building permit intelligence platform for contractors – fresh leads daily, scored for conversion.
 
 [![Nightly Scrape](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/nightly-scrape.yml/badge.svg)](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/nightly-scrape.yml)
+[![Security Checks](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/security.yml/badge.svg)](https://github.com/jtheoc80/Home-Services-Lead-Generation/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 1. Overview
@@ -32,6 +33,7 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
 - **Lead Scoring**: ML-powered scoring to identify the highest quality opportunities
 - **Dashboard-Only Access**: No CSV exports - all data accessible through the web dashboard
 - **Real-Time Updates**: Live notifications when new matching leads are available
+- **OpenAPI Integration**: Auto-generated TypeScript and Python clients with API validation
 
 ## ⚡ 5-Minute Quickstart
 
@@ -135,6 +137,7 @@ open http://localhost:3000/dashboard  # Dashboard (requires login setup for full
 4. Set up data ingestion pipeline
 
 ---
+
 
 ## 💳 Payments (Stripe) Quickstart
 
@@ -251,6 +254,38 @@ make billing-seed  # copy the price IDs to your environment variables
 - ✅ Billing page loads without errors: `/billing`
 - ✅ Test webhook endpoint receives events
 - ✅ Test checkout flow end-to-end
+
+## 🛡️ Security
+
+This project includes comprehensive security measures to protect against vulnerabilities and ensure license compliance:
+
+### Security Features
+- **CodeQL SAST Analysis**: Automated static analysis for JavaScript/TypeScript and Python code
+- **Dependency Vulnerability Scanning**: Daily scans using npm audit and pip-audit
+- **License Compliance Checking**: Automated verification of dependency licenses
+- **Scheduled Security Scans**: Daily automated security checks
+
+### Running Security Checks Locally
+```bash
+# Run comprehensive security check
+npm run security:check
+
+# Individual security commands
+npm run security:audit    # Check for vulnerabilities
+npm run security:licenses # Check license compliance
+
+# Or use the detailed script directly
+./scripts/security-check.sh
+```
+
+### Security Workflow
+The security workflow runs automatically on:
+- Push to main/develop branches
+- Pull request creation
+- Daily at 2 AM UTC
+
+For detailed security configuration and troubleshooting, see [`docs/SECURITY.md`](docs/SECURITY.md).
+
 
 ---
 
@@ -572,8 +607,20 @@ The system runs a **nightly pipeline** that:
 3. Ingests leads into PostgreSQL database
 4. Generates notifications for matching user preferences
 5. Stores audit artifacts for compliance
+6. **Captures key page screenshots and detects visual regressions**
 
 **Pipeline Schedule**: Daily at 5:00 AM UTC (Midnight Central Time)
+
+### Visual Regression Testing
+
+The platform includes automated visual regression testing to ensure UI stability:
+
+- 📸 **Nightly Screenshots**: Captures key pages (homepage, dashboard, login, admin) 
+- 🔍 **Pixel Diff Analysis**: Compares against baseline images with configurable threshold
+- 🚨 **Automated Alerts**: Opens GitHub Issues when visual drift exceeds threshold
+- 📁 **Before/After Images**: Stores artifacts for easy review and debugging
+
+See [`docs/VISUAL_REGRESSION.md`](docs/VISUAL_REGRESSION.md) for complete setup and usage instructions.
 
 ### Manual Pipeline Execution
 
@@ -849,7 +896,30 @@ python -m pytest tests/
 # Frontend tests  
 cd frontend
 npm test
+
+# Redis smoke tests
+npm run redis:smoke
+
+# Redis chaos tests (simulates provider slowness)
+npm run redis:chaos
+
+# Combined Redis tests (standard + chaos)
+npm run redis:smoke:all
 ```
+
+### Chaos Testing
+
+The platform includes chaos engineering tests to validate resilience against Redis provider slowness:
+
+```bash
+# Test Redis operations with 250-500ms latency injection
+npm run redis:chaos
+
+# Verify graceful degradation and timeout compliance
+python scripts/redis_chaos_smoketest.py
+```
+
+See [Redis Chaos Testing Documentation](docs/REDIS_CHAOS_TESTING.md) for detailed information.
 
 ### Manual Pipeline Trigger
 ```bash
@@ -1005,13 +1075,37 @@ The enrichment pipeline significantly improves lead quality by providing locatio
 
 ## GitHub Actions & Automation
 
-This repository includes automated workflows for daily permit scraping:
+This repository includes automated workflows for daily permit scraping and performance monitoring:
 
 - **Scheduled Runs**: Automated daily at 6 AM UTC (1 AM CST/2 AM CDT)
 - **Manual Runs**: Trigger via GitHub Actions UI with custom parameters
 - **Data Storage**: Results committed to repository and available as downloadable artifacts
+- **Performance Monitoring**: Lighthouse audits on every PR with budget enforcement
 
 See [`docs/github-actions-runbook.md`](docs/github-actions-runbook.md) for complete setup instructions, troubleshooting, and workflow details.
+
+### Performance Monitoring
+
+#### Workflow: `lighthouse.yml`
+- **Trigger**: Every pull request to `main` or `develop` branches
+- **Purpose**: Audit Vercel preview deployments for performance budgets
+- **Budgets**: LCP ≤ 2.5s, TBT ≤ 300ms, CLS ≤ 0.1
+- **Output**: Detailed performance report posted as PR comment
+
+**Performance Steps:**
+1. Get latest Vercel deployment URL
+2. Run Lighthouse CI with 3 test runs
+3. Check performance budgets (LCP, TBT, CLS)
+4. Generate markdown report with metrics and status
+5. Post report to PR as comment
+6. Fail job if any budget is exceeded
+
+**Performance Budgets:**
+- **Largest Contentful Paint (LCP)**: ≤ 2.5 seconds
+- **Total Blocking Time (TBT)**: ≤ 300 milliseconds  
+- **Cumulative Layout Shift (CLS)**: ≤ 0.1
+
+The workflow ensures every PR maintains performance standards before merge.
 
 ### Nightly Pipeline
 
@@ -1023,6 +1117,12 @@ The automated permit scraping pipeline runs daily via GitHub Actions:
 - **Output**: CSV, SQLite, and JSONL files with permit data
 - **Storage**: Results are committed to the repository and available as artifacts
 
+#### Workflow: `visual-regression.yml`
+- **Schedule**: Daily at 9 AM UTC (3 AM CST/4 AM CDT)  
+- **Purpose**: Capture screenshots and detect visual regressions on production
+- **Output**: Current screenshots, difference images, and test results
+- **Alerts**: Opens GitHub Issues when visual drift exceeds threshold
+
 **Pipeline Steps:**
 1. Set up Python 3.11 environment
 2. Install dependencies from `permit_leads/requirements.txt`
@@ -1031,10 +1131,12 @@ The automated permit scraping pipeline runs daily via GitHub Actions:
 5. Check for new data and commit to repository
 6. Upload data artifacts for download
 7. Generate summary report
+8. **[NEW] Capture page screenshots and compare to baselines**
 
 **Data Location:**
 - Raw data: `data/permits/raw/`
 - Processed data: `data/permits/aggregate/`
+- **Screenshots**: `screenshots/` (artifacts only, not committed)
 - Artifacts available for 30 days after each run
 
 ### Manual Run Steps
@@ -1108,6 +1210,99 @@ This registry provides a standardized approach to organizing data sources by geo
 ---
 
 *Note: Always respect website terms of service and robots.txt when scraping. This tool is designed for ethical data collection with proper rate limiting and attribution.*
+
+## 🔗 OpenAPI Integration
+
+LeadLedgerPro provides a fully documented REST API with auto-generated clients for seamless integration.
+
+### OpenAPI Specification
+
+The API is documented using OpenAPI 3.1 specification:
+
+- **Specification File**: [`openapi.yaml`](./openapi.yaml)
+- **Interactive Docs**: Available at `http://localhost:8000/docs` (Swagger UI)
+- **ReDoc**: Available at `http://localhost:8000/redoc` (alternative documentation)
+
+### Auto-Generated Clients
+
+#### TypeScript Client (Frontend)
+
+Located at [`frontend/src/lib/api-client.ts`](./frontend/src/lib/api-client.ts)
+
+```typescript
+import { apiClient } from './src/lib/api-client';
+
+// Health check
+const health = await apiClient.health.healthCheck();
+
+// Get current user
+const user = await apiClient.auth.getCurrentUser();
+
+// Cancel subscription
+await apiClient.subscription.cancelSubscription({
+  cancellationRequest: {
+    user_id: 'user123',
+    reason_category: 'user_request'
+  }
+});
+```
+
+#### Python Client (Backend Jobs)
+
+Located at [`backend/clients/`](./backend/clients/)
+
+```python
+from backend.clients import LeadLedgerProClient
+
+client = LeadLedgerProClient(base_url='http://localhost:8000')
+
+# Health check
+health = client.health.health_check()
+
+# Export data
+from backend.clients.leadledderpro_client import ExportDataRequest
+result = client.export.export_data(
+    export_data_request=ExportDataRequest(
+        export_type='leads',
+        format='csv'
+    )
+)
+```
+
+### API Validation Workflow
+
+GitHub Actions automatically:
+
+1. **Validates OpenAPI spec** syntax and standards compliance
+2. **Generates fresh clients** when the API changes
+3. **Fails PRs** that change the API without updating `openapi.yaml`
+4. **Comments on PRs** with validation results
+
+### Updating the API Specification
+
+When you modify the backend API endpoints:
+
+1. **Update the spec**: Run `python scripts/extract-openapi.py`
+2. **Commit changes**: Include both API changes and `openapi.yaml` updates
+3. **Validate**: GitHub Actions will validate and regenerate clients
+
+### Available API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Basic health check |
+| `/healthz` | GET | Extended health check |
+| `/api/me` | GET | Current user info |
+| `/api/subscription/cancel` | POST | Cancel subscription |
+| `/api/subscription/reactivate` | POST | Reactivate subscription |
+| `/api/subscription/status/{user_id}` | GET | Subscription status |
+| `/api/export/data` | POST | Export data |
+| `/api/export/status` | GET | Export configuration |
+| `/api/admin/cancellations` | GET | Admin cancellation records |
+| `/metrics` | GET | Prometheus metrics |
+
+See [`API_CLIENT_EXAMPLES.md`](./API_CLIENT_EXAMPLES.md) for detailed usage examples.
 
 ## Connect Supabase
 
