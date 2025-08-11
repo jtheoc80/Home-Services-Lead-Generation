@@ -39,7 +39,7 @@ Get LeadLedgerPro running locally in 5 minutes with sample data:
 
 ### Prerequisites
 - Python 3.11+ and Node.js 16+
-- PostgreSQL (optional - demo works with minimal setup)
+- PostgreSQL (not required for demo - uses SQLite)
 
 ### Quick Setup Commands
 
