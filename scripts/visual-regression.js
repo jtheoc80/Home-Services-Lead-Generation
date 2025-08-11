@@ -70,7 +70,7 @@ class VisualRegressionTester {
       this.pages.push({
         name: 'api-docs',
         url: `${this.backendUrl}/docs`,
-        waitFor: 'text=FastAPI',
+        waitFor: process.env.API_DOCS_WAITFOR || 'text=FastAPI',
         description: 'API documentation (Swagger UI)'
       });
     }
