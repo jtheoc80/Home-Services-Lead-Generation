@@ -294,6 +294,8 @@ To add repository secrets:
 4. Add the secret name and value
 
 **Or use GitHub CLI:**
+
+> **Prerequisite:** You must have the [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) before running these commands.
 ```bash
 gh secret set DATABASE_URL
 gh secret set SENDGRID_API_KEY
