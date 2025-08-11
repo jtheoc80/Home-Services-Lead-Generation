@@ -204,7 +204,7 @@ class RESTClientObject:
                     # overwritten.
                     del headers['Content-Type']
                     # Ensures that dict objects are serialized
-                    post_params = [(a, json.dumps(b)) if isinstance(b, dict) else (a,b) for a, b in post_params]
+                    post_params = [(a, json.dumps(b)) if isinstance(b, dict) else (a, b) for a, b in post_params]
                     r = self.pool_manager.request(
                         method,
                         url,
