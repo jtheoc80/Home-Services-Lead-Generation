@@ -26,7 +26,7 @@ class GitSecretsTest(unittest.TestCase):
     
     def test_supabase_service_role_key_detection(self):
         """Test that Supabase service role keys are detected"""
-        fake_key = "sb-1234567890abcdef1234567890abcdef12345678"
+        fake_key = "sb-test1234567890abcdef1234567890abcdef12345"
         
         # Write fake key to test file
         with open(self.test_file, 'w') as f:
