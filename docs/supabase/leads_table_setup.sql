@@ -37,7 +37,7 @@ create policy "temp_anon_select_leads"
 -- Insert seed row
 insert into public.leads (name, email, source)
 values ('Smoke Test', 'smoke@example.com', 'manual')
-on conflict do nothing;
+values ('Smoke Test', 'smoke@example.com', 'manual');
 
 -- Verify the setup
 select 'Leads table setup completed successfully!' as message;
