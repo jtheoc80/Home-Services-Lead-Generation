@@ -39,6 +39,7 @@ jurisdictions:
       date_field: "ISSUEDDATE"
       field_map:
         permit_id: "PERMITNUMBER"
+        permit_name: "PERMITNAME"
         issue_date: "ISSUEDDATE"
         address: "FULLADDRESS"
         description: "PROJECTNAME"
@@ -48,6 +49,8 @@ jurisdictions:
         value: "PERMITVALUATION"
         applicant: "APPLICANTNAME"
         owner: "OWNERNAME"
+        project_number: "PROJECTNUMBER"
+        event_id: "EVENTID"
   
   # City of Houston
   - slug: "tx-houston-city"
