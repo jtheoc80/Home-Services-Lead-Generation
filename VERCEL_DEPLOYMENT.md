@@ -2,6 +2,14 @@
 
 This guide provides the CLI commands to set up environment variables and deploy the Next.js application to Vercel.
 
+## Required Environment Variables
+
+The following environment variables are **required** for the application to function properly:
+
+- **`NEXT_PUBLIC_SUPABASE_URL`** - Your Supabase project URL
+- **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** - Your Supabase anonymous/public key  
+- **`SUPABASE_SERVICE_ROLE_KEY`** - Your Supabase service role key (for backend operations)
+
 ## Environment Variables Setup
 
 Use the following Vercel CLI commands to set the required environment variables:
@@ -13,7 +21,11 @@ vercel env add NEXT_PUBLIC_SUPABASE_URL
 # Set Supabase anonymous key for all environments  
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-# Set API base URL for all environments
+# Set Supabase service role key for all environments
+vercel env add SUPABASE_SERVICE_ROLE_KEY
+
+# Optional: Set API base URL for all environments
+# Only needed if your application makes requests to a custom API endpoint (e.g., serverless functions or external backend)
 vercel env add NEXT_PUBLIC_API_BASE
 ```
 
@@ -25,7 +37,20 @@ When prompted for each environment variable:
 
 - **NEXT_PUBLIC_SUPABASE_URL**: Your Supabase project URL (e.g., `https://your-project.supabase.co`)
 - **NEXT_PUBLIC_SUPABASE_ANON_KEY**: Your Supabase anonymous/public key
+- **SUPABASE_SERVICE_ROLE_KEY**: Your Supabase service role key (backend only - keep secure!)
 - **NEXT_PUBLIC_API_BASE**: API base URL (e.g., `https://your-api.com/api` or `/api` for relative)
+
+## Pull Environment Variables to Local Development
+
+After setting up environment variables in Vercel, pull them to your local development environment:
+
+```bash
+# Pull environment variables to .env.local
+vercel env pull
+
+# This creates/updates .env.local with your Vercel environment variables
+# Make sure .env.local is in your .gitignore file
+```
 
 ## Deployment Commands
 
@@ -41,6 +66,20 @@ Deploy to production:
 vercel --prod
 ```
 
+## Important: Redeploy After Environment Changes
+
+**⚠️ Remember to redeploy your application after changing environment variables:**
+
+```bash
+# Redeploy to production after environment variable changes
+vercel --prod
+
+# Or trigger a new deployment from the Vercel dashboard
+# Go to your project → Deployments → "Redeploy" button
+```
+
+Environment variable changes do not automatically trigger redeployments. You must manually redeploy to apply the new configuration.
+
 ## Alternative: Environment Variable Management
 
 You can also manage environment variables through the Vercel dashboard:
@@ -49,8 +88,9 @@ You can also manage environment variables through the Vercel dashboard:
 2. Navigate to "Environment Variables" section
 3. Add the required variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` 
-   - `NEXT_PUBLIC_API_BASE`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_API_BASE` (optional)
 
 ## Vercel Configuration
 

@@ -1,0 +1,68 @@
+---
+name: CI
+
+'on':
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+env:
+  RED: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SRV: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  NODE_VERSION: '20'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Check required secrets
+        run: |
+          echo "Checking required secrets..."
+
+          # Check RED (NEXT_PUBLIC_SUPABASE_URL)
+          if [ -z "${{ env.RED }}" ]; then
+            echo "❌ ERROR: NEXT_PUBLIC_SUPABASE_URL secret is missing"
+            exit 1
+          else
+            echo "✅ NEXT_PUBLIC_SUPABASE_URL is set"
+          fi
+
+          # Check ANON (NEXT_PUBLIC_SUPABASE_ANON_KEY)
+          if [ -z "${{ env.ANON }}" ]; then
+            echo "❌ ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY secret is missing"
+            exit 1
+          else
+            echo "✅ NEXT_PUBLIC_SUPABASE_ANON_KEY is set"
+          fi
+
+          # Check SRV (SUPABASE_SERVICE_ROLE_KEY)
+          if [ -z "${{ env.SRV }}" ]; then
+            echo "❌ ERROR: SUPABASE_SERVICE_ROLE_KEY secret is missing"
+            exit 1
+          else
+            echo "✅ SUPABASE_SERVICE_ROLE_KEY is set"
+          fi
+
+          echo "✅ All required secrets are present"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        env:
+          RED: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SRV: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run build

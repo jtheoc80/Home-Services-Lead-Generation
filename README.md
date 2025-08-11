@@ -257,6 +257,24 @@ See [`docs/ops/README.md`](docs/ops/README.md) for complete environment setup gu
 
 ## 🔧 Configuration
 
+### Environment Variables Setup
+
+For **Vercel deployment**, see the complete setup guide: **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)**
+
+**Required environment variables:**
+- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key  
+- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
+
+**Quick Vercel setup:**
+```bash
+vercel env add NEXT_PUBLIC_SUPABASE_URL
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY  
+vercel env add SUPABASE_SERVICE_ROLE_KEY
+vercel env pull  # Pull to local .env.local
+vercel --prod    # Deploy (remember to redeploy after env changes!)
+```
+
 ### Backend Settings (`backend/.env`)
 
 Key configuration variables:
@@ -960,6 +978,33 @@ SUPABASE_SERVICE_ROLE=your_service_role_key_here
 
 3. Visit `http://localhost:3000/login` to test authentication
 4. After login, test the `/api/me` endpoint with your JWT token
+
+---
+
+## Supabase Debugging
+
+When troubleshooting issues with your Supabase integration, check these specific locations for detailed error information:
+
+### API Logs
+Navigate to **Logs → API** and filter with:
+```
+route:/rest/v1/leads and status 401|403|5xx
+```
+
+### Database Logs  
+Navigate to **Logs → Database** and filter:
+```
+ERROR last 15 minutes
+```
+
+### Common Failures and Meanings
+
+| Error Code | Meaning | Description |
+|------------|---------|-------------|
+| `401` | Invalid API Key | Invalid or missing API key authentication |
+| `403` | Permission Denied | Row Level Security policy blocking access |
+| `23502` | NOT NULL | Required field is missing or null |
+| `FK violations` | Foreign Key | Referenced record doesn't exist or constraint failed |
 
 ---
 

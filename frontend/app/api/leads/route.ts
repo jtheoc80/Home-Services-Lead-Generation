@@ -22,6 +22,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
+
   
   // Create typed payload for lead insertion
   const leadPayload: LeadInsert = {
@@ -34,6 +35,8 @@ export async function POST(req: Request) {
     state: body.state ?? null,
     zip: body.zip ?? null
   };
+
+
 
   const supabase = client();
   const { data, error } = await supabase
