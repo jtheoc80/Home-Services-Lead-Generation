@@ -162,7 +162,16 @@ jobs:
           
           # Test basic Python imports to ensure dependencies are compatible
           echo "🔍 Testing Python dependency compatibility..."
-          python3 -c 'import sys; import requests, pydantic, fastapi, pandas, numpy, supabase; print("✅ All major Python dependencies import successfully")' || echo "⚠️ Dependency compatibility test failed"
+          # Test Python imports to ensure dependencies are compatible
+          echo "🔍 Testing Python dependency compatibility..."
+          for reqfile in backend/requirements.txt permit_leads/requirements.txt; do
+            if [ -f "$reqfile" ]; then
+              echo "Testing imports from $reqfile..."
+              # Extract package names, ignoring comments and version specifiers
+              pkgs=$(grep -vE '^\s*#' "$reqfile" | grep -oE '^[a-zA-Z0-9_\-]+' | sort -u)
+              python3 -c "import sys; failed=[]; [__import__(pkg) if pkg not in ('', 'pip') else None for pkg in \"$pkgs\".split()]; print('✅ All dependencies from $reqfile import successfully')" || echo "⚠️ Dependency compatibility test failed for $reqfile"
+            fi
+          done
 
       - name: Test npm dependency compatibility  
         run: |
