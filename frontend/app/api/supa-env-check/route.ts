@@ -8,34 +8,32 @@ import { NextResponse } from 'next/server';
  * DELETE THIS FILE AFTER TESTING IS COMPLETE.
  * 
  * Returns:
- * - url: boolean indicating if NEXT_PUBLIC_SUPABASE_URL is set
- * - anon: masked NEXT_PUBLIC_SUPABASE_ANON_KEY (only showing last 4 characters)
+ * - urlSet: boolean indicating if NEXT_PUBLIC_SUPABASE_URL is set
+ * - anonKeySuffix: last 4 characters of NEXT_PUBLIC_SUPABASE_ANON_KEY
+ * - hasServiceKey: boolean indicating if SUPABASE_SERVICE_ROLE_KEY is set
  */
 export async function GET() {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     // Check if URL exists and convert to boolean
-    const urlExists = !!supabaseUrl;
+    const urlSet = !!supabaseUrl;
 
-    // Mask the anon key to show only last 4 characters
-    let maskedAnonKey = '';
-    if (supabaseAnonKey && supabaseAnonKey.length > 4) {
-      const lastFour = supabaseAnonKey.slice(-4);
-      const maskLength = supabaseAnonKey.length - 4;
-      maskedAnonKey = '*'.repeat(maskLength) + lastFour;
-    } else if (supabaseAnonKey) {
-      // If key is 4 characters or less, mask all but show it exists
-      maskedAnonKey = '*'.repeat(supabaseAnonKey.length);
-    } else {
-      maskedAnonKey = 'NOT_SET';
-    }
+    // Get last 4 characters of anon key (or empty string if not set)
+    const anonKeySuffix = supabaseAnonKey && supabaseAnonKey.length >= 4 
+      ? supabaseAnonKey.slice(-4) 
+      : '';
+
+    // Check if service key exists and convert to boolean
+    const hasServiceKey = !!supabaseServiceKey;
 
     return NextResponse.json(
       {
-        url: urlExists,
-        anon: maskedAnonKey
+        urlSet,
+        anonKeySuffix,
+        hasServiceKey
       },
       { 
         status: 200,
@@ -46,7 +44,7 @@ export async function GET() {
         }
       }
     );
-  } catch (error) {
+  } catch {
     console.error('Error in supa-env-check occurred.');
     
     return NextResponse.json(
