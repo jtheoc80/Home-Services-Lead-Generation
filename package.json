@@ -10,7 +10,8 @@
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint",
     "install-frontend": "cd frontend && npm install",
-    "supa:smoke": "tsx scripts/supaSmoke.ts"
+    "supa:smoke": "tsx scripts/supaSmoke.ts",
+    "scrape:harris": "node scripts/scrape-harris.cjs"
   },
   "workspaces": [
     "frontend"
