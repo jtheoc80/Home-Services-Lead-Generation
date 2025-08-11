@@ -169,7 +169,6 @@ BEGIN
         
         -- Check if this source_ref already exists
         SELECT source_ref INTO existing_source_ref FROM leads WHERE source_ref = rec.event_id;
-        
         -- Upsert into leads table
         INSERT INTO leads (
             jurisdiction,
