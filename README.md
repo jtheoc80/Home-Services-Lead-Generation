@@ -138,6 +138,123 @@ open http://localhost:3000/dashboard  # Dashboard (requires login setup for full
 
 ---
 
+
+## 💳 Payments (Stripe) Quickstart
+
+Set up the billing system with Stripe for subscriptions and lead credits:
+
+### Prerequisites
+- Stripe account ([stripe.com](https://stripe.com))
+- Get your test API keys from [Stripe Dashboard](https://dashboard.stripe.com/test/apikeys)
+
+### Quick Setup Commands
+
+```bash
+# 1. Configure Stripe environment variables
+cp backend/.env.example backend/.env
+# Edit backend/.env and add your Stripe test keys:
+# STRIPE_SECRET_KEY=sk_test_xxx
+# STRIPE_WEBHOOK_SECRET=whsec_xxx (get from webhook local forwarding)
+# STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+
+cp frontend/.env.example frontend/.env.local  
+# Edit frontend/.env.local and add:
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+
+# 2. Install Stripe dependency
+cd backend && pip install stripe
+cd ../frontend && npm install @stripe/stripe-js
+
+# 3. Apply billing database schema
+make db-billing
+
+# 4. Seed Stripe products and prices
+make billing-seed
+# Copy the output price IDs to your backend/.env
+
+# 5. Start local development with webhooks
+make billing-webhook
+```
+
+### Quick Verification Checklist
+
+After setup, verify these work:
+
+- ✅ Backend health shows Stripe configured: `curl http://localhost:8000/healthz`
+- ✅ Frontend billing page loads: `http://localhost:3000/billing`
+- ✅ Stripe webhook forwarding: Terminal shows "Ready! You are using Stripe API Version..."
+- ✅ Test checkout: Trigger `stripe trigger checkout.session.completed`
+
+### What You'll See
+
+**Billing Pages:**
+- **Plan Selection**: `/billing` - Choose Starter ($199/mo) or Pro ($399/mo) plans
+- **Credit Purchase**: Buy 50-credit packs for $49
+- **Customer Portal**: Manage billing, view invoices, update payment methods
+- **Success/Cancel**: Payment completion pages
+
+**Test Credit Flow:**
+1. Purchase credit pack → Credits added to balance
+2. Claim a lead → 1 credit deducted
+3. Insufficient credits → 402 error with upgrade CTA
+
+### Next Steps After Quickstart
+
+1. Configure live Stripe keys for production
+2. Set up webhook endpoint on your live domain
+3. Configure subscription plan benefits (lead limits, features)
+4. Test the complete payment flow end-to-end
+
+### 🔧 Post-Merge Deployment Checklist
+
+After merging this PR, follow these steps to configure Stripe in your environments:
+
+**GitHub Repository Secrets:**
+```bash
+# Add these secrets in GitHub repo settings for CI workflows
+gh secret set STRIPE_SECRET_KEY --body "sk_live_xxx"  # Use live key for production
+gh secret set STRIPE_WEBHOOK_SECRET --body "whsec_xxx"
+gh secret set STRIPE_PUBLISHABLE_KEY --body "pk_live_xxx"
+```
+
+**Vercel Environment Variables (Frontend):**
+```bash
+# Set frontend publishable key only (safe for client exposure)
+vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY pk_live_xxx production
+vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY pk_test_xxx development
+```
+
+**Railway/Backend Environment Variables:**
+```bash
+# Set server-side Stripe configuration
+railway variables set STRIPE_SECRET_KEY=sk_live_xxx
+railway variables set STRIPE_WEBHOOK_SECRET=whsec_xxx
+railway variables set STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+railway variables set STRIPE_PRICE_STARTER_MONTHLY=price_xxx
+railway variables set STRIPE_PRICE_PRO_MONTHLY=price_xxx  
+railway variables set STRIPE_PRICE_LEAD_CREDIT_PACK=price_xxx
+railway variables set BILLING_SUCCESS_URL=https://your-domain.com/billing/success
+railway variables set BILLING_CANCEL_URL=https://your-domain.com/billing/cancel
+```
+
+**Database Setup:**
+```bash
+# Apply billing schema to production database
+make db-billing  # or run the SQL from backend/app/models.sql manually
+```
+
+**Stripe Configuration:**
+```bash
+# Seed products and prices in live Stripe account
+make billing-seed  # copy the price IDs to your environment variables
+```
+
+**Verification:**
+- ✅ Health endpoint shows Stripe configured: `/healthz`
+- ✅ Billing page loads without errors: `/billing`
+- ✅ Test webhook endpoint receives events
+- ✅ Test checkout flow end-to-end
+
 ## 🛡️ Security
 
 This project includes comprehensive security measures to protect against vulnerabilities and ensure license compliance:
@@ -168,6 +285,7 @@ The security workflow runs automatically on:
 - Daily at 2 AM UTC
 
 For detailed security configuration and troubleshooting, see [`docs/SECURITY.md`](docs/SECURITY.md).
+
 
 ---
 

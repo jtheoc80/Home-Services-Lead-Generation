@@ -53,6 +53,11 @@ db-init:
 	@echo "Initializing database schema..."
 	cd backend && python scripts/apply_schema.py
 
+# Initialize only billing tables (idempotent)
+db-billing:
+	@echo "Applying billing DDL..."
+	cd backend && python scripts/apply_billing_schema.py
+
 # Install all dependencies
 install: install-scraper install-backend
 	@echo "✅ All dependencies installed successfully!"
@@ -112,3 +117,20 @@ clean:
 redis-test:
 	@echo "🔴 Running Redis smoke test..."
 	python scripts/redis_smoketest.py
+
+# ===== STRIPE BILLING TARGETS =====
+
+# Seed Stripe products and prices
+billing-seed:
+	@echo "🌱 Seeding Stripe products and prices..."
+	cd scripts && python stripe_seed.py
+
+# Start local webhook development environment
+billing-webhook:
+	@echo "📡 Starting local webhook development..."
+	./scripts/stripe_webhook_local.sh
+
+# Run billing-specific tests
+billing-test:
+	@echo "🧪 Running billing tests..."
+	cd backend && python -m pytest tests/test_billing_webhooks.py -v

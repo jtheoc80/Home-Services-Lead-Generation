@@ -1,0 +1,195 @@
+---
+name: Stripe CI
+
+on:
+  pull_request:
+    branches: ["main", "develop"]
+  push:
+    branches: ["main", "develop"]
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+
+jobs:
+  stripe-security-check:
+    name: Stripe Security Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Validate Stripe secret exposure
+        run: |
+          echo "🔒 Checking for Stripe secret exposure..."
+          
+          # Check that STRIPE_SECRET_KEY is not used in frontend
+          if grep -r "STRIPE_SECRET_KEY" frontend/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx"; then
+            echo "❌ ERROR: STRIPE_SECRET_KEY found in frontend code!"
+            echo "Secret keys must never be exposed to the client"
+            exit 1
+          fi
+          
+          # Check that STRIPE_WEBHOOK_SECRET is not used in frontend
+          if grep -r "STRIPE_WEBHOOK_SECRET" frontend/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx"; then
+            echo "❌ ERROR: STRIPE_WEBHOOK_SECRET found in frontend code!"
+            echo "Webhook secrets must never be exposed to the client"
+            exit 1
+          fi
+          
+          # Check that NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not used in backend
+          if grep -r "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" backend/ --include="*.py"; then
+            echo "❌ ERROR: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY found in backend code!"
+            echo "Use STRIPE_PUBLISHABLE_KEY instead for server-side access"
+            exit 1
+          fi
+          
+          echo "✅ Stripe secret validation passed"
+
+  backend-billing-tests:
+    name: Backend Billing Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run billing tests
+        run: |
+          cd backend
+          python -m pytest tests/test_billing_webhooks.py -v
+        env:
+          # Provide minimal env vars for tests (using dummy values)
+          STRIPE_SECRET_KEY: sk_test_dummy_for_tests
+          STRIPE_WEBHOOK_SECRET: whsec_dummy_for_tests
+          DATABASE_URL: postgresql://dummy:dummy@localhost/dummy
+
+  frontend-billing-build:
+    name: Frontend Billing Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend with billing pages
+        run: |
+          cd frontend
+          npm run build
+        env:
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy_for_build
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy_key_for_build
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+
+      - name: Verify billing pages built
+        run: |
+          echo "Checking if billing pages were built..."
+          if [ ! -d "frontend/.next/static" ]; then
+            echo "❌ Frontend build failed"
+            exit 1
+          fi
+          echo "✅ Frontend build successful"
+
+  integration-check:
+    name: Integration Check
+    runs-on: ubuntu-latest
+    needs: [stripe-security-check, backend-billing-tests, frontend-billing-build]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Check backend health endpoint includes Stripe
+        run: |
+          cd backend
+          python -c "
+          import os
+          os.environ['STRIPE_SECRET_KEY'] = 'sk_test_dummy'
+          os.environ['STRIPE_WEBHOOK_SECRET'] = 'whsec_dummy'
+          
+          from app.stripe_client import get_stripe_client
+          client = get_stripe_client()
+          
+          # Verify client is configured
+          assert client.is_configured, 'Stripe client should be configured'
+          print('✅ Stripe client configuration check passed')
+          "
+
+      - name: Validate API endpoint structure
+        run: |
+          echo "Checking billing API structure..."
+          
+          # Check that billing endpoints exist in main.py
+          if ! grep -q "/api/billing/checkout/subscription" backend/main.py; then
+            echo "❌ Subscription checkout endpoint missing"
+            exit 1
+          fi
+          
+          if ! grep -q "/api/billing/checkout/credits" backend/main.py; then
+            echo "❌ Credits checkout endpoint missing"
+            exit 1
+          fi
+          
+          if ! grep -q "/api/billing/portal" backend/main.py; then
+            echo "❌ Portal endpoint missing"
+            exit 1
+          fi
+          
+          if ! grep -q "/webhooks/stripe" backend/main.py; then
+            echo "❌ Stripe webhook endpoint missing"
+            exit 1
+          fi
+          
+          echo "✅ All billing endpoints found"
+
+      - name: Summary
+        run: |
+          echo "🎉 Stripe CI checks completed successfully!"
+          echo ""
+          echo "✅ Security validation passed"
+          echo "✅ Backend billing tests passed" 
+          echo "✅ Frontend builds with billing pages"
+          echo "✅ Integration checks passed"

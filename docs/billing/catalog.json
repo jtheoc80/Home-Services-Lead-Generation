@@ -1,0 +1,44 @@
+{
+  "products": [
+    {
+      "key": "starter",
+      "name": "Starter Contractor Plan",
+      "type": "recurring",
+      "interval": "month",
+      "unit_amount": 19900,
+      "features": [
+        "Up to 25 leads per month",
+        "Houston metro area coverage",
+        "Basic lead scoring",
+        "Email notifications",
+        "Standard support"
+      ],
+      "description": "Perfect for small contractors getting started with lead generation"
+    },
+    {
+      "key": "pro",
+      "name": "Pro Contractor Plan", 
+      "type": "recurring",
+      "interval": "month",
+      "unit_amount": 39900,
+      "features": [
+        "Up to 100 leads per month",
+        "Texas statewide coverage",
+        "Advanced lead scoring",
+        "Email & SMS notifications",
+        "Priority support",
+        "Export capabilities",
+        "Advanced filtering"
+      ],
+      "description": "Best for growing contractors who need more leads and features"
+    },
+    {
+      "key": "lead-credits-50",
+      "name": "Lead Credit Pack (50)",
+      "type": "one_time", 
+      "unit_amount": 4900,
+      "credits": 50,
+      "description": "Additional lead credits for subscribers who need extra leads"
+    }
+  ]
+}
