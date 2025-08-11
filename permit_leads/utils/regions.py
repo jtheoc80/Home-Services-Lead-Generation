@@ -105,7 +105,7 @@ class RegionConfig:
         metro = self.get_metro_by_id(region_id, metro_id)
         return metro['jurisdictions'] if metro else []
     
-    def get_default_region_metro(self) -> tuple[str, str]:
+    def get_default_region_metro(self) -> Tuple[str, str]:
         """Get default region and metro IDs."""
         default_region = self._config.get('default_region', 'texas')
         default_metro = self._config.get('default_metro', 'houston')
