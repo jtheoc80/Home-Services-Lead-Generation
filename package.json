@@ -9,6 +9,8 @@
     "build": "cd frontend && npm run build",
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint",
+    "typecheck": "cd frontend && npm run type-check",
+    "test": "cd frontend && npm run test",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
 

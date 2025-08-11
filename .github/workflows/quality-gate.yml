@@ -1,0 +1,264 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    branches: ["main", "develop"]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black pytest pytest-cov
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+          if [ -f permit_leads/requirements.txt ]; then pip install -r permit_leads/requirements.txt; fi
+
+      - name: Check for formatting-only changes
+        id: check-changes
+        run: |
+          # Get list of changed files
+          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD > changed_files.txt
+          
+          # Check if changes are only to Python or JS/TS files that could be formatting
+          format_files=$(grep -E '\.(py|js|ts|tsx|jsx)$' changed_files.txt || true)
+          
+          if [ -z "$format_files" ]; then
+            echo "formatting_only=false" >> $GITHUB_OUTPUT
+          else
+            echo "formatting_only=true" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Changed files:"
+          cat changed_files.txt
+
+      - name: Run Python formatting checks
+        id: python-format
+        run: |
+          echo "Running Black check..."
+          if ! black --check . >/dev/null 2>&1; then
+            echo "python_formatting_needed=true" >> $GITHUB_OUTPUT
+            echo "Black formatting issues found"
+          else
+            echo "python_formatting_needed=false" >> $GITHUB_OUTPUT
+            echo "Black formatting OK"
+          fi
+          
+          echo "Running Ruff check..."
+          if ! ruff check . >/dev/null 2>&1; then
+            echo "python_lint_needed=true" >> $GITHUB_OUTPUT
+            echo "Ruff linting issues found"
+          else
+            echo "python_lint_needed=false" >> $GITHUB_OUTPUT
+            echo "Ruff linting OK"
+          fi
+
+      - name: Run Node.js linting and type checking
+        id: node-checks
+        run: |
+          echo "Running ESLint..."
+          if ! npm run lint 2>&1; then
+            echo "lint_issues=true" >> $GITHUB_OUTPUT
+            echo "ESLint issues found"
+          else
+            echo "lint_issues=false" >> $GITHUB_OUTPUT
+            echo "ESLint OK"
+          fi
+          
+          echo "Running TypeScript type check..."
+          if ! npm run typecheck 2>&1; then echo "type_issues=true" >> $GITHUB_OUTPUT; fi
+
+      - name: Run tests
+        id: tests
+        run: |
+          echo "Running Node.js tests..."
+          npm run test || echo "node_test_failed=true" >> $GITHUB_OUTPUT
+          
+          echo "Running Python tests..."
+          if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
+            pytest tests/ --cov=. --cov-report=xml --cov-report=term || echo "python_test_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Python tests found, skipping..."
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Auto-fix formatting issues (bot branch)
+      - name: Set autofix output
+        id: set-autofix
+        run: |
+          formatting_only="${{ steps.check-changes.outputs.formatting_only }}"
+          python_formatting_needed="${{ steps.python-format.outputs.python_formatting_needed }}"
+          python_lint_needed="${{ steps.python-format.outputs.python_lint_needed }}"
+          lint_issues="${{ steps.node-checks.outputs.lint_issues }}"
+          if [ "$formatting_only" == "true" ] && { [ "$python_formatting_needed" == "true" ] || [ "$python_lint_needed" == "true" ] || [ "$lint_issues" == "true" ]; }; then
+            echo "should_autofix=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_autofix=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Auto-fix formatting issues (bot branch)
+        if: steps.set-autofix.outputs.should_autofix == 'true'
+        run: |
+          # Create a new branch for auto-fixes
+          fix_branch="autofix/formatting-$(date +%s)"
+          git checkout -b "$fix_branch"
+          
+          # Apply Python formatting fixes
+          if [ "${{ steps.python-format.outputs.python_formatting_needed }}" == "true" ]; then
+            echo "Applying Python formatting fixes..."
+            black . || true
+          fi
+          
+          if [ "${{ steps.python-format.outputs.python_lint_needed }}" == "true" ]; then
+            echo "Applying Python lint fixes..."
+            ruff check --fix . || true
+          fi
+          
+          # Apply JavaScript/TypeScript formatting fixes  
+          if [ "${{ steps.node-checks.outputs.lint_issues }}" == "true" ]; then
+            echo "Applying Node.js formatting fixes..."
+            # Only fix auto-fixable rules, don't fail on others
+            cd frontend && npx eslint . --fix --ext .js,.jsx,.ts,.tsx || true
+            cd ..
+          fi
+          
+          # Check if there are any changes
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Auto-fix: Apply formatting fixes
+            
+            - Applied Black formatting to Python files
+            - Applied Ruff auto-fixes to Python files  
+            - Applied ESLint auto-fixes to JS/TS files
+            
+            Co-authored-by: ${{ github.event.pull_request.user.login }} <${{ github.event.pull_request.user.login }}@users.noreply.github.com>"
+            
+            git push origin "$fix_branch"
+            
+            # Create a comment on the PR
+            cat > comment.md << EOF
+          🤖 **Auto-formatting fixes available**
+          
+          I've detected that this PR contains formatting issues that can be automatically fixed. 
+          
+          I've created a branch \`$fix_branch\` with the following fixes applied:
+          - Black formatting for Python files
+          - Ruff auto-fixes for Python files
+          - ESLint auto-fixes for JavaScript/TypeScript files
+          
+          You can merge these changes by running:
+          \`\`\`bash
+          git fetch origin $fix_branch
+          git merge origin/$fix_branch
+          \`\`\`
+          
+          Or create a new PR from the fix branch.
+          EOF
+            
+            gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md
+          else
+            echo "No formatting changes needed after running auto-fix tools."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Quality Gate Summary
+        if: always()
+        run: |
+          echo "## 🚦 Quality Gate Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Node.js checks
+          if [ "${{ steps.node-checks.outputs.lint_issues }}" == "true" ]; then
+            echo "❌ **ESLint**: Issues found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **ESLint**: Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.node-checks.outputs.type_issues }}" == "true" ]; then
+            echo "❌ **TypeScript**: Type errors found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **TypeScript**: Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Python checks
+          if [ "${{ steps.python-format.outputs.python_formatting_needed }}" == "true" ]; then
+            echo "❌ **Python Formatting (Black)**: Issues found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Python Formatting (Black)**: Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.python-format.outputs.python_lint_needed }}" == "true" ]; then
+            echo "❌ **Python Linting (Ruff)**: Issues found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Python Linting (Ruff)**: Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Tests
+          if [ "${{ steps.tests.outputs.node_test_failed }}" == "true" ]; then
+            echo "❌ **Node.js Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Node.js Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.tests.outputs.python_test_failed }}" == "true" ]; then
+            echo "❌ **Python Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Python Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Block merge on test failures
+        if: steps.tests.outputs.node_test_failed == 'true' || steps.tests.outputs.python_test_failed == 'true'
+        run: |
+          echo "❌ Tests failed. Blocking merge."
+          echo "Node.js tests failed: ${{ steps.tests.outputs.node_test_failed }}"
+          echo "Python tests failed: ${{ steps.tests.outputs.python_test_failed }}"
+          exit 1
+
+      - name: Block merge on critical linting issues
+        if: steps.node-checks.outputs.type_issues == 'true'
+        run: |
+          echo "❌ TypeScript type errors found. Blocking merge."
+          exit 1
