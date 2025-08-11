@@ -185,6 +185,7 @@ export default function LeadsPage() {
             <HealthStatus />
           </div>
         </div>
+        {/* End of flex container */}
 
         {/* Filters and Controls */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
