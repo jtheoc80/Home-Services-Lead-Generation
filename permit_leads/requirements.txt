@@ -6,3 +6,4 @@ fake-useragent
 PyYAML
 sqlite-utils
 beautifulsoup4
+supabase>=2.6.0
