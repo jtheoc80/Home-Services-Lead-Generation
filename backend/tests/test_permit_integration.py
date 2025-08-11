@@ -13,7 +13,6 @@ import pytest
 import os
 import tempfile
 import json
-import psycopg2
 from datetime import datetime, date
 from unittest.mock import patch, MagicMock
 from typing import Dict, List, Any
