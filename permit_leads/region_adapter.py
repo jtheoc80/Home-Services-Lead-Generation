@@ -42,8 +42,13 @@ class RegionAwareAdapter:
     
     def _create_arcgis_scraper(self, jurisdiction: Jurisdiction):
         """Create ArcGIS Feature Server scraper."""
-        from .adapters.arcgis_adapter import ArcGISAdapter
-        return ArcGISAdapter(jurisdiction)
+        # Use ETL-aware adapter for Harris County to enable state tracking
+        if 'harris' in jurisdiction.slug.lower():
+            from .adapters.etl_aware_arcgis_adapter import ETLAwareArcGISAdapter
+            return ETLAwareArcGISAdapter(jurisdiction)
+        else:
+            from .adapters.arcgis_adapter import ArcGISAdapter
+            return ArcGISAdapter(jurisdiction)
     
     def _create_accela_scraper(self, jurisdiction: Jurisdiction):
         """Create Accela HTML scraper."""
