@@ -18,7 +18,7 @@ function parseTimeString(timeStr) {
   
   switch (unit) {
     case 'd': return num; // days
-    case 'h': return Math.ceil(num / 24); // hours to days (round up)
+    case 'h': return Math.max(1, Math.ceil(num / 24)); // hours to days (round up, at least 1)
     case 'm': return Math.max(1, Math.ceil(num / (24 * 60))); // minutes to days (round up, at least 1)
     default: throw new Error(`Unknown time unit: ${unit}`);
   }
