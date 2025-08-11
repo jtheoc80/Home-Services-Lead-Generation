@@ -202,4 +202,4 @@ jobs:
 
           # Add next run info
           echo "### ⏰ Next Run" >> $GITHUB_STEP_SUMMARY
-          echo "Scheduled for 02:30 America/Chicago (08:30 UTC) daily" >> $GITHUB_STEP_SUMMARY
+          echo "Scheduled for 08:30 UTC daily (02:30 AM CST / 03:30 AM CDT, America/Chicago; time varies with daylight saving)" >> $GITHUB_STEP_SUMMARY
