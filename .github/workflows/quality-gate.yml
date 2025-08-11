@@ -160,7 +160,7 @@ jobs:
             - Applied Ruff auto-fixes to Python files  
             - Applied ESLint auto-fixes to JS/TS files
             
-            Co-authored-by: ${{ github.event.pull_request.user.login }} <${{ github.event.pull_request.user.email }}>"
+            Co-authored-by: ${{ github.event.pull_request.user.login }} <${{ github.event.pull_request.user.login }}@users.noreply.github.com>"
             
             git push origin "$fix_branch"
             
