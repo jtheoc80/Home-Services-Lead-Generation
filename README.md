@@ -60,7 +60,12 @@ cp frontend/.env.local.example frontend/.env.local
 # SUPABASE_JWT_SECRET=demo_jwt_secret
 
 # Edit frontend/.env.local:
-# NEXT_PUBLIC_SUPABASE_URL=https://demo.supabase.co
+# SUPABASE_URL=https://demo.example.com
+# SUPABASE_SERVICE_ROLE=demo_key
+# SUPABASE_JWT_SECRET=demo_jwt_secret
+
+# Edit frontend/.env.local:
+# NEXT_PUBLIC_SUPABASE_URL=https://demo.example.com
 # NEXT_PUBLIC_SUPABASE_ANON_KEY=demo_anon_key
 
 # 3. Install dependencies
