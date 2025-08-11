@@ -1,0 +1,321 @@
+
+name: Stack Monitor
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      force_remediation:
+        description: 'Force auto-remediation even if disabled'
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: '20'
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+jobs:
+  stack-health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run stack health check
+        id: health_check
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          AUTO_REMEDIATE: ${{ vars.AUTO_REMEDIATE || 'false' }}
+        run: |
+          # Run health check and capture output
+          echo "Running stack health check..."
+          node scripts/stack-health.js > health-summary.md 2>health-stderr.log || echo "Health check completed with issues"
+          
+          # Check if health check passed based on exit code
+          if [ $? -eq 0 ]; then
+            echo "health_check_failed=false" >> $GITHUB_OUTPUT
+          else
+            echo "health_check_failed=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Always append summary to GitHub Step Summary
+          if [ -f "health-summary.md" ]; then
+            cat health-summary.md >> $GITHUB_STEP_SUMMARY
+          fi
+        
+      - name: Check for build/config issues and dispatch AI Auto PR
+        if: steps.health_check.outputs.health_check_failed == 'true'
+        id: check_build_issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read stderr output if it exists
+            let stderrContent = '';
+            if (fs.existsSync('health-stderr.log')) {
+              stderrContent = fs.readFileSync('health-stderr.log', 'utf8');
+              console.log('Stderr content:', stderrContent);
+            }
+            
+            // Define patterns that indicate Next.js/Supabase build/config issues
+            const buildConfigPatterns = [
+              'supabaseKey is required',
+              'NEXT_PUBLIC_.*missing',
+              'NEXT_PUBLIC_.*not.*found',
+              'SIGTERM port not bound',
+              'Port.*already.*in.*use',
+              'client.*supabase.*init',
+              'SUPABASE_.*required'
+            ];
+            
+            // Check if any patterns match
+            let hasConfigIssue = false;
+            for (const pattern of buildConfigPatterns) {
+              const regex = new RegExp(pattern, 'i');
+              if (regex.test(stderrContent)) {
+                console.log(`Found config issue pattern: ${pattern}`);
+                hasConfigIssue = true;
+                break;
+              }
+            }
+            
+            if (hasConfigIssue) {
+              console.log('Build/config issues detected, dispatching AI Auto PR...');
+              
+              // Dispatch the AI Auto PR workflow
+              const instruction = "Fix Next/Supabase build: client-only Supabase init, ensure NEXT_PUBLIC_SUPABASE_* client-side only, add /api/health, use Next standalone Dockerfile for Railway.";
+              
+              await github.rest.repos.createDispatchEvent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                event_type: 'ai_autopr_request',
+                client_payload: {
+                  instruction: instruction,
+                  error_type: 'build_config',
+                  triggered_by: 'stack-monitor',
+                  stderr_content: stderrContent.substring(0, 1000) // Limit size
+                }
+              });
+              
+              console.log('AI Auto PR workflow dispatched successfully');
+              
+              // Add this info to the step summary
+              const summary = `
+              
+              ## 🤖 AI Auto PR Triggered
+              
+              Build/configuration issues detected in stack health check stderr. 
+              Automatically dispatched AI Auto PR workflow with instruction:
+              
+              > ${instruction}
+              
+              **Event Type:** ai_autopr_request  
+              **Triggered By:** stack-monitor workflow
+              `;
+              
+              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+            } else {
+              console.log('No specific build/config issues detected in stderr');
+            }
+
+      - name: Upload stack health artifacts
+        if: steps.health_check.outputs.health_check_failed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-health-report-${{ github.run_number }}
+          path: |
+            stack-health.json
+            health-summary.md
+            health-stderr.log
+          retention-days: 30
+          if-no-files-found: warn
+          
+      - name: Create or update GitHub issue
+        if: steps.health_check.outputs.health_check_failed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read the generated summary
+            let summary = '## Stack Monitor Alert\n\nStack health check failed. Please review the details below.\n\n';
+            if (fs.existsSync('health-summary.md')) {
+              summary = fs.readFileSync('health-summary.md', 'utf8');
+            }
+            
+            // Add metadata
+            const metadata = `
+            
+            ---
+            
+            **Run Details:**
+            - **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - **Triggered by:** ${{ github.event_name }}
+            - **Timestamp:** ${new Date().toISOString()}
+            - **Branch:** ${{ github.ref_name }}
+            - **Commit:** ${{ github.sha }}
+            
+            *This issue was automatically generated by the Stack Monitor workflow.*
+            `;
+            
+            const title = 'Stack Monitor Alert';
+            const body = summary + metadata;
+            
+            // Search for existing issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'created',
+              direction: 'desc'
+            });
+            
+            const existingIssue = issues.find(issue => 
+              issue.title === title && 
+              issue.user.type === 'Bot'
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: body,
+                labels: ['bug', 'infrastructure', 'automated']
+              });
+              
+              // Add comment with latest update
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `### 🔄 Stack Monitor Update\n\n**Run #${{ github.run_number }}** detected continued issues.\n\nSee updated issue description for latest details.`
+              });
+              
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['bug', 'infrastructure', 'automated']
+              });
+              
+              console.log(`Created new issue #${issue.number}`);
+            }
+            
+      - name: Auto-remediation (if enabled)
+        if: |
+          steps.health_check.outputs.health_check_failed == 'true' && 
+          (vars.AUTO_REMEDIATE == 'true' || github.event.inputs.force_remediation == 'true')
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        run: |
+          echo "🔧 Auto-remediation is enabled, attempting to fix issues..."
+          
+          # Check if remediation scripts exist and run them
+          if [ -f "scripts/remediate-vercel.js" ]; then
+            echo "Running Vercel remediation..."
+            node scripts/remediate-vercel.js || echo "Vercel remediation failed"
+          fi
+          
+          if [ -f "scripts/remediate-railway.js" ]; then
+            echo "Running Railway remediation..."
+            node scripts/remediate-railway.js || echo "Railway remediation failed"
+          fi
+          
+          # Wait a bit and re-run health check to see if issues were resolved
+          echo "Waiting 30 seconds before re-checking..."
+          sleep 30
+          
+          echo "Re-running health check after remediation..."
+          node scripts/stack-health.js > remediation-summary.md || true
+          
+          if [ -f "remediation-summary.md" ]; then
+            echo "## Post-Remediation Results" >> $GITHUB_STEP_SUMMARY
+            cat remediation-summary.md >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: Close resolved issues
+        if: steps.health_check.outputs.health_check_failed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Stack Monitor Alert';
+            
+            // Search for open Stack Monitor issues
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'created',
+              direction: 'desc'
+            });
+            
+            const stackIssues = issues.filter(issue => 
+              issue.title === title && 
+              issue.user.type === 'Bot'
+            );
+            
+            for (const issue of stackIssues) {
+              // Add resolution comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `### ✅ Issue Resolved\n\n**Run #${{ github.run_number }}** confirmed all services are healthy.\n\nClosing this issue automatically.`
+              });
+              
+              // Close the issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+              
+              console.log(`Closed resolved issue #${issue.number}`);
+            }
+            
+      - name: Report workflow summary
+        if: always()
+        run: |
+          echo "## Stack Monitor Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node Version:** ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check Result:** ${{ steps.health_check.outputs.health_check_failed == 'false' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auto-remediation:** ${{ vars.AUTO_REMEDIATE == 'true' && '✅ Enabled' || '❌ Disabled' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+

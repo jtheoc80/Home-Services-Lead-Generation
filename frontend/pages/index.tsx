@@ -19,6 +19,9 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold">LeadLedgerPro</h1>
               <nav className="space-x-4">
+                <Link href="/dashboard" className="border border-white px-4 py-2 rounded hover:bg-blue-700">
+                  Dashboard
+                </Link>
                 <Link href="/signup" className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">
                   Sign Up
                 </Link>

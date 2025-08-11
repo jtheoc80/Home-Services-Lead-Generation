@@ -2,91 +2,86 @@ name: Nightly Pipeline
 
 on:
   schedule:
-    # Midnight America/Chicago during DST (5 AM UTC)
-    - cron: "0 5 * * *"
+    # Runs at 08:30 UTC (corresponds to 02:30 or 03:30 America/Chicago depending on daylight saving time)
+    - cron: "30 8 * * *"
   workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days to scrape (default: 14)'
+        required: false
+        default: '14'
+      force_run:
+        description: 'Force run even if no recent changes'
+        type: boolean
+        default: false
+
+# Prevent concurrent runs to avoid resource conflicts
+concurrency:
+  group: nightly-pipeline
+  cancel-in-progress: false
+
+env:
+  CRON_SCRAPE_UTC: ${{ vars.CRON_SCRAPE_UTC || '30 8 * * *' }}
 
 jobs:
-  scrape_and_export:
+  scrape_and_process:
     runs-on: ubuntu-latest
-    
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REGISTRY_PATH: config/registry.yaml
+      LAUNCH_SCOPE: houston
+      DEFAULT_REGION: tx-houston
+      ALLOW_EXPORTS: false
+      USE_ML_SCORING: false
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          
+
       - name: Install permit_leads dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r permit_leads/requirements.txt
-          
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
       - name: Create output directory
         run: |
           mkdir -p out
-          
-      - name: Run scraper (last 14 days)
-        run: |
-          python -m permit_leads scrape --all --days 14 --output-dir out --formats csv sqlite
-          
-      - name: Export leads
-        run: |
-          python -m permit_leads export-leads --db out/permits/permits.db --out out --lookback 14
-          
-      - name: Upload leads_recent.csv artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: leads-recent
-          path: out/leads_recent.csv
-          if-no-files-found: warn
-          
-      - name: Upload leads_by_jurisdiction artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: leads-by-jurisdiction
-          path: out/by_jurisdiction/*.csv
-          if-no-files-found: warn
 
-  ingest_to_postgres:
-    runs-on: ubuntu-latest
-    needs: scrape_and_export
-    
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          
-      - name: Install backend dependencies
+      - name: Run scraper for Houston counties only
         run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          
-      - name: Download leads artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: leads-recent
-          path: out/
-          
-      - name: Run schema setup
+          # Use input parameter if provided, otherwise default to 14 days
+          DAYS="${{ github.event.inputs.days || '14' }}"
+          python permit_leads/main.py --days $DAYS --outdir out
+
+      - name: Export leads to CSV
+        run: |
+          python permit_leads/export_leads.py
+
+      - name: Setup database schema
+        if: env.DATABASE_URL != ''
         run: |
           python -c "
           import psycopg2
           import os
-          
+
+          if not os.environ.get('DATABASE_URL'):
+              print('DATABASE_URL not set, skipping database operations')
+              exit(0)
+
           # Read and execute the schema
           with open('backend/app/models.sql', 'r') as f:
               schema_sql = f.read()
-          
+
           # Connect to database and execute schema
           conn = psycopg2.connect(os.environ['DATABASE_URL'])
           cur = conn.cursor()
@@ -96,7 +91,115 @@ jobs:
           conn.close()
           print('Schema setup completed')
           "
-          
+
       - name: Ingest leads to PostgreSQL
+        if: env.DATABASE_URL != '' && hashFiles('out/leads_recent.csv') != ''
         run: |
-          python -m backend.app.ingest out/leads_recent.csv
+          python backend/app/ingest.py out/leads_recent.csv
+
+      - name: Process notifications (if enabled)
+        if: env.DATABASE_URL != ''
+        run: |
+          python -c "
+          import os
+          import sys
+
+          if not os.environ.get('DATABASE_URL'):
+              print('DATABASE_URL not set, skipping notification processing')
+              sys.exit(0)
+
+          # Import notification processing from backend
+          sys.path.append('backend/app')
+
+          try:
+              from utils.notifications import process_new_lead_notifications
+
+              # Process notifications for new leads
+              processed_count = process_new_lead_notifications()
+              print(f'Processed {processed_count} notifications')
+
+          except ImportError as e:
+              print(f'Notification processing not available: {e}')
+          except Exception as e:
+              print(f'Error processing notifications: {e}')
+          "
+
+      - name: Upload leads artifact (audit only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: leads-recent-${{ github.run_number }}
+          path: out/leads_recent.csv
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload processing logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: processing-logs-${{ github.run_number }}
+          path: |
+            out/*.log
+            *.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Report run summary
+        if: always()
+        run: |
+          # Calculate runtime
+          END_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Count leads processed
+          if [ -f "out/leads_recent.csv" ]; then
+            LEAD_COUNT=$(tail -n +2 out/leads_recent.csv | wc -l)
+            LEAD_STATUS="✅ $LEAD_COUNT leads processed"
+          else
+            LEAD_COUNT=0
+            LEAD_STATUS="⚠️ No leads generated"
+          fi
+
+          # Check database operations
+          if [ "${{ env.DATABASE_URL }}" != "" ]; then
+            DB_STATUS="✅ Database ingestion enabled"
+          else
+            DB_STATUS="⚠️ No database configured"
+          fi
+
+          # Determine overall status
+          if [ "${{ job.status }}" == "success" ] && [ "$LEAD_COUNT" -gt 0 ]; then
+            OVERALL_STATUS="🎉 SUCCESS"
+            STATUS_COLOR="good"
+          elif [ "${{ job.status }}" == "success" ]; then
+            OVERALL_STATUS="⚠️ COMPLETED WITH WARNINGS"
+            STATUS_COLOR="warning"
+          else
+            OVERALL_STATUS="❌ FAILED"
+            STATUS_COLOR="danger"
+          fi
+
+          # Create Slack-style summary
+          echo "## 🌙 Nightly Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** $OVERALL_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Run Details" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🕒 Completed At | $END_TIME |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📍 Scope | Houston counties only |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📅 Days Scraped | ${{ github.event.inputs.days || '14' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📋 Leads | $LEAD_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🗄️ Database | ${{ env.DATABASE_URL != '' && 'Connected' || 'Not configured' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔧 Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Add detailed status
+          echo "### 🔍 Component Status" >> $GITHUB_STEP_SUMMARY
+          echo "- $LEAD_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- $DB_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 Exports: Disabled (Houston-first policy)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Add next run info
+          echo "### ⏰ Next Run" >> $GITHUB_STEP_SUMMARY
+          echo "Scheduled for 08:30 UTC daily (02:30 AM CST / 03:30 AM CDT, America/Chicago; time varies with daylight saving)" >> $GITHUB_STEP_SUMMARY

@@ -6,6 +6,16 @@ out/
 *.log
 .DS_Store
 
+# Frontend environment files
+frontend/.env.local
+frontend/.env
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Data output directories (should not be committed)
 data/permits/
 data/leads/
@@ -31,6 +41,14 @@ build/
 .coverage
 htmlcov/
 
+# Frontend
+frontend/.env.local
+frontend/.env
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+node_modules/
+
 # IDE and editors
 .vscode/
 .idea/
@@ -47,3 +65,13 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+
+# Stack monitoring output files
+stack-health.json
+.stack-health-exit-code
+summary.md
+remediation-summary.md
+
+# Stack health monitoring output
+stack-health.json
+

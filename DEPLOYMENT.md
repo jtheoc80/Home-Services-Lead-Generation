@@ -117,6 +117,28 @@ Backend (Python)
 3. **Medium-term**: Train first ML model and enable ML scoring
 4. **Long-term**: Set up monitoring dashboards and model performance tracking
 
+## 🚂 Railway Deployment (Frontend)
+
+For deploying the frontend application specifically to Railway, follow these steps:
+
+### Railway Configuration
+1. **Set Builder**: Select `Dockerfile` as the build method
+2. **Root Directory**: Set to `frontend`
+3. **Custom Start Command**: Clear any custom start command (let Docker handle it)
+4. **Environment Variables**: Add `NODE_ENV=production` (optional, already set in Dockerfile)
+5. **Redeploy**: Trigger a new deployment
+
+### Railway Setup Steps
+```bash
+# Railway will automatically:
+# 1. Use the Dockerfile in the frontend directory
+# 2. Build the Next.js application 
+# 3. Start with npm start on port 3000
+# 4. Apply NODE_ENV=production environment
+```
+
+**Note**: This Railway configuration deploys only the frontend. The backend and ML pipeline should be deployed separately according to the main deployment steps above.
+
 ## 🛠 Troubleshooting
 
 - **Build Issues**: All TypeScript compilation passes ✅
@@ -125,3 +147,43 @@ Backend (Python)
 - **Python Syntax**: All scripts compile without errors ✅
 
 The implementation is complete and ready for production deployment!
+
+## 🚀 Vercel Deployment Configuration
+
+### Required Vercel Settings
+
+When deploying to Vercel, ensure the following configuration:
+
+1. **Root Directory**: Must be set to `frontend`
+2. **Install Command**: Leave blank (use Next.js preset) OR the command will be automatically handled by `frontend/vercel.json`
+3. **Build Command**: Leave blank (use Next.js preset) OR the command will be automatically handled by `frontend/vercel.json`
+
+### Vercel Configuration File
+
+2. **Install Command**: Recommended: Specify in `frontend/vercel.json`. If both dashboard and `vercel.json` are present, `vercel.json` takes precedence.
+3. **Build Command**: Recommended: Specify in `frontend/vercel.json`. If both dashboard and `vercel.json` are present, `vercel.json` takes precedence.
+
+### Vercel Configuration File
+
+It is recommended to use a `frontend/vercel.json` file for deployment configuration, as this ensures consistency and version control. When present, its settings override any dashboard configuration for install and build commands.
+```json
+{
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "next build"
+}
+```
+
+This configuration ensures Vercel:
+- Uses the Next.js framework preset
+- Runs `npm ci` for faster, reliable installs
+- Uses the standard `next build` command
+
+### CLI Deployment (Optional)
+
+For GitHub Actions or manual CLI deployments, use:
+```bash
+vercel --cwd frontend
+```
+
+This ensures Vercel operates from the correct frontend directory.

@@ -78,13 +78,54 @@ CREATE TABLE IF NOT EXISTS lead_outcomes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS notification_prefs (
+  id BIGSERIAL PRIMARY KEY,
+  account_id UUID NOT NULL,
+  min_score_threshold NUMERIC DEFAULT 70.0,
+  counties TEXT[] DEFAULT ARRAY['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston'],
+  -- The '<@' operator is PostgreSQL-specific and means "is contained by": channels must be a subset of ['inapp', 'email', 'sms']
+  channels TEXT[] DEFAULT ARRAY['inapp'] CHECK (channels <@ ARRAY['inapp', 'email', 'sms']),
+  trade_tags TEXT[],
+  value_threshold NUMERIC,
+  is_enabled BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (account_id)
+);
+
 CREATE TABLE IF NOT EXISTS notifications (
   id BIGSERIAL PRIMARY KEY,
   account_id UUID NOT NULL,
   lead_id BIGINT NOT NULL,
   channel TEXT NOT NULL CHECK (channel IN ('inapp', 'email', 'sms')),
   status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed', 'read')),
+  title TEXT,
+  message TEXT,
+  metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT now(),
+  sent_at TIMESTAMPTZ,
+  read_at TIMESTAMPTZ
+);
+
+-- Subscription and cancellation tables (added for cancellation workflow)
+CREATE TYPE subscription_status AS ENUM ('trial', 'active', 'cancelled', 'grace_period', 'expired');
+CREATE TYPE subscription_plan AS ENUM ('trial', 'basic', 'premium', 'enterprise');
+
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL,
+  plan subscription_plan NOT NULL DEFAULT 'trial',
+  status subscription_status NOT NULL DEFAULT 'trial',
+  trial_start_date TIMESTAMPTZ,
+  trial_end_date TIMESTAMPTZ,
+  subscription_start_date TIMESTAMPTZ,
+  subscription_end_date TIMESTAMPTZ,
+  grace_period_end_date TIMESTAMPTZ,
+  billing_cycle TEXT,
+  amount_cents INTEGER,
+  payment_method TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+
   sent_at TIMESTAMPTZ
 );
 
@@ -120,5 +161,24 @@ CREATE TABLE IF NOT EXISTS cancellations (
   preferred_service_areas TEXT[],
   preferred_trade_types TEXT[],
   
+
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS cancellation_records (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL,
+  subscription_id BIGINT NOT NULL REFERENCES user_subscriptions(id) ON DELETE CASCADE,
+  cancellation_type TEXT NOT NULL CHECK (cancellation_type IN ('trial', 'paid')),
+  reason_category TEXT,
+  reason_notes TEXT,
+  cancelled_at TIMESTAMPTZ DEFAULT now(),
+  effective_date TIMESTAMPTZ,
+  grace_period_days INTEGER DEFAULT 0,
+  processed_by UUID,
+  refund_issued BOOLEAN DEFAULT false,
+  refund_amount_cents INTEGER,
+
   created_at TIMESTAMPTZ DEFAULT now()
 );

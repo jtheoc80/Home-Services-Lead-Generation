@@ -1,0 +1,1 @@
+{{brand_name}}: Welcome back! Your {{plan_name}} subscription is now active. Access your dashboard: {{dashboard_url}} Questions? Reply HELP

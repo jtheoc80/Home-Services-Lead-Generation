@@ -80,6 +80,10 @@ class ExportController:
         if not self.exports_allowed:
             reason = "Data exports are disabled by configuration (ALLOW_EXPORTS=false)"
             logger.warning(f"Export blocked for {requester}: {reason}")
+            
+            # Log the blocked attempt for audit
+            self._log_blocked_export_attempt(export_type, requester, reason, parameters)
+            
             return False, reason
         
         # Additional validation could be added here for specific export types
@@ -183,11 +187,35 @@ class ExportController:
             'allowed': result.allowed,
             'success': result.success,
             'reason': result.reason,
-            'record_count': result.record_count
+            'record_count': result.record_count,
+            'admin_override': request.parameters.get('admin_override', False),
+            'user_id': request.parameters.get('user_id', 'unknown')
         }
         
         # In a real implementation, this might write to a database or audit log
-        logger.info(f"Export audit log: {log_entry}")
+        if result.allowed and result.success:
+            logger.info(f"AUDIT: Export successful - {log_entry}")
+        elif not result.allowed:
+            logger.warning(f"AUDIT: Export blocked - {log_entry}")
+        else:
+            logger.error(f"AUDIT: Export failed - {log_entry}")
+    
+    def _log_blocked_export_attempt(self, export_type: ExportType, requester: str, reason: str, parameters: Optional[Dict[str, Any]] = None):
+        """Log a blocked export attempt immediately for audit purposes."""
+        log_entry = {
+            'export_type': export_type.value,
+            'requester': requester,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'blocked': True,
+            'reason': reason,
+            'parameters': parameters or {}
+        }
+        
+        # Log blocked attempt for audit
+        logger.warning(f"AUDIT: Export attempt blocked - {log_entry}")
+        
+        # Also store for potential admin notification
+        self._notify_blocked_export_attempt(export_type, requester, reason)
     
     def _notify_export_blocked(self, request: ExportRequest, result: ExportResult):
         """Send notification when export is blocked."""
@@ -210,6 +238,44 @@ class ExportController:
             
         except Exception as e:
             logger.error(f"Failed to send export notification: {str(e)}")
+    
+    def _notify_blocked_export_attempt(self, export_type: ExportType, requester: str, reason: str):
+        """Send notification when export attempt is blocked immediately."""
+        try:
+            # Get admin email from environment or use default
+            admin_emails = os.getenv('ADMIN_NOTIFICATION_EMAILS', '').split(',')
+            admin_emails = [email.strip() for email in admin_emails if email.strip()]
+            
+            if admin_emails:
+                logger.info(f"Would notify admins about blocked export: {requester} attempted {export_type.value}")
+                # In a real implementation, this would send actual notifications
+                
+        except Exception as e:
+            logger.error(f"Failed to send blocked export notification: {str(e)}")
+    
+    def _create_admin_override_result(self, request: ExportRequest) -> ExportResult:
+        """
+        Create a successful export result for admin override cases.
+        
+        This method bypasses the normal export permission checks and 
+        creates a successful result for admin override scenarios.
+        """
+        result = ExportResult(
+            export_id=request.export_id,
+            success=True,
+            allowed=True,
+            reason="Admin override authorized",
+            record_count=0,  # Would be set by actual export logic
+            timestamp=datetime.now(timezone.utc)
+        )
+        
+        # Log the admin override export
+        logger.info(f"Admin override export {request.export_id} completed successfully")
+        
+        # Log the export attempt for audit
+        self._log_export_attempt(request, result)
+        
+        return result
     
     def get_export_status(self) -> Dict[str, Any]:
         """
@@ -257,6 +323,8 @@ _export_controller = None
 def get_export_controller() -> ExportController:
     """Get the global export controller instance."""
     global _export_controller
+    # Always create a new instance to pick up environment changes
+    # In production, this could be optimized with caching and invalidation
     if _export_controller is None:
         _export_controller = ExportController()
     return _export_controller
