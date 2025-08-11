@@ -16,6 +16,11 @@ from pathlib import Path
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# Ensure the parent directory containing permit_leads is in sys.path
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
 from permit_leads.config_loader import get_config_loader, Region, Jurisdiction
 
 logger = logging.getLogger(__name__)
