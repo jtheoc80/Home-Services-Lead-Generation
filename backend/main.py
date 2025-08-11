@@ -28,6 +28,13 @@ from app.middleware import RequestLoggingMiddleware, setup_json_logging
 
 from app.supabase_client import get_supabase_client
 
+# Import billing API
+from app.billing_api import (
+    create_customer, create_checkout_session_subscription, 
+    create_checkout_session_credits, create_portal_session, 
+    handle_webhook, get_user_credits, CheckoutSessionRequest
+)
+
 
 # Import metrics if available
 try:
@@ -241,12 +248,34 @@ async def healthz():
     # Check Redis connectivity
     redis_status, redis_rtt = await ping_ms()
     
+    # Check Stripe connectivity
+    stripe_status = "missing"
+    try:
+        from app.stripe_client import get_stripe_client
+        stripe_client = get_stripe_client()
+        if stripe_client.is_configured:
+            # Test with a safe 200ms API call
+            if await asyncio.wait_for(
+                asyncio.create_task(asyncio.to_thread(stripe_client.test_connection)), 
+                timeout=0.2
+            ):
+                stripe_status = "configured"
+            else:
+                stripe_status = "error"
+        else:
+            stripe_status = "missing"
+    except asyncio.TimeoutError:
+        stripe_status = "timeout"
+    except Exception:
+        stripe_status = "error"
+    
     return {
         "status": "ok",
         "db": db_status,
         "db_rtt_ms": db_rtt,
         "redis": redis_status,
         "redis_rtt_ms": redis_rtt,
+        "stripe": stripe_status,
         "ts": int(time.time())
     }
 
@@ -490,6 +519,45 @@ async def get_export_status(user: AuthUser = Depends(auth_user)):
     except Exception as e:
         logger.error(f"Error getting export status: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+# ===== BILLING API ROUTES =====
+
+@app.post("/api/billing/create-customer")
+async def api_create_customer(user: AuthUser = Depends(auth_user)):
+    """Create or retrieve Stripe customer for authenticated user."""
+    return await create_customer(user)
+
+@app.post("/api/billing/checkout/subscription")
+async def api_checkout_subscription(
+    request: CheckoutSessionRequest,
+    user: AuthUser = Depends(auth_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+):
+    """Create checkout session for subscription."""
+    return await create_checkout_session_subscription(request, user, idempotency_key)
+
+@app.post("/api/billing/checkout/credits")
+async def api_checkout_credits(
+    user: AuthUser = Depends(auth_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+):
+    """Create checkout session for credit pack purchase."""
+    return await create_checkout_session_credits(user, idempotency_key)
+
+@app.post("/api/billing/portal")
+async def api_billing_portal(user: AuthUser = Depends(auth_user)):
+    """Create Customer Portal session for billing management."""
+    return await create_portal_session(user)
+
+@app.get("/api/billing/credits")
+async def api_get_credits(user: AuthUser = Depends(auth_user)):
+    """Get current credit balance for authenticated user."""
+    return await get_user_credits(user)
+
+@app.post("/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events with signature verification."""
+    return await handle_webhook(request)
 
 # Global exception handler
 @app.exception_handler(Exception)

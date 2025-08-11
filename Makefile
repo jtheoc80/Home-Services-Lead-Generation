@@ -53,6 +53,11 @@ db-init:
 	@echo "Initializing database schema..."
 	cd backend && python scripts/apply_schema.py
 
+# Initialize only billing tables (idempotent)
+db-billing:
+	@echo "Applying billing DDL..."
+	cd backend && python scripts/apply_billing_schema.py
+
 # Install all dependencies
 install: install-scraper install-backend
 	@echo "✅ All dependencies installed successfully!"

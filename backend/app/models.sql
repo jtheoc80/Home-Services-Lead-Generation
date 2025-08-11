@@ -261,3 +261,64 @@ CREATE TABLE IF NOT EXISTS cancellation_records (
   created_at TIMESTAMPTZ DEFAULT now()
 
 );
+
+-- ===== STRIPE BILLING TABLES =====
+-- Billing customers table to map users to Stripe customers
+CREATE TABLE IF NOT EXISTS billing_customers (
+  user_id UUID PRIMARY KEY,
+  email TEXT NOT NULL,
+  stripe_customer_id TEXT UNIQUE NOT NULL,
+  default_payment_method TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Billing subscriptions table to track Stripe subscriptions
+CREATE TABLE IF NOT EXISTS billing_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES billing_customers(user_id) ON DELETE CASCADE,
+  stripe_subscription_id TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL,
+  price_id TEXT NOT NULL,
+  quantity INTEGER DEFAULT 1,
+  current_period_end TIMESTAMPTZ NOT NULL,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Billing invoices table to track Stripe invoices
+CREATE TABLE IF NOT EXISTS billing_invoices (
+  stripe_invoice_id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES billing_customers(user_id) ON DELETE CASCADE,
+  amount_due INTEGER NOT NULL,
+  amount_paid INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  hosted_invoice_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Lead credits table to track user credit balances
+CREATE TABLE IF NOT EXISTS lead_credits (
+  user_id UUID PRIMARY KEY REFERENCES billing_customers(user_id) ON DELETE CASCADE,
+  balance INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Billing events table to log all webhook events
+CREATE TABLE IF NOT EXISTS billing_events (
+  id BIGSERIAL PRIMARY KEY,
+  type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indexes for billing tables
+CREATE INDEX IF NOT EXISTS billing_customers_stripe_customer_id_idx ON billing_customers(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS billing_subscriptions_user_id_idx ON billing_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS billing_subscriptions_stripe_subscription_id_idx ON billing_subscriptions(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS billing_subscriptions_status_idx ON billing_subscriptions(status);
+CREATE INDEX IF NOT EXISTS billing_invoices_user_id_idx ON billing_invoices(user_id);
+CREATE INDEX IF NOT EXISTS billing_invoices_status_idx ON billing_invoices(status);
+CREATE INDEX IF NOT EXISTS billing_events_type_idx ON billing_events(type);
+CREATE INDEX IF NOT EXISTS billing_events_created_at_idx ON billing_events(created_at);

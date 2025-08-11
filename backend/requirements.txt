@@ -38,6 +38,9 @@ prometheus_client>=0.20.0
 # Supabase integration
 supabase>=2.6.0
 
+# Stripe payments
+stripe>=8.0.0
+
 # Optional: for enhanced ML features
 # xgboost>=1.6.0
 # lightgbm>=3.3.0
