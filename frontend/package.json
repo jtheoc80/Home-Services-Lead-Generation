@@ -11,7 +11,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "preflight": "node scripts/preflight.js",
-    "health:check": "node -e \"fetch('http://localhost:3000/api/health').then(r=>r.json()).then(d=>d.frontend==='ok'&&d.backend==='ok'&&d.supabase==='ok'?process.exit(0):process.exit(1)).catch(()=>process.exit(1))\""
+    "health:check": "node scripts/health-check.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.54.0",
