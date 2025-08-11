@@ -14,7 +14,8 @@ async def ensure_group():
         try:
             await r.xgroup_create(STREAM, GROUP, id="$", mkstream=True)
         except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Failed to create Redis group '%s' for stream '%s'", GROUP, STREAM)
 
 
 async def handle(msg):
