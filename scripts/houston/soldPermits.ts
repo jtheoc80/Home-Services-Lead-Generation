@@ -47,7 +47,7 @@ export interface ScraperConfig {
  * Default configuration for the scraper
  */
 const DEFAULT_CONFIG: ScraperConfig = {
-  baseUrl: 'https://www.houstontx.gov/planning/permits/', // TODO: Update with actual Sold Permits URL
+  baseUrl: 'https://example.com/houston-permits', // TODO: Replace with actual Sold Permits URL when available
   userAgent: 'HoustonPermitScraper/1.0 (+https://github.com/jtheoc80/Home-Services-Lead-Generation)',
   requestDelay: 2000, // 2 seconds between requests
   maxRetries: 3,
