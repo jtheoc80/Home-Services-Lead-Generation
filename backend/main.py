@@ -35,6 +35,9 @@ from app.billing_api import (
     handle_webhook, get_user_credits, CheckoutSessionRequest
 )
 
+# Import lead claiming API
+from app.lead_claims import claim_lead, get_user_claims, ClaimLeadRequest
+
 
 # Import metrics if available
 try:
@@ -558,6 +561,21 @@ async def api_get_credits(user: AuthUser = Depends(auth_user)):
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events with signature verification."""
     return await handle_webhook(request)
+
+# ===== LEAD CLAIMING API ROUTES =====
+
+@app.post("/api/leads/claim")
+async def api_claim_lead(
+    request: ClaimLeadRequest,
+    user: AuthUser = Depends(auth_user)
+):
+    """Claim a lead using credits."""
+    return await claim_lead(request, user)
+
+@app.get("/api/leads/claims")
+async def api_get_user_claims(user: AuthUser = Depends(auth_user)):
+    """Get all leads claimed by the authenticated user."""
+    return await get_user_claims(user)
 
 # Global exception handler
 @app.exception_handler(Exception)

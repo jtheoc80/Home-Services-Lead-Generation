@@ -313,6 +313,17 @@ CREATE TABLE IF NOT EXISTS billing_events (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Lead claims table to track claimed leads and credit usage
+CREATE TABLE IF NOT EXISTS lead_claims (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id BIGINT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  claimed_at TIMESTAMPTZ DEFAULT now(),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(lead_id) -- Prevent duplicate claims on same lead
+);
+
 -- Indexes for billing tables
 CREATE INDEX IF NOT EXISTS billing_customers_stripe_customer_id_idx ON billing_customers(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS billing_subscriptions_user_id_idx ON billing_subscriptions(user_id);
@@ -322,3 +333,6 @@ CREATE INDEX IF NOT EXISTS billing_invoices_user_id_idx ON billing_invoices(user
 CREATE INDEX IF NOT EXISTS billing_invoices_status_idx ON billing_invoices(status);
 CREATE INDEX IF NOT EXISTS billing_events_type_idx ON billing_events(type);
 CREATE INDEX IF NOT EXISTS billing_events_created_at_idx ON billing_events(created_at);
+CREATE INDEX IF NOT EXISTS lead_claims_user_id_idx ON lead_claims(user_id);
+CREATE INDEX IF NOT EXISTS lead_claims_lead_id_idx ON lead_claims(lead_id);
+CREATE INDEX IF NOT EXISTS lead_claims_claimed_at_idx ON lead_claims(claimed_at);
