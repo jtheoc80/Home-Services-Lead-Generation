@@ -11,7 +11,7 @@
  * - RAILWAY_TOKEN: Railway API token  
  * - SUPABASE_URL: Supabase project URL
  * - SUPABASE_SERVICE_ROLE: Supabase service role key
- * - FRONTEND_URL: Frontend URL (optional fallback for Vercel)
+ * - FRONTEND_URL: Frontend URL (required for frontend health check; used as fallback for Vercel)
  * - RAILWAY_SERVICE_ID: Railway service ID (optional for GraphQL queries)
  */
 
