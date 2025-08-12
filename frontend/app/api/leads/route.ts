@@ -87,7 +87,6 @@ export async function POST(req: Request) {
       city: body.city ?? null,
       state: body.state ?? null,
       zip: body.zip ?? null
-    };
 
     const supabase = getSupabaseClient();
 
