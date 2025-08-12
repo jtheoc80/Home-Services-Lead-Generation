@@ -25,7 +25,6 @@ class ETLAwareArcGISAdapter:
         """Initialize enhanced ArcGIS adapter."""
         self.jurisdiction = jurisdiction
         self.config = jurisdiction.source_config
-        logger.debug(f"Config for {jurisdiction.name}: {self.config}")
         self.feature_server = self.config['url']
         self.date_field = self.config['date_field']
         self.field_map = self.config.get('field_map', {})
