@@ -14,6 +14,7 @@ from .lead_export import export_leads
 from .export_leads import export_enriched_leads
 from .migrate_db import add_enrichment_columns
 from .region_adapter import RegionAwareAdapter
+from .sinks.supabase_sink import SupabaseSink
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,51 @@ def write_sqlite_output(permits: List[PermitRecord], output_paths: Dict[str, Pat
     storage = Storage(db_path=output_paths['db'])
     saved_count = storage.save_records(permits)
     logger.info(f"Saved {saved_count} new permits to SQLite database")
+
+
+def write_supabase_output(permits: List[PermitRecord]) -> None:
+    """Write permits to Supabase using the SupabaseSink."""
+    if not permits:
+        return
+    
+    try:
+        # Initialize SupabaseSink for Harris County permits
+        # Use 'permits_raw_harris' table as specified in the docs
+        sink = SupabaseSink(
+            upsert_table="permits_raw_harris",
+            conflict_col="event_id",
+            chunk_size=500
+        )
+        
+        # Convert PermitRecord objects to dictionaries
+        permit_dicts = []
+        for permit in permits:
+            permit_dict = permit.dict()
+            # Add event_id if not present (use permit_id as fallback)
+            if 'event_id' not in permit_dict:
+                if 'permit_id' in permit_dict and permit_dict['permit_id']:
+                    permit_dict['event_id'] = permit_dict['permit_id']
+                else:
+                    # Use a deterministic hash of the permit data as fallback
+                    permit_json = json.dumps(permit_dict, sort_keys=True, default=str)
+                    permit_hash = hashlib.sha256(permit_json.encode('utf-8')).hexdigest()
+                    permit_dict['event_id'] = f"permit_{permit_hash}"
+            permit_dicts.append(permit_dict)
+        
+        # Upsert to Supabase
+        result = sink.upsert_records(permit_dicts)
+        logger.info(f"Supabase upsert completed: {result['success']} success, {result['failed']} failed")
+        
+    except ImportError:
+        logger.warning("Supabase client not available. Skipping Supabase output.")
+    except ValueError as e:
+        if "environment variables" in str(e):
+            logger.warning("Supabase environment variables not configured. Skipping Supabase output.")
+        else:
+            logger.error(f"Supabase configuration error: {e}")
+    except Exception as e:
+        logger.error(f"Failed to write to Supabase: {e}")
+        # Don't raise - allow other outputs to succeed
 
 
 def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, Path]) -> List[PermitRecord]:
@@ -275,6 +321,10 @@ def handle_scrape(args: argparse.Namespace):
             write_csv_output(all_permits, output_paths)
         if "sqlite" in args.formats:
             write_sqlite_output(all_permits, output_paths)
+        
+        # Add Supabase sink for Harris County permits
+        if use_region_aware and args.jurisdiction == 'tx-harris':
+            write_supabase_output(all_permits)
     
     total_permits = len(all_permits)
     residential_permits = sum(1 for p in all_permits if p.is_residential())
