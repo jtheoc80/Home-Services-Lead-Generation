@@ -233,10 +233,10 @@ class RawDataLoader:
                 
                 # Basic sanity check for Texas coordinates
                 if not (25.0 <= cleaned["latitude"] <= 37.0 and -107.0 <= cleaned["longitude"] <= -93.0):
-                    logger.warning(f"Coordinates outside Texas bounds: {lat}, {lon}")
+                    logger.warning("Coordinates outside Texas bounds for a record.")
                     
             except (ValueError, TypeError):
-                logger.warning(f"Invalid coordinates: {lat}, {lon}")
+                logger.warning("Invalid coordinates for a record.")
                 cleaned["latitude"] = None
                 cleaned["longitude"] = None
                 
