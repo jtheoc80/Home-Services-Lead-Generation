@@ -467,7 +467,12 @@ class SchemaDriftChecker {
     } catch (error) {
       console.error('❌ QB Auditor failed:');
       console.error(error instanceof Error ? error.message : String(error));
-      process.exit(2);
+      return 1; // Exit code 1 to indicate drift found
+      
+    } catch (error) {
+      console.error('❌ QB Auditor failed:');
+      console.error(error instanceof Error ? error.message : String(error));
+      return 2;
     }
   }
 }
