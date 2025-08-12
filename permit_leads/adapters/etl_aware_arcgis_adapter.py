@@ -25,7 +25,7 @@ class ETLAwareArcGISAdapter:
         """Initialize enhanced ArcGIS adapter."""
         self.jurisdiction = jurisdiction
         self.config = jurisdiction.source_config
-        self.feature_server = self.config['feature_server']
+        self.feature_server = self.config['url']
         self.date_field = self.config['date_field']
         self.field_map = self.config.get('field_map', {})
         
@@ -80,6 +80,7 @@ class ETLAwareArcGISAdapter:
         try:
             # Build query parameters with proper date format for ArcGIS
             # ArcGIS expects timestamps in epoch milliseconds or specific date formats
+
             
             # Check if date_format is specified in config, default to string format
             date_format = self.config.get('date_format', 'string')
@@ -92,6 +93,13 @@ class ETLAwareArcGISAdapter:
                 # Default: use string format. This works for most ArcGIS servers
                 since_str = since.strftime('%Y-%m-%d %H:%M:%S')
                 where_clause = f"{self.date_field} > TIMESTAMP '{since_str}'"
+
+            since_str = since.strftime('%Y-%m-%d %H:%M:%S')
+            # ArcGIS expects timestamps in epoch milliseconds or specific date formats.
+            # Use epoch milliseconds for better compatibility
+            epoch_ms = int(since.timestamp() * 1000)
+            where_clause = f"{self.date_field} > {epoch_ms}"
+
             
             params = {
                 'where': where_clause,
@@ -152,7 +160,11 @@ class ETLAwareArcGISAdapter:
                             # Convert from epoch milliseconds
                             mapped_data[permit_field] = datetime.fromtimestamp(value / 1000)
                         except (ValueError, OSError):
+
                             # If conversion fails, leave as-is
+
+                            # If conversion fails, keep original value
+
                             mapped_data[permit_field] = value
                     else:
                         mapped_data[permit_field] = value
