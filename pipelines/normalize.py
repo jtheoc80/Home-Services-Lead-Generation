@@ -2,7 +2,6 @@
 
 import logging
 import json
-import os
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Set
