@@ -1,25 +1,22 @@
 {
-  "framework": "nextjs",
-  "installCommand": "npm ci && cd frontend && npm ci",
   "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/.next",
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
+    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key",
+    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
+    "SUPABASE_JWT_SECRET": "@supabase_jwt_secret",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key"
+  },
+  "framework": "nextjs",
   "functions": {
     "frontend/app/api/**/*.ts": {
       "runtime": "nodejs20.x"
     }
   },
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key", 
-    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "SUPABASE_JWT_SECRET": "@supabase_jwt_secret",
-    "STRIPE_SECRET_KEY": "@stripe_secret_key",
-    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
-  },
   "headers": [
     {
-      "source": "/api/(.*)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
@@ -33,13 +30,16 @@
           "key": "Access-Control-Allow-Headers",
           "value": "X-Requested-With, Content-Type, Authorization"
         }
-      ]
+      ],
+      "source": "/api/(.*)"
     }
   ],
+  "installCommand": "npm ci && cd frontend && npm ci",
+  "outputDirectory": "frontend/.next",
   "rewrites": [
     {
-      "source": "/backend/(.*)",
-      "destination": "https://api.example.com/$1"
+      "destination": "https://api.example.com/$1",
+      "source": "/backend/(.*)"
     }
   ]
 }
