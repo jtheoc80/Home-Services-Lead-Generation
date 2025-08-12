@@ -1066,6 +1066,37 @@ The application is designed for production deployment across multiple services:
 
 See `deploy/` directory for production configuration templates.
 
+### JSON Conflict Resolution Workflow
+
+When working on a conflicted branch with JSON file conflicts (package-lock.json, tsconfig.json, etc.), use this local workflow:
+
+```bash
+# Step 1: Fetch and merge latest changes from main branch
+git fetch origin && git merge origin/main
+
+# Step 2: Automatically resolve JSON file conflicts using the json strategy
+npm run bot:resolve-json:local
+
+# Step 3: Inspect the changes made by the conflict resolution
+git diff
+
+# Step 4: Run tests to ensure everything works correctly
+npm test
+
+# Step 5: Commit and push the resolved conflicts
+git add .
+git commit -m "Resolve JSON file conflicts"
+git push
+```
+
+The `bot:resolve-json:local` script uses the `json` strategy which automatically resolves most JSON file conflicts by accepting the "theirs" version (from main branch) for:
+- Package lock files (`package-lock.json`, `pnpm-lock.yaml`, etc.)
+- Configuration files (`tsconfig.json`, `.eslintrc.json`, etc.)
+- Deployment configuration (`vercel.json`, `railway.json`)
+- All other `*.json` files
+
+This strategy is safe for auto-generated files and most configuration files where the main branch version should take precedence.
+
 ## 8. Contributing
 
 1. Fork the repository
