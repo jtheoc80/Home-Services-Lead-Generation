@@ -39,7 +39,7 @@
   "rewrites": [
     {
       "source": "/backend/(.*)",
-      "destination": "$BACKEND_API_URL/$1"
+      "destination": "https://api.example.com/$1"
     }
   ]
 }
