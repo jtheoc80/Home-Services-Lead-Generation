@@ -35,6 +35,26 @@ class DatabaseWireChecker {
     console.log(`🔌 Initialized DB Wire with URL: ${supabaseUrl.replace(/\/\/.*@/, '//***@')}`);
   }
 
+    console.log(`🔌 Initialized DB Wire with URL: ${redactUrlCredentials(supabaseUrl)}`);
+  }
+
+  /**
+   * Redact credentials from a URL for safe logging.
+   */
+  private redactUrlCredentials(urlString: string): string {
+    try {
+      const url = new URL(urlString);
+      if (url.username || url.password) {
+        url.username = '***';
+        url.password = '';
+      }
+      return url.toString();
+    } catch (e) {
+      // If parsing fails, fallback to original masking
+      return urlString.replace(/\/\/.*@/, '//***@');
+    }
+  }
+
   /**
    * Test basic database connection
    */
