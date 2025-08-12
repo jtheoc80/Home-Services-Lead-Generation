@@ -5,25 +5,43 @@ This module provides functionality to persist and retrieve last successful
 run timestamps for different data sources to prevent data gaps and ensure
 incremental data loading.
 """
+import importlib.util
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
 import os
 from pathlib import Path
 
-# Import Supabase client from backend if available
+# Import Supabase client with better error handling
+SUPABASE_AVAILABLE = False
+supabase_client = None
+
 try:
     import sys
+    # Try multiple ways to import Supabase client
     backend_path_env = os.environ.get("BACKEND_PATH")
     if backend_path_env:
         backend_path = Path(backend_path_env)
     else:
         backend_path = Path(__file__).parent.parent / "backend"
-    sys.path.append(str(backend_path))
-    from app.supabase_client import get_supabase_client
-    SUPABASE_AVAILABLE = True
+    
+    sys.path.insert(0, str(backend_path))
+    
+    # Test for availability without importing to avoid F401 errors
+    try:
+        spec = importlib.util.find_spec("app.supabase_client")
+        if spec is not None:
+            SUPABASE_AVAILABLE = True
+    except ImportError:
+        # Try alternative import test
+        try:
+            spec = importlib.util.find_spec("supabase")
+            if spec is not None:
+                SUPABASE_AVAILABLE = True
+        except ImportError:
+            pass
 except ImportError:
-    SUPABASE_AVAILABLE = False
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +58,6 @@ class ETLStateManager:
         """Initialize ETL state manager."""
         self.supabase = None
         self._init_supabase()
-        self._ensure_table_exists()
     
     def _init_supabase(self):
         """Initialize Supabase client if available."""
@@ -49,35 +66,26 @@ class ETLStateManager:
             return
         
         try:
-            self.supabase = get_supabase_client()
-            logger.debug("Supabase client initialized for ETL state management")
+            # Try to get client from backend first
+            try:
+                from app.supabase_client import get_supabase_client
+                self.supabase = get_supabase_client()
+                logger.debug("Supabase client initialized via backend")
+            except ImportError:
+                # Fallback to direct initialization
+                from supabase import create_client
+                supabase_url = os.getenv("SUPABASE_URL")
+                supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+                
+                if supabase_url and supabase_key:
+                    self.supabase = create_client(supabase_url, supabase_key)
+                    logger.debug("Supabase client initialized directly")
+                else:
+                    logger.warning("Supabase credentials not found in environment")
+                    
         except Exception as e:
             logger.error(f"Failed to initialize Supabase client: {e}")
             self.supabase = None
-    
-    def _ensure_table_exists(self):
-        """Ensure the etl_state table exists in Supabase."""
-        if not self.supabase:
-            return
-        
-        try:
-            # Create table if it doesn't exist
-            # Note: This requires sufficient permissions on the Supabase service role
-            create_table_sql = """
-            CREATE TABLE IF NOT EXISTS etl_state (
-                source TEXT PRIMARY KEY,
-                last_run TIMESTAMPTZ NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            );
-            """
-            
-            # Execute using Supabase RPC or direct SQL execution
-            # For now, we'll assume the table exists or will be created manually
-            logger.debug("ETL state table initialization complete")
-            
-        except Exception as e:
-            logger.error(f"Failed to ensure etl_state table exists: {e}")
     
     def get_last_run(self, source: str) -> Optional[datetime]:
         """
@@ -112,6 +120,9 @@ class ETLStateManager:
         """
         Update the last successful run timestamp for a source.
         
+        This should only be called after a successful upsert operation,
+        not after just fetching data.
+        
         Args:
             source: Source identifier (e.g., 'harris_issued_permits')
             timestamp: Timestamp of the successful run
@@ -131,7 +142,7 @@ class ETLStateManager:
                 'updated_at': datetime.utcnow().isoformat()
             }
             
-            result = self.supabase.table('etl_state').upsert(data).execute()
+            result = self.supabase.table('etl_state').upsert(data, on_conflict='source').execute()
             
             if result.data:
                 logger.info(f"Updated last run for {source}: {timestamp}")

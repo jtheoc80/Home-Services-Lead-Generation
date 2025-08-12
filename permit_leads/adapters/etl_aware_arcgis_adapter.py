@@ -65,14 +65,9 @@ class ETLAwareArcGISAdapter:
             # Fetch permits from ArcGIS
             permits = self._fetch_permits_from_arcgis(since, limit)
             
-            # Update ETL state with current timestamp on successful fetch (regardless of result count)
-            current_time = datetime.utcnow()
-            success = self.etl_state.update_last_run(self.source_name, current_time)
-            
-            if success:
-                logger.info(f"Updated ETL state for {self.source_name}: {current_time}")
-            else:
-                logger.warning(f"Failed to update ETL state for {self.source_name}")
+            # Note: ETL state is NOT updated here.
+            # It should only be updated after successful upsert operation.
+            # Use update_etl_state_after_upsert() method after successful storage.
             
             return permits
             
@@ -85,16 +80,16 @@ class ETLAwareArcGISAdapter:
         try:
             # Build query parameters with proper date format for ArcGIS
             # ArcGIS expects timestamps in epoch milliseconds or specific date formats
-            since_str = since.strftime('%Y-%m-%d %H:%M:%S')
-            # ArcGIS expects timestamps in epoch milliseconds or specific date formats.
-            # If 'date_format' is set to 'epoch' in config, use epoch milliseconds. Otherwise, use string format.
-            if self.date_format == 'epoch':
+            
+            # Check if date_format is specified in config, default to string format
+            date_format = self.config.get('date_format', 'string')
+            
+            if date_format == 'epoch':
                 # ArcGIS expects epoch milliseconds (UTC)
                 epoch_ms = int(since.timestamp() * 1000)
                 where_clause = f"{self.date_field} > {epoch_ms}"
             else:
-                # Default: use string format. This works for most ArcGIS servers, but may not be universal.
-                # If you encounter compatibility issues, set 'date_format' to 'epoch' in the config.
+                # Default: use string format. This works for most ArcGIS servers
                 since_str = since.strftime('%Y-%m-%d %H:%M:%S')
                 where_clause = f"{self.date_field} > TIMESTAMP '{since_str}'"
             
@@ -157,8 +152,8 @@ class ETLAwareArcGISAdapter:
                             # Convert from epoch milliseconds
                             mapped_data[permit_field] = datetime.fromtimestamp(value / 1000)
                         except (ValueError, OSError):
-                            # If conversion fails, try as-is
-                        mapped_data[permit_field] = self._convert_epoch_millis_to_datetime(value)
+                            # If conversion fails, leave as-is
+                            mapped_data[permit_field] = value
                     else:
                         mapped_data[permit_field] = value
                 else:
@@ -189,3 +184,27 @@ class ETLAwareArcGISAdapter:
     def update_last_run(self, timestamp: datetime) -> bool:
         """Update the last successful run timestamp for this source."""
         return self.etl_state.update_last_run(self.source_name, timestamp)
+    
+    def update_etl_state_after_upsert(self, num_records_processed: int = 0) -> bool:
+        """
+        Update ETL state after successful upsert operation.
+        
+        This method should be called after successfully upserting/storing 
+        the scraped permits to ensure ETL state is only updated after
+        successful data persistence.
+        
+        Args:
+            num_records_processed: Number of records that were processed
+            
+        Returns:
+            True if ETL state was updated successfully
+        """
+        current_time = datetime.utcnow()
+        success = self.etl_state.update_last_run(self.source_name, current_time)
+        
+        if success:
+            logger.info(f"Updated ETL state for {self.source_name} after processing {num_records_processed} records: {current_time}")
+        else:
+            logger.warning(f"Failed to update ETL state for {self.source_name}")
+            
+        return success
