@@ -216,7 +216,7 @@ function printSummary(result: DbWireResult, leadsTestMode: boolean): void {
     console.log('\n🧪 Test Mode: Temporary RLS policies enabled for testing');
   }
 
-  console.log('\n' + '=' .repeat(50));
+  console.log('\n' + '='.repeat(50));
   
   const totalItems = result.created.length + result.exists.length;
   const hasErrors = result.errors.length > 0;
