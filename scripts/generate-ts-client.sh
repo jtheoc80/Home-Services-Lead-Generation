@@ -28,7 +28,12 @@ mkdir -p "$OUTPUT_DIR"
 
 # Generate TypeScript types
 echo "📝 Generating TypeScript types..."
-openapi-typescript "$OPENAPI_FILE" -o "$OUTPUT_DIR/types.ts"
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+# Generate TypeScript types
+echo "📝 Generating TypeScript types..."
+npx openapi-typescript "$OPENAPI_FILE" -o "$OUTPUT_DIR/types.ts"
 
 # Generate runtime client (using openapi-typescript-fetch)
 echo "📝 Generating TypeScript client..."
