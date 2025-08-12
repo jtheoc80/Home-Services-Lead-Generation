@@ -76,7 +76,7 @@ class SocrataConnector:
             
             # Handle Socrata error responses
             if isinstance(data, dict) and data.get("error"):
-                raise ValueError(f"Socrata API error: {data['message']}")
+                raise ValueError(f"Socrata API error: {data.get('message', str(data))}")
                 
             return data if isinstance(data, list) else []
             
