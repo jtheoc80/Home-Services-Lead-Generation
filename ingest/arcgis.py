@@ -9,7 +9,7 @@ import logging
 import requests
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Iterator
-from urllib.parse import urljoin, urlencode
+from urllib.parse import urlencode
 import time
 
 logger = logging.getLogger(__name__)
