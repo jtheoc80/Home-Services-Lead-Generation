@@ -142,7 +142,7 @@ class ETLStateManager:
                 'updated_at': datetime.utcnow().isoformat()
             }
             
-            result = self.supabase.table('etl_state').upsert(data, on_conflict='source').execute()
+            result = self.supabase.table('etl_state').upsert(data, on_conflict=['source']).execute()
             
             if result.data:
                 logger.info(f"Updated last run for {source}: {timestamp}")
