@@ -207,34 +207,35 @@ After setup, verify these work:
 
 ### 🔧 Post-Merge Deployment Checklist
 
-After merging this PR, follow these steps to configure Stripe in your environments:
+After merging this PR, follow these exact commands to configure Stripe in your environments:
 
-**GitHub Repository Secrets:**
+**Vercel (Frontend & Webhook Handler):**
 ```bash
-# Add these secrets in GitHub repo settings for CI workflows
-gh secret set STRIPE_SECRET_KEY --body "sk_live_xxx"  # Use live key for production
-gh secret set STRIPE_WEBHOOK_SECRET --body "whsec_xxx"
-gh secret set STRIPE_PUBLISHABLE_KEY --body "pk_live_xxx"
+# Server-side webhook + FE
+vercel env add STRIPE_WEBHOOK_SECRET {development|preview|production}
+vercel env add INTERNAL_BACKEND_WEBHOOK_URL {development|preview|production}
+vercel env add INTERNAL_WEBHOOK_TOKEN {development|preview|production}
+vercel env add SUPABASE_URL {development|preview|production}
+vercel env add SUPABASE_SERVICE_ROLE_KEY {development|preview|production}
+vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY {development|preview|production}
+vercel redeploy --prod
 ```
 
-**Vercel Environment Variables (Frontend):**
+**Railway (Backend):**
 ```bash
-# Set frontend publishable key only (safe for client exposure)
-vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY pk_live_xxx production
-vercel env add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY pk_test_xxx development
-```
-
-**Railway/Backend Environment Variables:**
-```bash
-# Set server-side Stripe configuration
-railway variables set STRIPE_SECRET_KEY=sk_live_xxx
-railway variables set STRIPE_WEBHOOK_SECRET=whsec_xxx
-railway variables set STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+railway variables set STRIPE_SECRET_KEY=sk_test_xxx
 railway variables set STRIPE_PRICE_STARTER_MONTHLY=price_xxx
-railway variables set STRIPE_PRICE_PRO_MONTHLY=price_xxx  
+railway variables set STRIPE_PRICE_PRO_MONTHLY=price_xxx
 railway variables set STRIPE_PRICE_LEAD_CREDIT_PACK=price_xxx
-railway variables set BILLING_SUCCESS_URL=https://your-domain.com/billing/success
-railway variables set BILLING_CANCEL_URL=https://your-domain.com/billing/cancel
+railway variables set BILLING_SUCCESS_URL=https://<vercel-domain>/billing/success
+railway variables set BILLING_CANCEL_URL=https://<vercel-domain>/billing/cancel
+railway variables set INTERNAL_WEBHOOK_TOKEN=<same-as-vercel>
+```
+
+**Stripe CLI (Local Test):**
+```bash
+stripe listen --forward-to http://localhost:3000/api/webhooks/stripe
+stripe trigger checkout.session.completed
 ```
 
 **Database Setup:**
@@ -243,11 +244,17 @@ railway variables set BILLING_CANCEL_URL=https://your-domain.com/billing/cancel
 make db-billing  # or run the SQL from backend/app/models.sql manually
 ```
 
-**Stripe Configuration:**
+**Stripe Product Seeding:**
 ```bash
 # Seed products and prices in live Stripe account
 make billing-seed  # copy the price IDs to your environment variables
 ```
+
+**Important Reminders:**
+- ⚠️ Never put server secrets in the browser; only NEXT_PUBLIC_* is safe for FE
+- 🔐 Set INTERNAL_WEBHOOK_TOKEN to the same value on both Vercel and Railway
+- 🎯 Replace <vercel-domain> with your actual Vercel deployment URL
+- ✅ Use test keys during development, live keys only in production
 
 **Verification:**
 - ✅ Health endpoint shows Stripe configured: `/healthz`

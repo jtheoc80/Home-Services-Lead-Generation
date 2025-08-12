@@ -19,28 +19,19 @@
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
     "security:check": "./scripts/security-check.sh",
     "security:audit": "npm audit && cd frontend && npm audit",
-    "security:licenses": "license-checker --summary && cd frontend && license-checker --summary"
-
+    "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
     "schema:drift": "tsx scripts/schema-drift-check.ts",
-
     "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
     "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
-
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
-
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
     "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
-
-    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
-
     "visual:test": "node scripts/visual-regression.js",
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
     "visual:dry-run": "node scripts/visual-regression-dry-run.js"
-
-    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts"
 
   },
   "workspaces": [

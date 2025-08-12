@@ -1,5 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 
+// Make this route dynamic since it reads headers
+export const dynamic = 'force-dynamic';
+
 /**
  * Credits API proxy - forwards requests to backend billing API
  * This ensures no Stripe secrets are exposed to the client
