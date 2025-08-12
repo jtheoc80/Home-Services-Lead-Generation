@@ -17,7 +17,6 @@ try:
     import sys
     import os
     sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'backend', 'app'))
-    from ingest_logger import IngestTracer, log_ingest_step
     INGEST_LOGGING_AVAILABLE = True
 except ImportError:
     INGEST_LOGGING_AVAILABLE = False
