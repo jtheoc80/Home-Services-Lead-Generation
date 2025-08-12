@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export default function EmptyState({ title, subtitle, ctaLabel, ctaHref }:{
-  title:string; subtitle:string; ctaLabel:string; ctaHref:string;
+  title: string; subtitle: string; ctaLabel: string; ctaHref: string;
 interface EmptyStateProps {
   title: string;
   subtitle: string;
