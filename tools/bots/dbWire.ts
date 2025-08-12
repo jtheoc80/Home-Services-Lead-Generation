@@ -271,7 +271,16 @@ export async function main(): Promise<void> {
 
 // Run main function when script is executed directly
 // In ES modules, we can check process.argv[1] to see if this file is being run directly
-const isDirectlyExecuted = process.argv[1] && process.argv[1].endsWith('dbWire.ts');
+// Robust direct execution check for ES modules
+const isDirectlyExecuted = (() => {
+  // Only run if import.meta.url is available (ESM)
+  if (typeof import.meta !== 'undefined' && import.meta.url) {
+    const scriptPath = path.resolve(process.argv[1] || '');
+    const modulePath = path.resolve(fileURLToPath(import.meta.url));
+    return scriptPath === modulePath;
+  }
+  return false;
+})();
 if (isDirectlyExecuted) {
   main().catch((error) => {
     console.error('Fatal error:', error);
