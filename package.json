@@ -40,7 +40,6 @@
     "visual:install": "npx playwright install chromium",
     "visual:dry-run": "node scripts/visual-regression-dry-run.js",
 
-    "audit:qb": "npx tsx tools/bots/qbAuditor.ts"
 
     "botctl": "tsx tools/botctl.ts",
     "db:wire": "tsx tools/botctl.ts db:wire",
