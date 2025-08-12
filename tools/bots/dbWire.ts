@@ -240,7 +240,10 @@ export async function main(): Promise<void> {
   // Create database client
   const client = new Client({
     connectionString: supabaseDbUrl,
-    ssl: { rejectUnauthorized: false }
+  const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+  const client = new Client({
+    connectionString: supabaseDbUrl,
+    ssl: isDevOrTest ? { rejectUnauthorized: false } : undefined
   });
 
   try {
