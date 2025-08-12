@@ -53,6 +53,18 @@ db-init:
 	@echo "Initializing database schema..."
 	cd backend && python scripts/apply_schema.py
 
+# Apply production database migrations
+db-migrate:
+	@echo "🗄️  Applying database migrations..."
+	@if [ -z "$(DATABASE_URL)" ]; then \
+		echo "❌ Error: DATABASE_URL environment variable is required"; \
+		echo "   Set it to your PostgreSQL connection string"; \
+		exit 1; \
+	fi
+	@echo "Applying sql/2025-setup.sql to $(DATABASE_URL)"
+	psql "$(DATABASE_URL)" -f sql/2025-setup.sql
+	@echo "✅ Database migration completed successfully"
+
 # Initialize only billing tables (idempotent)
 db-billing:
 	@echo "Applying billing DDL..."

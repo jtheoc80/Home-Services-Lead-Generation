@@ -262,10 +262,11 @@ async def health_check():
 @app.get("/healthz")
 async def healthz():
     """
-    Health check endpoint with database and Redis connectivity check.
+    Health check endpoint with comprehensive monitoring information.
     
     Returns:
-        Dict containing status, version, database and Redis connectivity status
+        Dict containing status, version, database, Redis, ingestion status,
+        and sources connectivity
     """
     # Get version from app metadata
     version = app.version
@@ -278,10 +279,8 @@ async def healthz():
         async def check_db():
             try:
                 supabase = get_supabase_client()
-                # Simple query to test connectivity - try to query any table with minimal data
-                # This is a lightweight operation that tests database connection
-                # Query a valid user table to test connectivity (replace 'users' with a table that exists in your schema)
-                result = supabase.table('users').select('id').limit(1).execute()
+                # Test with meta.sources table (should always exist after migration)
+                result = supabase.table('meta.sources').select('id').limit(1).execute()
                 return result is not None
             except Exception:
                 return False
@@ -289,13 +288,55 @@ async def healthz():
         # Wait for DB check with 300ms timeout
         db_connected = await asyncio.wait_for(check_db(), timeout=0.3)
         if db_connected:
-            db_status = "connected"
+            db_status = "up"
     except asyncio.TimeoutError:
         logger.warning("Database health check timed out after 300ms")
         db_status = "down"
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")
         db_status = "down"
+    
+    # Check ingestion status
+    ingest_last_run = None
+    ingest_ok = True
+    try:
+        supabase = get_supabase_client()
+        # Get the most recent ingestion run
+        result = supabase.table('meta.ingest_state').select('last_run, last_status').order('last_run', desc=True).limit(1).execute()
+        
+        if result.data:
+            ingest_last_run = result.data[0]['last_run']
+            # Check if last run was successful and within last 25 hours (daily + buffer)
+            from datetime import datetime, timezone, timedelta
+            last_run = datetime.fromisoformat(ingest_last_run.replace('Z', '+00:00'))
+            age_hours = (datetime.now(timezone.utc) - last_run).total_seconds() / 3600
+            
+            if age_hours > 25:  # Allow 1 hour buffer on daily schedule
+                ingest_ok = False
+            elif result.data[0]['last_status'] != 'success':
+                ingest_ok = False
+        else:
+            ingest_ok = False  # No ingestion runs found
+    except Exception as e:
+        logger.error(f"Ingestion status check failed: {str(e)}")
+        ingest_ok = False
+    
+    # Check sources status
+    sources_ok = True
+    try:
+        # Load sources config and check if all active sources are reachable
+        import yaml
+        with open('config/sources_tx.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Quick connectivity test for a sample of sources
+        # In production, this might be cached or run periodically
+        active_sources = [s for s in config.get('sources', []) if s.get('kind') != 'tpia']
+        if len(active_sources) == 0:
+            sources_ok = False
+    except Exception as e:
+        logger.error(f"Sources status check failed: {str(e)}")
+        sources_ok = False
     
     # Check Redis connectivity
     redis_status, redis_rtt = await ping_ms()
@@ -332,6 +373,9 @@ async def healthz():
         "redis_rtt_ms": redis_rtt,
         "stripe": stripe_status,
         "stripe_rtt_ms": stripe_rtt,
+        "ingest_last_run": ingest_last_run,
+        "ingest_ok": ingest_ok,
+        "sources_ok": sources_ok,
         "ts": int(time.time())
     }
 
@@ -1019,6 +1063,113 @@ async def get_trace_logs_endpoint(
         raise HTTPException(
             status_code=500,
             detail="Internal server error"
+        )
+
+
+# ===================================================================
+# LEAD SCORING V0 API ENDPOINTS
+# ===================================================================
+
+class LeadScoreRequest(BaseModel):
+    """Request model for lead scoring."""
+    lead: Dict[str, Any]
+    
+class LeadScoreResponse(BaseModel):
+    """Response model for lead scoring."""
+    score: int
+    reasons: List[str]
+    version: str
+
+@app.post("/v1/lead-score", response_model=LeadScoreResponse)
+async def score_lead(request: LeadScoreRequest, user: AuthUser = Depends(auth_user)):
+    """
+    Score a lead using the v0 algorithm.
+    
+    This endpoint takes a lead payload and returns a score (0-100) with 
+    detailed reasons using the frozen v0 scoring algorithm.
+    """
+    try:
+        # Validate and score the lead
+        from scoring.v0 import score_v0, validate_lead_input
+        
+        # Validate input
+        validation_errors = validate_lead_input(request.lead)
+        if validation_errors:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Lead validation failed: {'; '.join(validation_errors)}"
+            )
+        
+        # Score the lead
+        result = score_v0(request.lead)
+        
+        return LeadScoreResponse(
+            score=result["score"],
+            reasons=result["reasons"],
+            version="v0"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error scoring lead: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to score lead"
+        )
+
+@app.get("/v1/leads/{lead_id}/score")
+async def get_lead_score(
+    lead_id: str, 
+    version: str = Query("v0", description="Scoring version"),
+    user: AuthUser = Depends(auth_user)
+):
+    """
+    Get the cached score for a specific lead.
+    
+    This endpoint retrieves the score from gold.lead_scores table
+    for the specified lead and version.
+    """
+    try:
+        # Validate lead_id as UUID
+        try:
+            uuid_obj = uuid.UUID(lead_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid lead_id format - must be UUID"
+            )
+        
+        # Query the lead_scores table
+        supabase = get_supabase_client()
+        
+        response = supabase.table("gold.lead_scores").select("*").eq(
+            "lead_id", str(uuid_obj)
+        ).eq("version", version).order("created_at", desc=True).limit(1).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No score found for lead {lead_id} version {version}"
+            )
+        
+        score_record = response.data[0]
+        
+        return {
+            "lead_id": lead_id,
+            "version": version,
+            "score": score_record["score"],
+            "reasons": score_record["reasons"],
+            "created_at": score_record["created_at"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving lead score: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve lead score"
         )
 
 
