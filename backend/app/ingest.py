@@ -11,13 +11,16 @@ import sys
 import csv
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from io import StringIO
 
 import psycopg2
 
 # Import Supabase client
 from .supabase_client import get_supabase_client
+
+# Import ingest logging
+from .ingest_logger import IngestTracer, log_ingest_step
 
 # Import Redis deduplication
 
@@ -177,7 +180,7 @@ class LeadIngestor:
             
         return parsed
     
-    def ingest_csv_with_copy(self, csv_file_path: str) -> int:
+    def ingest_csv_with_copy(self, csv_file_path: str, trace_id: Optional[str] = None) -> int:
         """
         Ingest leads from CSV file using PostgreSQL COPY for better performance.
         
@@ -367,6 +370,15 @@ class LeadIngestor:
             logger.info(f"Rows affected (inserted/updated): {rows_affected}")
             logger.info(f"Total records in database: {total_records}")
             
+            # Log successful completion
+            if trace_id:
+                log_ingest_step(trace_id, "upsert", True, {
+                    "method": "copy",
+                    "records_processed": records_processed,
+                    "rows_affected": rows_affected,
+                    "total_records": total_records
+                })
+            
             # Track metrics if enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_copy', records_processed, 'success')
@@ -378,6 +390,14 @@ class LeadIngestor:
             conn.rollback()
             logger.error(f"Error during COPY ingest: {e}")
             
+            # Log failure
+            if trace_id:
+                log_ingest_step(trace_id, "upsert", False, {
+                    "method": "copy",
+                    "error": str(e),
+                    "records_processed": records_processed
+                })
+            
             # Track failed ingestion if metrics enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_copy', 0, 'error')
@@ -386,26 +406,42 @@ class LeadIngestor:
         finally:
             conn.close()
     
-    def ingest_csv(self, csv_file_path: str) -> int:
+    def ingest_csv(self, csv_file_path: str, trace_id: Optional[str] = None) -> int:
         """
         Ingest leads from CSV file into PostgreSQL database.
         
         Uses PostgreSQL COPY for better performance when enabled, otherwise
         falls back to individual INSERT statements.
         
+        Args:
+            csv_file_path: Path to the CSV file to ingest
+            trace_id: Optional trace ID for logging ingest steps
+        
         Returns:
             Number of records successfully ingested
         """
+        # Log upsert stage
+        if trace_id:
+            log_ingest_step(trace_id, "upsert", True, {
+                "csv_file": csv_file_path,
+                "method": "copy" if self.use_copy else "insert"
+            })
+        
         if self.use_copy:
             try:
-                return self.ingest_csv_with_copy(csv_file_path)
+                return self.ingest_csv_with_copy(csv_file_path, trace_id)
             except Exception as e:
                 logger.warning(f"COPY method failed: {e}. Falling back to INSERT method.")
+                if trace_id:
+                    log_ingest_step(trace_id, "upsert", False, {
+                        "error": str(e),
+                        "fallback": "INSERT method"
+                    })
                 self.use_copy = False
         
-        return self.ingest_csv_with_insert(csv_file_path)
+        return self.ingest_csv_with_insert(csv_file_path, trace_id)
     
-    def ingest_csv_with_insert(self, csv_file_path: str) -> int:
+    def ingest_csv_with_insert(self, csv_file_path: str, trace_id: Optional[str] = None) -> int:
         """
         Ingest leads from CSV file using individual INSERT statements.
         
@@ -527,6 +563,14 @@ class LeadIngestor:
             logger.info(f"Records processed: {records_processed}")
             logger.info(f"Total records in database: {total_records}")
             
+            # Log successful completion
+            if trace_id:
+                log_ingest_step(trace_id, "upsert", True, {
+                    "method": "insert",
+                    "records_processed": records_processed,
+                    "total_records": total_records
+                })
+            
             # Track metrics if enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_insert', records_processed, 'success')
@@ -537,6 +581,14 @@ class LeadIngestor:
             conn.rollback()
             logger.error(f"Error during ingest: {e}")
             
+            # Log failure
+            if trace_id:
+                log_ingest_step(trace_id, "upsert", False, {
+                    "method": "insert",
+                    "error": str(e),
+                    "records_processed": records_processed
+                })
+            
             # Track failed ingestion if metrics enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
                 track_ingestion('csv_insert', 0, 'error')
@@ -546,7 +598,7 @@ class LeadIngestor:
             conn.close()
 
 
-def insert_lead(lead: dict) -> dict:
+def insert_lead(lead: dict, trace_id: Optional[str] = None) -> dict:
     """
     Insert a lead into the Supabase 'leads' table.
     
@@ -586,6 +638,7 @@ def insert_lead(lead: dict) -> dict:
             - score_parcel_age (float, optional): Parcel age score component
             - score_inspection (float, optional): Inspection score component
             - scoring_version (str, optional): Version of scoring algorithm used
+        trace_id: Optional trace ID for logging ingest steps
     
     Returns:
         dict: The inserted lead record as returned by Supabase
@@ -596,12 +649,18 @@ def insert_lead(lead: dict) -> dict:
     """
     # Validate required fields
     if not isinstance(lead, dict):
+        if trace_id:
+            log_ingest_step(trace_id, "db_insert", False, {"error": "Lead must be a dictionary"})
         raise ValueError("Lead must be a dictionary")
     
     if not lead.get('jurisdiction'):
+        if trace_id:
+            log_ingest_step(trace_id, "db_insert", False, {"error": "jurisdiction is required"})
         raise ValueError("jurisdiction is required")
     
     if not lead.get('permit_id'):
+        if trace_id:
+            log_ingest_step(trace_id, "db_insert", False, {"error": "permit_id is required"})
         raise ValueError("permit_id is required")
     
     try:
@@ -682,13 +741,28 @@ def insert_lead(lead: dict) -> dict:
         # Check if insertion was successful
         if result.data:
             logger.info(f"Successfully inserted lead: {clean_lead.get('jurisdiction')}/{clean_lead.get('permit_id')}")
+            if trace_id:
+                log_ingest_step(trace_id, "db_insert", True, {
+                    "jurisdiction": clean_lead.get('jurisdiction'),
+                    "permit_id": clean_lead.get('permit_id'),
+                    "lead_id": result.data[0].get('id') if result.data else None
+                })
             return result.data[0]  # Return the first (and only) inserted record
         else:
-            raise Exception("No data returned from Supabase insert operation")
+            error_msg = "No data returned from Supabase insert operation"
+            if trace_id:
+                log_ingest_step(trace_id, "db_insert", False, {"error": error_msg})
+            raise Exception(error_msg)
             
     except Exception as e:
         logger.error(f"Failed to insert lead via Supabase: {e}")
         logger.error(f"Lead data: {lead}")
+        if trace_id:
+            log_ingest_step(trace_id, "db_insert", False, {
+                "error": str(e),
+                "jurisdiction": lead.get('jurisdiction'),
+                "permit_id": lead.get('permit_id')
+            })
         raise Exception(f"Failed to insert lead: {e}")
 
 

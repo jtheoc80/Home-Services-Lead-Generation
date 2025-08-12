@@ -17,12 +17,21 @@
     "scrape:harris": "node scripts/scrape-harris.cjs",
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
     "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
+
+    "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
+
+    "e2e:supabase": "tsx scripts/e2e_supabase_delta.ts",
+
     "security:check": "./scripts/security-check.sh",
     "security:audit": "npm audit && cd frontend && npm audit",
     "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
     "schema:drift": "tsx scripts/schema-drift-check.ts",
+    "db:wire": "tsx tools/bots/dbWire.ts",
     "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
     "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
+    "test:leads:sql": "tsx scripts/test_leads_sql.ts",
+    "test:leads:integration": "tsx scripts/test_leads_sql_integration.ts",
+    "demo:leads:setup": "tsx scripts/demo_leads_setup.ts",
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
     "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
@@ -40,9 +49,11 @@
   ],
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
+    "@types/pg": "^8.15.5",
     "axios": "^1.11.0",
     "commander": "^14.0.0",
     "next": "^14.0.0",
+    "pg": "^8.16.3",
     "playwright": "^1.40.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
