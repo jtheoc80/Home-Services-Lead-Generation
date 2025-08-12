@@ -35,7 +35,8 @@ class JsonConflictResolver {
     return jsonLockPatterns.some(pattern => {
       const regex = new RegExp(pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'));
       return regex.test(filePath);
-    });
+    const matcher = globby.matcher(jsonLockPatterns);
+    return matcher(filePath);
   }
 
   private async getConflictedFiles(): Promise<string[]> {
