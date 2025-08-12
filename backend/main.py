@@ -1143,7 +1143,7 @@ async def get_lead_score(
         # Query the lead_scores table
         supabase = get_supabase_client()
         
-        response = supabase.table("lead_scores").select("*").eq(
+        response = supabase.table("gold.lead_scores").select("*").eq(
             "lead_id", str(uuid_obj)
         ).eq("version", version).order("created_at", desc=True).limit(1).execute()
         
