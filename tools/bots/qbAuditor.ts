@@ -402,7 +402,7 @@ class SchemaDriftChecker {
     };
   }
 
-  private hasTableDifferences(diff: any): boolean {
+  private hasTableDifferences(diff: TableDifferences): boolean {
     return diff.missingColumns.length > 0 || 
            diff.extraColumns.length > 0 || 
            diff.modifiedColumns.length > 0 ||
