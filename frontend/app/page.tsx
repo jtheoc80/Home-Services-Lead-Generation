@@ -54,7 +54,7 @@ export default function Home() {
             { n: "1", t: "Pick markets & trades", d: "Choose counties/zips and the trades you care about." },
             { n: "2", t: "We ingest permits hourly", d: "We pull from county/city systems and normalize." },
             { n: "3", t: "Work your queue", d: "Filter, export, and contact homeowners or GCs." },
-          ].map((s) => (
+          {HOW_IT_WORKS_STEPS.map((s) => (
             <li key={s.n} className="rounded-lg border border-gray-200 p-4 bg-white shadow-sm">
               <div className="text-indigo-600 font-bold text-lg mb-2">{s.n}</div>
               <div className="font-medium text-gray-900 mb-2">{s.t}</div>
