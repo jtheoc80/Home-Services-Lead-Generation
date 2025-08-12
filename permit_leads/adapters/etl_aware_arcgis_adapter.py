@@ -25,7 +25,8 @@ class ETLAwareArcGISAdapter:
         """Initialize enhanced ArcGIS adapter."""
         self.jurisdiction = jurisdiction
         self.config = jurisdiction.source_config
-        self.feature_server = self.config['feature_server']
+        logger.debug(f"Config for {jurisdiction.name}: {self.config}")
+        self.feature_server = self.config['url']
         self.date_field = self.config['date_field']
         self.field_map = self.config.get('field_map', {})
         
@@ -87,16 +88,9 @@ class ETLAwareArcGISAdapter:
             # ArcGIS expects timestamps in epoch milliseconds or specific date formats
             since_str = since.strftime('%Y-%m-%d %H:%M:%S')
             # ArcGIS expects timestamps in epoch milliseconds or specific date formats.
-            # If 'date_format' is set to 'epoch' in config, use epoch milliseconds. Otherwise, use string format.
-            if self.date_format == 'epoch':
-                # ArcGIS expects epoch milliseconds (UTC)
-                epoch_ms = int(since.timestamp() * 1000)
-                where_clause = f"{self.date_field} > {epoch_ms}"
-            else:
-                # Default: use string format. This works for most ArcGIS servers, but may not be universal.
-                # If you encounter compatibility issues, set 'date_format' to 'epoch' in the config.
-                since_str = since.strftime('%Y-%m-%d %H:%M:%S')
-                where_clause = f"{self.date_field} > TIMESTAMP '{since_str}'"
+            # Use epoch milliseconds for better compatibility
+            epoch_ms = int(since.timestamp() * 1000)
+            where_clause = f"{self.date_field} > {epoch_ms}"
             
             params = {
                 'where': where_clause,
@@ -157,8 +151,8 @@ class ETLAwareArcGISAdapter:
                             # Convert from epoch milliseconds
                             mapped_data[permit_field] = datetime.fromtimestamp(value / 1000)
                         except (ValueError, OSError):
-                            # If conversion fails, try as-is
-                        mapped_data[permit_field] = self._convert_epoch_millis_to_datetime(value)
+                            # If conversion fails, keep original value
+                            mapped_data[permit_field] = value
                     else:
                         mapped_data[permit_field] = value
                 else:
