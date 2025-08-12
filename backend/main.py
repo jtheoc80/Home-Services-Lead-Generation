@@ -768,7 +768,7 @@ async def get_trace_debug(
                 "duration_ms": duration_ms
             }
 
-
+        }
 def verify_debug_key(x_debug_key: str = Header(None)) -> bool:
     """
     Verify X-Debug-Key header for trace endpoint access.
