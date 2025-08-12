@@ -280,7 +280,7 @@ async def healthz():
             try:
                 supabase = get_supabase_client()
                 # Test with meta.sources table (should always exist after migration)
-                result = supabase.table('sources').select('id').limit(1).execute()
+                result = supabase.table('meta.sources').select('id').limit(1).execute()
                 return result is not None
             except Exception:
                 return False
