@@ -112,7 +112,9 @@ async function runHarrisScraperWithSupabase(since: string): Promise<void> {
     console.log(`🚀 Running Harris scraper with --since=${since}...`);
     
     // Use the TypeScript Harris scraper which writes directly to Supabase
-    const child = spawn('tsx', ['scripts/harrisCounty/issuedPermits.ts', '--since', since], {
+    const localTsxPath = path.join(process.cwd(), 'node_modules', '.bin', 'tsx');
+    const tsxCmd = fs.existsSync(localTsxPath) ? localTsxPath : 'tsx';
+    const child = spawn(tsxCmd, ['scripts/harrisCounty/issuedPermits.ts', '--since', since], {
       stdio: 'inherit',
       cwd: process.cwd()
     });
