@@ -44,7 +44,7 @@ interface PermitRecord {
   permit_number: string | null;
   permit_name: string | null;
   app_type: string | null;
-  issue_date: string | null; // Note: Using issue_date to match table schema, not issue_date_iso
+  issue_date: string | null; // Note: Using issue_date to match table schema (ISO string format)
   full_address: string | null;
   status: string | null;
   project_number: string | null;
