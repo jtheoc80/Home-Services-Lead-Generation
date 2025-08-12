@@ -157,7 +157,17 @@ async def supa_env_check() -> Dict[str, Any]:
                 
                 print(f"   📝 Adding endpoint to {main_py_path}")
                 # This is a simplified approach - in practice you'd want more sophisticated parsing
-    
+        # Print instructions for manual inclusion in main.py
+        main_py_path = backend_path / "main.py"
+        if main_py_path.exists():
+            with open(main_py_path, 'r') as f:
+                content = f.read()
+            
+            if "supa_env_check" not in content:
+                print(f"   📝 Please add the following lines to {main_py_path}:")
+                print("       from app.supa_env_check import router as supa_env_check_router")
+                print("       app.include_router(supa_env_check_router)")
+                print("   (Manual step required to avoid fragile code modification.)")
     async def test_frontend_build(self):
         """Test that frontend can build successfully"""
         print("🔍 Testing frontend build...")
