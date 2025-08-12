@@ -6,13 +6,11 @@ This script tests the adapter functionality without making actual HTTP requests.
 """
 import sys
 import logging
-from datetime import datetime
 from pathlib import Path
 
 # Add permit_leads to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from permit_leads.config_loader import Jurisdiction
 from permit_leads.adapters.etl_aware_arcgis_adapter import ETLAwareArcGISAdapter
 
 # Configure logging

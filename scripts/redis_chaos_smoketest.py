@@ -19,7 +19,6 @@ import random
 import sys
 import time
 from contextlib import asynccontextmanager
-from typing import Optional, Any
 from unittest.mock import AsyncMock, patch
 
 # Add backend to Python path
@@ -27,7 +26,7 @@ sys.path.append('backend')
 
 from app.redis_client import (
     get_redis, ping_ms, cache_setex, cache_get, with_lock, 
-    stream_xadd, stream_readgroup, stream_ack, rate_limit
+    stream_xadd, rate_limit
 )
 
 

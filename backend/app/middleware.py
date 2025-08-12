@@ -11,7 +11,7 @@ import json
 import time
 import uuid
 import logging
-from typing import Callable, Dict, Any
+from typing import Callable
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware

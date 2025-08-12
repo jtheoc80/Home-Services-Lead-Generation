@@ -15,7 +15,6 @@ from unittest.mock import Mock, patch
 sys.path.append(str(Path(__file__).parent.parent))
 
 from permit_leads.region_adapter import RegionAwareAdapter
-from permit_leads.models.permit import PermitRecord
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

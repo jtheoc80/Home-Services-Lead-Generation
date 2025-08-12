@@ -11,10 +11,7 @@ This module provides FastAPI routes for:
 
 import os
 import logging
-import asyncio
-import hashlib
-import json
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 from datetime import datetime, timezone
 
 import stripe

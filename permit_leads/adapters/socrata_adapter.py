@@ -1,6 +1,5 @@
-from typing import Dict, Any, Iterable, List
+from typing import Dict, Any, Iterable
 import datetime as dt
-import math
 
 class SocrataAdapter:
     """

@@ -5,7 +5,6 @@ Tests for Redis rate limiting and distributed locks functionality.
 
 import os
 import pytest
-import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 
 # Set required environment variables for testing

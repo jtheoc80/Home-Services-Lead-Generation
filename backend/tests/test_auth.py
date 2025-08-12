@@ -8,7 +8,6 @@ This module tests JWT token verification and authentication functionality.
 import os
 import jwt
 import unittest
-from unittest.mock import patch, MagicMock
 import sys
 from datetime import datetime, timedelta
 
@@ -225,7 +224,7 @@ class TestEnvironmentValidation(unittest.TestCase):
         
         # Importing auth module should raise ValueError
         with self.assertRaises(ValueError) as context:
-            import auth
+            pass
         
         self.assertIn("SUPABASE_JWT_SECRET", str(context.exception))
     

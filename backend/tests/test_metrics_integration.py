@@ -10,7 +10,7 @@ import unittest
 import os
 import sys
 import base64
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi import FastAPI, Header, HTTPException, Response, Depends
 from fastapi.testclient import TestClient
 
@@ -158,7 +158,7 @@ class TestMetricsMiddlewareIntegration(unittest.TestCase):
                          if 'http_request_duration_seconds' in line and not line.startswith('#')]
         
         # Should have some duration metrics
-        self.assertGreater(len(duration_lines), 0, f"No duration metrics found in output")
+        self.assertGreater(len(duration_lines), 0, "No duration metrics found in output")
         
         # Check for histogram-specific metrics
         bucket_lines = [line for line in duration_lines if '_bucket{' in line]
@@ -224,7 +224,6 @@ class TestMetricsMiddlewareIntegration(unittest.TestCase):
     def test_concurrent_requests_tracking(self):
         """Test that multiple concurrent requests are tracked correctly."""
         import threading
-        import time
         
         def make_request():
             self.client.get("/test")

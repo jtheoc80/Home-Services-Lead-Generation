@@ -4,7 +4,6 @@ Test script to verify the generated Python API client works correctly.
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add backend directory to path

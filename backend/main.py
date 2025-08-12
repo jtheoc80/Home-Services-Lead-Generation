@@ -48,7 +48,7 @@ except ImportError:
     METRICS_AVAILABLE = False
 
 # Import export control
-from app.utils.export_control import get_export_controller, ExportType, ExportRequest
+from app.utils.export_control import get_export_controller, ExportType
 
 
 

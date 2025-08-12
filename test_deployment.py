@@ -4,7 +4,6 @@ Test script to verify the apply_schema.py script and health endpoint functionali
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add backend to Python path

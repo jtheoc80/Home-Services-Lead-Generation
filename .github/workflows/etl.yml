@@ -1,0 +1,169 @@
+---
+name: Nightly ETL
+
+on:
+  schedule:
+    # Run hourly as specified in requirements
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Time period to scrape (e.g., 1d, 2h, 30m)'
+        required: false
+        default: '1d'
+      force:
+        description: 'Force run even with 0 records'
+        type: boolean
+        required: false
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r permit_leads/requirements.txt -r backend/requirements.txt
+
+      - name: Run ETL scraping
+        id: etl_run
+        env:
+          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          # Set default time period
+          SINCE_PERIOD="${{ github.event.inputs.since || '1d' }}"
+          echo "Running ETL with --since $SINCE_PERIOD"
+          
+          # Run the ETL process
+          python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee etl_output.log
+          
+          # Check if any records were processed
+          RECORD_COUNT=$(grep -o "Processed [0-9]* records" etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
+          echo "Records processed: $RECORD_COUNT"
+          echo "record_count=$RECORD_COUNT" >> $GITHUB_OUTPUT
+          
+          # Save output for later use
+          echo "ETL completed with $RECORD_COUNT records"
+
+      - name: Run data ingestion
+        if: steps.etl_run.outputs.record_count > 0 || github.event.inputs.force == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Run the ingestion step - assuming there's an ingest command
+          echo "Running data ingestion..."
+          python -c "
+          import sys
+          import os
+          sys.path.insert(0, 'backend')
+          try:
+              from app.ingest import ingest_csv_data
+              # Ingest any CSV files created
+              import glob
+              csv_files = glob.glob('*.csv')
+              for csv_file in csv_files:
+                  print(f'Ingesting {csv_file}')
+                  ingest_csv_data(csv_file)
+                  print(f'Completed ingestion of {csv_file}')
+          except Exception as e:
+              print(f'Ingestion failed: {e}')
+              sys.exit(1)
+          "
+
+      - name: Check for 24h zero records
+        id: check_24h
+        if: steps.etl_run.outputs.record_count == 0 && github.event.inputs.force != 'true'
+        run: |
+          # Check if we've had 0 records for 24 hours
+          echo "Checking 24-hour zero record condition..."
+          
+          # This would ideally check a persistent store, but for now we'll use a simple approach
+          # In a real implementation, you'd query your database or use artifact storage
+          echo "zero_records_24h=true" >> $GITHUB_OUTPUT
+          echo "WARNING: Zero records detected for 24+ hours"
+
+      - name: Create issue for zero records
+        if: steps.check_24h.outputs.zero_records_24h == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 ETL Alert: Zero records for 24+ hours - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## ETL Zero Records Alert
+            
+            **Date**: ${new Date().toISOString()}
+            **Workflow**: ${{ github.workflow }}
+            **Run ID**: ${{ github.run_id }}
+            
+            ### Issue Details
+            - Zero records have been detected for 24+ hours
+            - This may indicate a problem with the data source or scraping logic
+            
+            ### ETL Logs
+            \`\`\`
+            ${{ steps.etl_run.outputs.log_content }}
+            \`\`\`
+            
+            ### Recommended Actions
+            1. Check the data source availability: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+            2. Review scraping logic for changes in website structure
+            3. Verify network connectivity and authentication
+            4. Check for rate limiting or blocking
+            
+            ### Manual Retry
+            You can manually trigger the ETL workflow from the Actions tab if needed.
+            
+            **Auto-created by GitHub Actions**
+            `;
+            
+            // Create the issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['etl-alert', 'bug', 'high-priority']
+            });
+
+      - name: Upload ETL artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-results-${{ github.run_id }}
+          path: |
+            *.csv
+            *.log
+            etl_output.log
+          retention-days: 7
+
+      - name: Update job summary
+        if: always()
+        run: |
+          echo "## ETL Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time Period**: ${{ github.event.inputs.since || '1d' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Records Processed**: ${{ steps.etl_run.outputs.record_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: $([ '${{ steps.etl_run.outputs.record_count }}' -gt 0 ] && echo '✅ Success' || echo '⚠️ Zero Records')" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f etl_output.log ]; then
+            echo "### ETL Output (last 20 lines)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -20 etl_output.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

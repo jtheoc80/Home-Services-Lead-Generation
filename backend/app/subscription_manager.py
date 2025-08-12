@@ -10,10 +10,9 @@ This module provides the core logic for managing subscription lifecycle includin
 - Quiet hours respect for notifications
 """
 
-import os
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 

@@ -1,4 +1,4 @@
-from typing import Dict, Any, Iterable, List
+from typing import Dict, Any, Iterable
 import datetime as dt
 from bs4 import BeautifulSoup
 

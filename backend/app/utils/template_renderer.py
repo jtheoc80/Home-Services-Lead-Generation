@@ -8,7 +8,7 @@ context data for various subscription events like cancellation, reactivation, et
 
 import os
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 from pathlib import Path
 

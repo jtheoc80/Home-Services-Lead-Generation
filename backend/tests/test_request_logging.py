@@ -8,8 +8,7 @@ This module tests the JSON logging functionality and request ID generation.
 import json
 import unittest
 import logging
-from unittest.mock import patch, MagicMock
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from io import StringIO
 import sys

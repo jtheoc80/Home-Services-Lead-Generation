@@ -4,7 +4,6 @@ Apply billing schema to the database.
 Idempotent script that creates only the billing-related tables.
 """
 
-import os
 import sys
 from pathlib import Path
 

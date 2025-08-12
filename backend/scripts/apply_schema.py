@@ -11,7 +11,6 @@ import sys
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -134,7 +133,7 @@ def apply_schema(db_url: str, sql_content: str) -> None:
                     # For CREATE TYPE statements, if the error code is for duplicate object (42710),
                     # we can safely ignore it
                     if e.pgcode == '42710' and statement.upper().startswith('CREATE TYPE'):
-                        logger.info(f"Type already exists, continuing...")
+                        logger.info("Type already exists, continuing...")
                         continue
                     else:
                         logger.error(f"Error executing statement: {statement[:100]}...")

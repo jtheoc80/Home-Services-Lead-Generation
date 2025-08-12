@@ -19,7 +19,7 @@ import argparse
 sys.path.append('backend')
 
 from app.redis_client import (
-    get_redis, ping_ms, cache_setex, cache_get, with_lock, 
+    ping_ms, cache_setex, cache_get, with_lock, 
     stream_xadd, stream_readgroup, stream_ack
 )
 

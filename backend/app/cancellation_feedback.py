@@ -10,7 +10,7 @@ This service analyzes contractor cancellation patterns and provides:
 import os
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, Any
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
