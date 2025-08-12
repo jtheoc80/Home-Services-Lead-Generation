@@ -43,6 +43,7 @@
 
     "botctl": "tsx tools/botctl.ts",
     "bot:resolve": "tsx tools/bots/resolveConflicts.ts",
+    "bot:resolve-json": "tsx tools/bots/resolveJsonConflicts.ts",
     "db:wire": "tsx tools/botctl.ts db:wire",
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb"
