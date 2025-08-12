@@ -10,7 +10,7 @@ import logging
 import yaml
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 import psycopg2
 from psycopg2.extras import Json, RealDictCursor
 import re
