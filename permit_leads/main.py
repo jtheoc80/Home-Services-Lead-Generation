@@ -97,7 +97,13 @@ def write_supabase_output(permits: List[PermitRecord]) -> None:
             permit_dict = permit.dict()
             # Add event_id if not present (use permit_id as fallback)
             if 'event_id' not in permit_dict:
-                permit_dict['event_id'] = permit_dict.get('permit_id', f"permit_{id(permit)}")
+                if 'permit_id' in permit_dict and permit_dict['permit_id']:
+                    permit_dict['event_id'] = permit_dict['permit_id']
+                else:
+                    # Use a deterministic hash of the permit data as fallback
+                    permit_json = json.dumps(permit_dict, sort_keys=True, default=str)
+                    permit_hash = hashlib.sha256(permit_json.encode('utf-8')).hexdigest()
+                    permit_dict['event_id'] = f"permit_{permit_hash}"
             permit_dicts.append(permit_dict)
         
         # Upsert to Supabase
