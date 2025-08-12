@@ -197,7 +197,13 @@ async function handleCheckoutCompleted(session: any, supabase: any) {
       .table('lead_credits')
       .upsert({
         user_id: userId,
-        balance: supabase.raw('COALESCE(balance, 0) + 50'),
+    // Grant credits (configurable)
+    const creditPackAmount = parseInt(process.env.CREDIT_PACK_AMOUNT || "50", 10);
+    await supabase
+      .table('lead_credits')
+      .upsert({
+        user_id: userId,
+        balance: supabase.raw(`COALESCE(balance, 0) + ${creditPackAmount}`),
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
   }
