@@ -92,7 +92,7 @@ def test_trace_api_endpoint(trace_id: str, debug_key: str = "test-debug-key"):
 def test_direct_logging():
     """Test direct logging functions."""
     try:
-        from backend.app.ingest_logger import log_ingest_step
+        from app.ingest_logger import log_ingest_step
         
         trace_id = str(uuid.uuid4())
         
