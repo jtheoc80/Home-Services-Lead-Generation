@@ -150,7 +150,8 @@ class SupabaseSink:
         logger.info(f"Upsert complete: {total_success} success, {total_failed} failed")
         
         # Raise exception if any failures occurred
-        if total_failed > 0:
+        # Raise exception if any failures occurred, if configured
+        if raise_on_failure and total_failed > 0:
             raise Exception(f"Upsert operation had {total_failed} failures out of {len(records)} total records")
         
         return {"success": total_success, "failed": total_failed}
