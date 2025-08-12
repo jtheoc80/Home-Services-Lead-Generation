@@ -24,7 +24,7 @@ function client() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
-async function logIngest(supabase: any, trace_id: string, stage: string, ok: boolean, details?: any) {
+async function logIngest(supabase: SupabaseClient, trace_id: string, stage: string, ok: boolean, details?: any) {
   const logEntry: IngestLogInsert = {
     trace_id,
     stage,
