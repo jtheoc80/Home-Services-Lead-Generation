@@ -2,7 +2,14 @@ import Link from "next/link";
 
 export default function EmptyState({ title, subtitle, ctaLabel, ctaHref }:{
   title:string; subtitle:string; ctaLabel:string; ctaHref:string;
-}) {
+interface EmptyStateProps {
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
+
+export default function EmptyState({ title, subtitle, ctaLabel, ctaHref }: EmptyStateProps) {
   return (
     <div className="mx-auto max-w-xl text-center py-24">
       <div className="mx-auto h-16 w-16 rounded-full bg-indigo-50 flex items-center justify-center">🔎</div>
