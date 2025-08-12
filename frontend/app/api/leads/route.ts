@@ -8,7 +8,7 @@ import { Lead, LeadInsert, IngestLogInsert } from '../../../../types/supabase';
 const leadSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Valid email is required'),
-  phone: z.string().min(1, 'Phone is required'),
+  phone: z.string(),
   source: z.string().min(1, 'Source is required')
 });
 
