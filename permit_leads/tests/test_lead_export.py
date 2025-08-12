@@ -5,7 +5,6 @@ import tempfile
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone
-import pytest
 
 # Add parent directory to path for imports
 import sys

@@ -12,10 +12,9 @@ This test implements the requirement to:
 import pytest
 import os
 import tempfile
-import json
 from datetime import datetime
 from unittest.mock import patch, MagicMock
-from typing import Dict, List, Any
+from typing import Dict, List
 
 # Set test environment variables
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret_key_for_testing_only'

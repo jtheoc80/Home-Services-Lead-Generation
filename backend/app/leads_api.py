@@ -10,7 +10,6 @@ import os
 import logging
 import math
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
 
 import psycopg2
 from psycopg2.extras import RealDictCursor

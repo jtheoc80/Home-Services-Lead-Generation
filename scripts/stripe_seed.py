@@ -73,7 +73,7 @@ def get_or_create_product(product_data: Dict[str, Any]) -> stripe.Product:
             
             if updates:
                 product = stripe.Product.modify(product.id, **updates)
-                print(f"   ⚠️  Updated product details")
+                print("   ⚠️  Updated product details")
             
             return product
     

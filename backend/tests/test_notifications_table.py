@@ -3,8 +3,6 @@ Tests for notifications table functionality.
 """
 
 import unittest
-import tempfile
-import os
 from pathlib import Path
 
 

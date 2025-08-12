@@ -15,13 +15,11 @@ import sys
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
-from dataclasses import asdict
 
 # Add the parent directory to Python path so we can import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from utils.subscription_notifications import (
-    SubscriptionNotificationService, 
     SubscriptionEventData, 
     get_subscription_notification_service
 )

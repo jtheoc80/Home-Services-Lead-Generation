@@ -11,10 +11,8 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from sklearn.isotonic import IsotonicRegression
 import psycopg2
-from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
 

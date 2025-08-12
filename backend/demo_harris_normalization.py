@@ -6,7 +6,6 @@ This script demonstrates the normalize_permits_harris() function
 without requiring a live database connection.
 """
 
-import json
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -207,7 +206,7 @@ def demo_harris_normalization():
     print("\n2. Running normalization process...")
     result = normalizer.normalize_permits_harris()
     
-    print(f"📊 Normalization Results:")
+    print("📊 Normalization Results:")
     print(f"   Processed: {result['processed_count']}")
     print(f"   New: {result['new_count']}")
     print(f"   Updated: {result['updated_count']}")

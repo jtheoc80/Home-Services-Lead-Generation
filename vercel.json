@@ -1,11 +1,45 @@
 {
   "framework": "nextjs",
-  "installCommand": "cd frontend && npm install",
-  "buildCommand": "cd frontend && npm run build:production",
+  "installCommand": "npm ci && cd frontend && npm ci",
+  "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/.next",
+  "functions": {
+    "frontend/app/api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key", 
-    "NEXT_PUBLIC_API_BASE": "@next_public_api_base"
-  }
+    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "SUPABASE_JWT_SECRET": "@supabase_jwt_secret",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key",
+    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-Requested-With, Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/backend/(.*)",
+      "destination": "https://api.example.com/$1"
+    }
+  ]
 }

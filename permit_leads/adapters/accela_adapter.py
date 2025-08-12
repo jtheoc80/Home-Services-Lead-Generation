@@ -3,8 +3,6 @@
 import logging
 from datetime import datetime
 from typing import List, Optional
-from bs4 import BeautifulSoup
-import requests
 
 from ..models.permit import PermitRecord
 from ..config_loader import Jurisdiction

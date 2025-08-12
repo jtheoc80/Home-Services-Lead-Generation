@@ -57,7 +57,7 @@ def check_robots_txt(base_url: str, user_agent: str = "PermitLeadBot/1.0") -> bo
     Returns:
         True if scraping is allowed, False otherwise
     """
-    from urllib.parse import urlparse, urljoin
+    from urllib.parse import urlparse
     
     try:
         parsed = urlparse(base_url)

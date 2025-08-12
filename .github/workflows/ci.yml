@@ -1,20 +1,72 @@
 ---
 name: CI
 
-'on':
+on:
   push:
     branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop"]
 
 env:
-  RED: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-  ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-  SRV: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
 
 jobs:
-  ci:
+  python-ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Run Python linting
+        run: poetry run ruff check .
+
+      - name: Run Python tests
+        env:
+          # Set minimal test environment
+          SUPABASE_JWT_SECRET: test-secret-for-ci
+        run: poetry run pytest -q --tb=short
+
+      - name: Upload Python test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-test-results
+          path: |
+            test-results/
+            *.log
+
+  node-ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,43 +78,91 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
-      - name: Check required secrets
-        run: |
-          echo "Checking required secrets..."
-
-          # Check RED (NEXT_PUBLIC_SUPABASE_URL)
-          if [ -z "${{ env.RED }}" ]; then
-            echo "❌ ERROR: NEXT_PUBLIC_SUPABASE_URL secret is missing"
-            exit 1
-          else
-            echo "✅ NEXT_PUBLIC_SUPABASE_URL is set"
-          fi
-
-          # Check ANON (NEXT_PUBLIC_SUPABASE_ANON_KEY)
-          if [ -z "${{ env.ANON }}" ]; then
-            echo "❌ ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY secret is missing"
-            exit 1
-          else
-            echo "✅ NEXT_PUBLIC_SUPABASE_ANON_KEY is set"
-          fi
-
-          # Check SRV (SUPABASE_SERVICE_ROLE_KEY)
-          if [ -z "${{ env.SRV }}" ]; then
-            echo "❌ ERROR: SUPABASE_SERVICE_ROLE_KEY secret is missing"
-            exit 1
-          else
-            echo "✅ SUPABASE_SERVICE_ROLE_KEY is set"
-          fi
-
-          echo "✅ All required secrets are present"
-
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run frontend linting
+        run: cd frontend && npm run lint
+
+      - name: Run frontend type checking
+        run: cd frontend && npm run type-check
+
+      - name: Run frontend tests
+        run: cd frontend && npm test
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-test-results
+          path: |
+            frontend/.next/
+            frontend/test-results/
+            *.log
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: [python-ci, node-ci]
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with test
+
+      - name: Run tests with coverage
         env:
-          RED: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SRV: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npm run build
+          SUPABASE_JWT_SECRET: test-secret-for-ci
+        run: |
+          poetry run pytest --cov=permit_leads --cov=backend --cov-report=xml --cov-report=term-missing -q || true
+
+      - name: Generate coverage summary
+        run: |
+          if [ -f coverage.xml ]; then
+            echo "## Python Coverage Report" >> $GITHUB_STEP_SUMMARY
+            python -c "
+            import xml.etree.ElementTree as ET
+            tree = ET.parse('coverage.xml')
+            root = tree.getroot()
+            coverage = root.get('line-rate', '0')
+            coverage_pct = float(coverage) * 100
+            print(f'Python code coverage: {coverage_pct:.1f}%')
+            print(f'**Coverage: {coverage_pct:.1f}%**', file=open('coverage_summary.txt', 'w'))
+            "
+            cat coverage_summary.txt >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No coverage data generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage.xml
+            htmlcov/

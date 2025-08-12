@@ -5,7 +5,6 @@ Loads registry.yaml and resolves runtime structures for regions,
 jurisdictions, and plans configuration.
 """
 
-import os
 import yaml
 from pathlib import Path
 from typing import Dict, List, Any, Optional

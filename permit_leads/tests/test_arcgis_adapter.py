@@ -9,9 +9,8 @@ Tests the enhanced ArcGIS adapter with:
 """
 
 import pytest
-import json
 import time
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 
 from permit_leads.adapters.arcgis_adapter import ArcGISAdapter

@@ -7,13 +7,11 @@ admin override functionality works correctly, and proper audit logging occurs.
 """
 
 import os
-import json
 import pytest
 import jwt
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi.testclient import TestClient
-from fastapi import HTTPException
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))

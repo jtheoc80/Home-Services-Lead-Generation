@@ -9,7 +9,6 @@ Provides REST API endpoints for subscription operations including:
 - Admin cancellation records view
 """
 
-import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List

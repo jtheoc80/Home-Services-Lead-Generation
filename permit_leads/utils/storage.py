@@ -2,7 +2,6 @@ from pathlib import Path
 import sqlite3
 import csv
 from typing import Dict, Any, List
-import datetime as dt
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS permits (

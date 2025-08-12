@@ -8,7 +8,7 @@ SendGrid (email) and Twilio (SMS) services based on environment configuration.
 
 import os
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from dataclasses import dataclass
 
 # Configure logging

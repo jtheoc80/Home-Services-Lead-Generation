@@ -1,68 +1,75 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-
-    "builder": "NIXPACKS",
-    "buildCommand": "cd backend && pip install -r requirements.txt"
-  },
-  "deploy": {
-    "startCommand": "cd backend && python main.py",
-    "healthcheckPath": "/healthz",
-    "healthcheckTimeout": 120
-
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "make start",
+    "startCommand": "SERVICE_TYPE=backend poetry run python backend/main.py",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 300,
+    "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 5
   },
   "environments": {
     "production": {
       "variables": {
         "ENVIRONMENT": "production",
-        "DEBUG": "false"
+        "DEBUG": "false",
+        "SERVICE_TYPE": "backend"
       }
     },
     "development": {
       "variables": {
         "ENVIRONMENT": "development", 
-        "DEBUG": "true"
-      },
-      "deploy": {
-        "startCommand": "make db-init && make dev"
+        "DEBUG": "true",
+        "SERVICE_TYPE": "backend"
       }
     }
+  },
   "services": {
     "backend": {
       "build": {
         "builder": "NIXPACKS"
       },
       "deploy": {
-        "startCommand": "make start",
+        "startCommand": "SERVICE_TYPE=backend poetry run python backend/main.py",
         "healthcheckPath": "/health",
-        "healthcheckTimeout": 300,
+        "healthcheckTimeout": 120,
         "restartPolicyType": "ON_FAILURE",
-        "restartPolicyMaxRetries": 10
+        "restartPolicyMaxRetries": 5
       },
-      "environments": {
-        "production": {
-          "variables": {
-            "ENVIRONMENT": "production",
-            "DEBUG": "false"
-          }
-        },
-        "development": {
-          "variables": {
-            "ENVIRONMENT": "development", 
-            "DEBUG": "true"
-          },
-          "deploy": {
-            "startCommand": "make db-init && make dev"
-          }
-        }
+      "variables": {
+        "SERVICE_TYPE": "backend",
+        "PYTHONPATH": "/app"
+      }
+    },
+    "scraper": {
+      "build": {
+        "builder": "NIXPACKS"
+      },
+      "deploy": {
+        "startCommand": "SERVICE_TYPE=scraper poetry run python -m permit_leads --daemon --interval 3600",
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "SERVICE_TYPE": "scraper",
+        "PYTHONPATH": "/app"
+      }
+    },
+    "frontend": {
+      "build": {
+        "builder": "NIXPACKS"
+      },
+      "deploy": {
+        "startCommand": "SERVICE_TYPE=frontend cd frontend && npm start",
+        "healthcheckPath": "/",
+        "healthcheckTimeout": 60,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "SERVICE_TYPE": "frontend"
       }
     }
   },
@@ -73,6 +80,5 @@
         "DATABASE_URL": "DATABASE_URL"
       }
     }
-
   }
 }

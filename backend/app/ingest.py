@@ -10,20 +10,16 @@ import os
 import sys
 import csv
 import logging
-import tempfile
 from datetime import datetime
-from typing import Dict, List, Any, Optional
-from pathlib import Path
+from typing import Dict, Any
 from io import StringIO
 
 import psycopg2
-from psycopg2.extras import RealDictCursor
 
 # Import Supabase client
 from .supabase_client import get_supabase_client
 
 # Import Redis deduplication
-from .redis_client import dedupe_sadd
 
 # Import metrics tracking (optional)
 try:
@@ -366,7 +362,7 @@ class LeadIngestor:
             cur.execute("SELECT COUNT(*) FROM leads")
             total_records = cur.fetchone()[0]
             
-            logger.info(f"COPY ingest completed successfully!")
+            logger.info("COPY ingest completed successfully!")
             logger.info(f"Records processed: {records_processed}")
             logger.info(f"Rows affected (inserted/updated): {rows_affected}")
             logger.info(f"Total records in database: {total_records}")
@@ -500,7 +496,6 @@ class LeadIngestor:
                         
                         # Check Redis deduplication (use asyncio.run for sync context)
                         try:
-                            import asyncio
                             # For sync context, we skip Redis deduplication and rely on database constraints
                             pass
                             # is_new = await dedupe_sadd("dedupe:permits", unique_id)
@@ -528,7 +523,7 @@ class LeadIngestor:
             cur.execute("SELECT COUNT(*) FROM leads")
             total_records = cur.fetchone()[0]
             
-            logger.info(f"Ingest completed successfully!")
+            logger.info("Ingest completed successfully!")
             logger.info(f"Records processed: {records_processed}")
             logger.info(f"Total records in database: {total_records}")
             

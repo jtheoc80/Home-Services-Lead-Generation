@@ -38,9 +38,9 @@ updates:
       - "dependencies"
       - "workspace"
 
-  # Backend Python dependencies
+  # Python dependencies via Poetry
   - package-ecosystem: "pip"
-    directory: "/backend"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -51,30 +51,14 @@ updates:
     assignees:
       - "jtheoc80"
     commit-message:
-      prefix: "chore(backend)"
+      prefix: "chore(python)"
       include: "scope"
     labels:
       - "dependencies"
-      - "backend"
-
-  # Permit leads Python dependencies
-  - package-ecosystem: "pip"
-    directory: "/permit_leads"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "jtheoc80"
-    assignees:
-      - "jtheoc80"
-    commit-message:
-      prefix: "chore(permit-leads)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "permit-leads"
+      - "python"
+    # Since we're using Poetry, Dependabot will read from pyproject.toml
+    allow:
+      - dependency-type: "all"
 
   # GitHub Actions workflow dependencies
   - package-ecosystem: "github-actions"
