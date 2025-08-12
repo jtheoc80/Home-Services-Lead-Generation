@@ -247,3 +247,99 @@ The Harris County scraper is integrated with GitHub Actions via `.github/workflo
 - **Failure detection**: Fails if no results found for 24 hours
 - **Automated commits**: Pushes new permit data to repository
 - **Detailed summaries**: Posts comprehensive scraping reports
+
+## etlDelta.ts
+
+ETL Delta Script for Harris County Permits that performs incremental data synchronization for the last 7 days.
+
+### Prerequisites
+
+- Node.js 20+
+- tsx for TypeScript execution
+- Valid Harris County FeatureServer access
+- Supabase service role credentials
+
+### Environment Variables
+
+- `HC_ISSUED_PERMITS_URL` (required): Harris County FeatureServer URL
+- `SUPABASE_URL` (required): Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` (required): Supabase service role key
+
+### Usage
+
+Direct execution:
+```bash
+npx tsx scripts/etlDelta.ts
+```
+
+Via npm script:
+```bash
+npm run etl:delta
+```
+
+### What it does
+
+1. **Count Check**: Queries `returnCountOnly=true` for `ISSUEDDATE > now-7d`
+2. **Early Exit**: If 0 permits found, exits cleanly with clear message and full URL
+3. **Pagination**: Fetches permits in 2,000-row chunks using `resultOffset`
+4. **Field Mapping**: Maps ArcGIS attributes to database schema:
+   - `EVENTID/OBJECTID` → `event_id` (primary key)
+   - `PERMITNUMBER` → `permit_number`
+   - `PERMITNAME/PROJECTNAME` → `permit_name`
+   - `APPTYPE` → `app_type`
+   - `ISSUEDDATE` → `issue_date` (converted from ms to ISO)
+   - `FULLADDRESS` → `full_address`
+   - `STATUS` → `status`
+   - `PROJECTNUMBER` → `project_number`
+   - Complete attributes → `raw` (JSONB)
+5. **Upsert Strategy**: Batch upserts to `permits_raw_harris` in 500-row chunks
+6. **Conflict Resolution**: Uses `event_id` as conflict target for deduplication
+7. **Progress Tracking**: Logs inserted/updated counts with detailed summaries
+
+### Features
+
+- **7-day lookback**: Fixed time window for incremental processing
+- **Robust pagination**: Handles large datasets with safety limits
+- **Data validation**: Skips records without valid `event_id`
+- **Batch processing**: Optimized Supabase upserts with 500-row batches
+- **Error handling**: Exits non-zero on any HTTP/DB errors
+- **Comprehensive logging**: Detailed progress and summary statistics
+- **Environment validation**: Ensures all required variables are set
+- **Table verification**: Confirms target table exists before processing
+
+### Exit Codes
+
+- `0`: Success (including clean exit when no new permits found)
+- `1`: Error (missing environment variables, HTTP errors, database errors)
+
+### Example Output
+
+```
+ETL Delta Script for Harris County Permits
+==========================================
+Supabase URL: https://your-project.supabase.co
+Harris County URL: https://www.gis.hctx.net/...
+
+Checking permit count for last 7 days from: 2025-08-05T14:20:07.286Z
+Found 1,234 permits in the last 7 days
+Table permits_raw_harris exists and is accessible
+Fetching permits since: 2025-08-05T14:20:07.286Z
+Fetched 2000 permits in this batch (1950 valid permits so far)
+...
+Upserting 1950 permits to Supabase in batches of 500...
+Upserted batch 1/4 (500/1950 total, +475 new, ~25 updated)
+...
+✅ ETL Delta completed successfully
+📊 Summary: 1800 inserted, 150 updated, 1950 total processed
+```
+
+### Error Scenarios
+
+Common error conditions and handling:
+
+- **Missing environment variables**: Clear error message and exit code 1
+- **Network connectivity issues**: HTTP error details and exit code 1  
+- **Invalid API responses**: Response validation with exit code 1
+- **Database connection failures**: Connection error details and exit code 1
+- **Table doesn't exist**: Clear instructions with exit code 1
+- **Batch upsert failures**: Detailed batch error information and exit code 1
