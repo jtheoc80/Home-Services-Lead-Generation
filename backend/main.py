@@ -302,7 +302,7 @@ async def healthz():
     try:
         supabase = get_supabase_client()
         # Get the most recent ingestion run
-        result = supabase.table('ingest_state').select('last_run, last_status').order('last_run', desc=True).limit(1).execute()
+        result = supabase.table('meta.ingest_state').select('last_run, last_status').order('last_run', desc=True).limit(1).execute()
         
         if result.data:
             ingest_last_run = result.data[0]['last_run']
