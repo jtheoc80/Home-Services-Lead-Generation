@@ -17,7 +17,11 @@
     "scrape:harris": "node scripts/scrape-harris.cjs",
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
     "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
+
+    "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
+
     "e2e:supabase": "tsx scripts/e2e_supabase_delta.ts",
+
     "security:check": "./scripts/security-check.sh",
     "security:audit": "npm audit && cd frontend && npm audit",
     "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
