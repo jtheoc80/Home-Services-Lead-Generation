@@ -360,7 +360,9 @@ class TestLeadScoringV0(unittest.TestCase):
             
             # Calculate expected score manually based on v0 algorithm
             result = score_v0(lead_data)
-            expected_score = result["score"]
+            # Set expected score to a static precomputed value.
+            # TODO: Replace <precomputed_value> with the actual expected score for this fixture.
+            expected_score = 0  # <precomputed_value>
             
             additional_fixtures.append((lead_data, expected_score))
         
