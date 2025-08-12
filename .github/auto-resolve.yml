@@ -22,5 +22,4 @@ strategies:
       - '**/vercel.json'
       - '**/railway.json'
 
-      - '**/package-lock.json'
 
