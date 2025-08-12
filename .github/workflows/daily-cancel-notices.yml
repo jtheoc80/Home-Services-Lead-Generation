@@ -54,7 +54,7 @@ jobs:
       
     - name: Upload job logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: cancellation-job-logs-${{ github.run_number }}
         path: /tmp/cancel_notifications.log

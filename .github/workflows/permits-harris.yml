@@ -161,7 +161,7 @@ jobs:
         
     - name: Upload data artifacts
       if: steps.scrape.outputs.new_permits > 0
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
     - name: Set date output
       id: set_date
@@ -169,7 +169,7 @@ jobs:
 
     - name: Upload data artifacts
       if: steps.scrape.outputs.new_permits > 0
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}
         path: data/

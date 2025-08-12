@@ -139,7 +139,7 @@ jobs:
         
     - name: Upload data artifacts
       if: steps.check_data.outputs.new_files > 0
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: permit-data-$(date +%Y-%m-%d)
         path: data/
