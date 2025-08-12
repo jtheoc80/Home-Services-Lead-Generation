@@ -29,7 +29,13 @@
     "visual:test": "node scripts/visual-regression.js",
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
-    "visual:dry-run": "node scripts/visual-regression-dry-run.js"
+    "visual:dry-run": "node scripts/visual-regression-dry-run.js",
+    "botctl": "tsx tools/bots/index.ts",
+    "botctl:audit:qb": "tsx tools/bots/index.ts audit:qb",
+    "botctl:e2e:jt": "tsx tools/bots/index.ts e2e:jt", 
+    "botctl:db:wire": "tsx tools/bots/index.ts db:wire",
+    "botctl:help": "tsx tools/bots/index.ts migrate-help",
+    "test:botctl": "tsx scripts/test-botctl-compat.ts"
   },
   "workspaces": [
     "frontend"
