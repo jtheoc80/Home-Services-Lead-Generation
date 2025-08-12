@@ -198,11 +198,6 @@ async function handleCheckoutCompleted(session: any, supabase: any) {
 
   // Handle credit pack purchase
   if (session.metadata?.type === 'credit_pack' && session.mode === 'payment') {
-    // Grant 50 credits (configurable)
-    await supabase
-      .table('lead_credits')
-      .upsert({
-        user_id: userId,
     // Grant credits (configurable)
     const creditPackAmount = parseInt(process.env.CREDIT_PACK_AMOUNT || "50", 10);
     await supabase
@@ -243,4 +238,5 @@ async function handleInvoicePaid(invoice: any, supabase: any) {
 
 async function handleInvoiceFailed(invoice: any, supabase: any) {
   await handleInvoicePaid(invoice, supabase); // Same logic, different status
+}
 }
