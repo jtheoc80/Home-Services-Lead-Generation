@@ -91,7 +91,7 @@ function validateEnvironment(): { supabaseUrl: string; supabaseKey: string } {
   return { supabaseUrl, supabaseKey };
 }
 
-async function getPermitsCount(supabase: any): Promise<number> {
+async function getPermitsCount(supabase: SupabaseClient): Promise<number> {
   try {
     const { count, error } = await supabase
       .from('permits_raw_harris')
