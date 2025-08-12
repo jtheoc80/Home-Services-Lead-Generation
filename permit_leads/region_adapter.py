@@ -6,7 +6,7 @@ from the registry system.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 from .config_loader import get_config_loader, Jurisdiction, Region

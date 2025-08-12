@@ -6,7 +6,6 @@ Handles optional PostGIS support for enhanced spatial queries.
 
 import os
 import logging
-from pathlib import Path
 import psycopg2
 
 logger = logging.getLogger(__name__)

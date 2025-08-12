@@ -6,7 +6,6 @@ This script should be run when the API changes to update openapi.yaml.
 
 import sys
 import os
-import json
 import yaml
 from pathlib import Path
 

@@ -10,7 +10,7 @@ import os
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 # Add backend app to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))

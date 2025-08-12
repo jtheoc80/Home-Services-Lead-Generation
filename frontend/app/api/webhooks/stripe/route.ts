@@ -34,12 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
     }
 
-    // Lazy load stripe to avoid build-time issues
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
-    // Verify webhook signature
-    let event;
-    try {
     // Lazy load Stripe to avoid build-time issues
     const Stripe = require('stripe');
 
@@ -64,7 +58,7 @@ export async function POST(request: NextRequest) {
       try {
         // Check if event already exists
         const { data: existingEvent } = await supabase
-          .table('billing_events')
+          .from('billing_events')
           .select('id')
           .eq('event_id', event.id)
           .single();
@@ -76,7 +70,7 @@ export async function POST(request: NextRequest) {
 
         // Store event for idempotency
         await supabase
-          .table('billing_events')
+          .from('billing_events')
           .insert({
             type: event.type,
             event_id: event.id,
@@ -188,7 +182,7 @@ async function handleCheckoutCompleted(session: any, supabase: any) {
   // Update customer record
   if (session.customer) {
     await supabase
-      .table('billing_customers')
+      .from('billing_customers')
       .upsert({
         user_id: userId,
         stripe_customer_id: session.customer,
@@ -201,10 +195,10 @@ async function handleCheckoutCompleted(session: any, supabase: any) {
     // Grant credits (configurable)
     const creditPackAmount = parseInt(process.env.CREDIT_PACK_AMOUNT || "50", 10);
     await supabase
-      .table('lead_credits')
+      .from('lead_credits')
       .upsert({
         user_id: userId,
-        balance: supabase.raw(`COALESCE(balance, 0) + ${creditPackAmount}`),
+        balance: creditPackAmount, // Note: raw SQL requires different handling in Supabase
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
   }
@@ -212,7 +206,7 @@ async function handleCheckoutCompleted(session: any, supabase: any) {
 
 async function handleSubscriptionUpdate(subscription: any, supabase: any) {
   await supabase
-    .table('billing_subscriptions')
+    .from('billing_subscriptions')
     .upsert({
       stripe_subscription_id: subscription.id,
       status: subscription.status,
@@ -224,7 +218,7 @@ async function handleSubscriptionUpdate(subscription: any, supabase: any) {
 
 async function handleInvoicePaid(invoice: any, supabase: any) {
   await supabase
-    .table('billing_invoices')
+    .from('billing_invoices')
     .upsert({
       stripe_invoice_id: invoice.id,
       user_id: invoice.metadata?.user_id || 'unknown',

@@ -7,10 +7,6 @@ Tests the normalize_permits_harris() SQL function and related table structures.
 
 import pytest
 import os
-import psycopg2
-from datetime import datetime, timezone
-from typing import Dict, List, Any
-import tempfile
 import json
 
 # Set test environment variables

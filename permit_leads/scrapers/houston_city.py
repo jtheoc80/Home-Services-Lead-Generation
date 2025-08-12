@@ -6,11 +6,10 @@ Includes sample data support for testing.
 """
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
-import re
 
 from .base import BaseScraper
 from ..models.permit import PermitRecord

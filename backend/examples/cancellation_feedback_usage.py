@@ -7,8 +7,6 @@ with lead scoring to provide both global and personalized adjustments.
 """
 
 import json
-import os
-from datetime import datetime, timedelta
 
 def example_cancellation_data():
     """Example cancellation data that would be inserted into the database."""

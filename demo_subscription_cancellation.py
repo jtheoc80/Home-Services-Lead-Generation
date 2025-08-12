@@ -23,8 +23,7 @@ from backend.app.subscription_manager import (
     CancellationRequest,
     QuietHoursConfig,
     SubscriptionStatus,
-    SubscriptionPlan,
-    CancellationType
+    SubscriptionPlan
 )
 
 from backend.app.subscription_api import SubscriptionAPI
@@ -67,7 +66,7 @@ def demo_trial_cancellation():
     
     # Show cancellation record
     record = result['cancellation_record']
-    print(f"\nCancellation Record Created:")
+    print("\nCancellation Record Created:")
     print(f"  - User ID: {record['user_id']}")
     print(f"  - Type: {record['cancellation_type']}")
     print(f"  - Reason: {record['reason_category']} - {record['reason_notes']}")
@@ -113,7 +112,7 @@ def demo_paid_cancellation():
     
     # Show updated subscription status
     updated_sub = result['updated_subscription']
-    print(f"\nUpdated Subscription:")
+    print("\nUpdated Subscription:")
     print(f"  - Status: {updated_sub.status.value}")
     print(f"  - Grace Period End: {updated_sub.grace_period_end_date}")
     
@@ -150,7 +149,7 @@ def demo_reactivation():
     
     # Show updated subscription status
     updated_sub = result['updated_subscription']
-    print(f"\nReactivated Subscription:")
+    print("\nReactivated Subscription:")
     print(f"  - Status: {updated_sub.status.value}")
     print(f"  - End Date: {updated_sub.subscription_end_date}")
     print(f"  - Grace Period: {updated_sub.grace_period_end_date}")
@@ -181,7 +180,7 @@ def demo_quiet_hours():
     is_quiet = manager.is_quiet_hours(normal_time)
     print(f"✓ 2:00 PM is quiet hours: {is_quiet}")
     
-    print(f"\nQuiet Hours Configuration:")
+    print("\nQuiet Hours Configuration:")
     print(f"  - Enabled: {quiet_config.enabled}")
     print(f"  - Start: {quiet_config.start_hour}:00")
     print(f"  - End: {quiet_config.end_hour}:00")

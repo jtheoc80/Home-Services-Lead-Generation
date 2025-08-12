@@ -6,7 +6,6 @@ Tests basic functionality without complex mocking.
 """
 
 import sys
-import os
 from pathlib import Path
 
 def test_schema_files():

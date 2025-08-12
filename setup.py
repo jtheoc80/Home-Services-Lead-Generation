@@ -59,7 +59,7 @@ def check_files_exist():
         print(f"❌ Requirements file not found: {backend_req}")
         return False
     
-    print(f"✅ Requirements files found")
+    print("✅ Requirements files found")
     return True
 
 

@@ -11,12 +11,10 @@ Provides functions to enrich scraped permit data with:
 from __future__ import annotations
 import os
 import re
-import json
 import logging
 import requests
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Tuple
-from urllib.parse import urlencode
+from typing import Dict, Any, Optional, Tuple
 import yaml
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,6 @@ This script demonstrates:
 4. All attempts are audited with structured logging
 """
 
-import os
 import requests
 import jwt
 from datetime import datetime, timedelta

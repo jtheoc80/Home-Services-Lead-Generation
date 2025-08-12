@@ -5,7 +5,6 @@ Basic health endpoint tests for the monitoring system.
 Tests both backend /healthz and frontend /api/health endpoints.
 """
 import requests
-import time
 import sys
 import os
 

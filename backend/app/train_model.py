@@ -12,18 +12,17 @@ import json
 import pickle
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Any
+from typing import Dict, Any
 from pathlib import Path
 
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import roc_auc_score
 import psycopg2
-from psycopg2.extras import RealDictCursor
 
 # Configure logging
 logging.basicConfig(

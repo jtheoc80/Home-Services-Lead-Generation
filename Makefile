@@ -23,7 +23,7 @@ help:
 	@echo "  make clean           - Clean Python cache files"
 	@echo "  make help            - Show this help message"
 
-# Development server with auto-reload
+# Development server with auto-reload using Poetry
 dev:
 	@echo "Setting up development environment..."
 	@# Copy .env.example to .env if .env doesn't exist in root directory
@@ -41,12 +41,12 @@ dev:
 	@echo "📍 API Documentation: http://localhost:8000/docs"
 	@echo "📍 API Root: http://localhost:8000/"
 	@echo ""
-	cd backend && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+	cd backend && poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# Production server
+# Production server using Poetry
 start:
-	@echo "🚀 Starting backend in production mode..."
-	cd backend && python main.py
+	@echo "🚀 Starting backend in production mode with Poetry..."
+	cd backend && poetry run python main.py
 
 # Initialize database schema
 db-init:
@@ -58,24 +58,19 @@ db-billing:
 	@echo "Applying billing DDL..."
 	cd backend && python scripts/apply_billing_schema.py
 
-# Install all dependencies
-install: install-scraper install-backend
-	@echo "✅ All dependencies installed successfully!"
+# Install all dependencies using Poetry
+install:
+	@echo "📦 Installing all dependencies with Poetry..."
+	poetry install
 
-# Install backend dependencies
-install-backend:
-	@echo "📦 Installing backend dependencies..."
-	pip install -r backend/requirements.txt
+# Install backend dependencies (alias for install since we now use Poetry)
+install-backend: install
 
-# Install backend dependencies (alias)
-backend-deps:
-	@echo "Installing backend dependencies..."
-	cd backend && pip install -r requirements.txt
+# Install permit_leads/scraper dependencies (alias for install since we now use Poetry)
+install-scraper: install
 
-# Install permit_leads/scraper dependencies
-install-scraper:
-	@echo "📦 Installing permit_leads dependencies..."
-	python3 -m pip install -r permit_leads/requirements.txt
+# Install backend dependencies (alias for install)
+backend-deps: install
 
 # Full setup (alias for install)
 setup: install
@@ -89,21 +84,21 @@ setup: install
 	@echo "2. Setup database (see README.md)"
 	@echo "3. Install frontend dependencies: cd frontend && npm install"
 
-# Run tests
+# Run tests using Poetry
 test:
-	@echo "🧪 Running tests..."
-	cd permit_leads && python -m pytest tests/ || true
-	cd backend && python -m pytest tests/ || true
+	@echo "🧪 Running tests with Poetry..."
+	poetry run pytest
 
-# Run backend tests
+# Run backend tests using Poetry
 backend-test:
-	@echo "Running backend tests..."
-	cd backend && python -m pytest tests/ -v
+	@echo "Running backend tests with Poetry..."
+	poetry run pytest backend/tests/ -v
 
-# Run backend linting (placeholder for future linting setup)
+# Run backend linting using Poetry
 backend-lint:
-	@echo "Backend linting not configured yet."
-	@echo "Consider adding flake8, black, or similar tools to requirements.txt"
+	@echo "🧹 Running linting with Poetry..."
+	poetry run ruff check .
+	poetry run ruff format --check .
 
 # Clean Python cache files
 clean:
