@@ -16,6 +16,7 @@
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+    "etl:delta": "tsx scripts/etlDelta.ts",
     "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
 
     "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
