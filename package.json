@@ -28,7 +28,6 @@
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
     "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
-    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
     "visual:test": "node scripts/visual-regression.js",
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
