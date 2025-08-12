@@ -22,6 +22,9 @@ export default function Home() {
                 <Link href="/dashboard" className="border border-white px-4 py-2 rounded hover:bg-blue-700">
                   Dashboard
                 </Link>
+                <Link href="/pricing" className="hover:text-indigo-600 focus:ring-2 focus:ring-indigo-500">
+                  Pricing
+                </Link>
                 <Link href="/signup" className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">
                   Sign Up
                 </Link>
@@ -49,7 +52,7 @@ export default function Home() {
                   href="/signup"
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-medium hover:bg-blue-700"
                 >
-                  Get Started
+                  Start free trial
                 </Link>
                 <Link 
                   href="/terms"
