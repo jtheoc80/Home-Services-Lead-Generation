@@ -54,7 +54,12 @@ from app.utils.export_control import get_export_controller, ExportType
 
 # Import test Supabase router
 from test_supabase import router as test_supabase_router
-from app.supa_env_check import router as supa_env_check_router
+try:
+    from app.supa_env_check import router as supa_env_check_router
+    SUPA_ENV_CHECK_AVAILABLE = True
+except ImportError:
+    supa_env_check_router = None
+    SUPA_ENV_CHECK_AVAILABLE = False
 
 # Import Redis client
 from app.redis_client import ping_ms
