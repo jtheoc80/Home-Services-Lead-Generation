@@ -112,9 +112,10 @@ export default function Signup() {
                     required
                     value={formData.name}
                     onChange={handleChange}
+                    aria-describedby={errors.name ? "name-error" : undefined}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
-                  {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                  {errors.name && <p id="name-error" className="mt-1 text-sm text-red-600">{errors.name}</p>}
                 </div>
               </div>
 
@@ -130,9 +131,10 @@ export default function Signup() {
                     required
                     value={formData.email}
                     onChange={handleChange}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
-                  {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                  {errors.email && <p id="email-error" className="mt-1 text-sm text-red-600">{errors.email}</p>}
                 </div>
               </div>
 
@@ -148,9 +150,10 @@ export default function Signup() {
                     required
                     value={formData.phone}
                     onChange={handleChange}
+                    aria-describedby={errors.phone ? "phone-error" : undefined}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
-                  {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+                  {errors.phone && <p id="phone-error" className="mt-1 text-sm text-red-600">{errors.phone}</p>}
                 </div>
               </div>
 
@@ -182,9 +185,10 @@ export default function Signup() {
                     required
                     value={formData.password}
                     onChange={handleChange}
+                    aria-describedby={errors.password ? "password-error" : undefined}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
-                  {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+                  {errors.password && <p id="password-error" className="mt-1 text-sm text-red-600">{errors.password}</p>}
                 </div>
               </div>
 
@@ -194,7 +198,7 @@ export default function Signup() {
                   Payment Method *
                 </label>
                 <p className="text-sm text-gray-600 mb-3">
-                  Required for trial registration. You won't be charged until your trial ends.
+                  <strong>7-day free trial</strong> - Required for trial registration. You won't be charged until your trial ends.
                 </p>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <button
@@ -242,10 +246,11 @@ export default function Signup() {
                         required
                         value={formData.cryptoWalletAddress}
                         onChange={handleChange}
+                        aria-describedby={errors.cryptoWalletAddress ? "crypto-error" : undefined}
                         className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
                         placeholder="Enter your wallet address"
                       />
-                      {errors.cryptoWalletAddress && <p className="mt-1 text-sm text-red-600">{errors.cryptoWalletAddress}</p>}
+                      {errors.cryptoWalletAddress && <p id="crypto-error" className="mt-1 text-sm text-red-600">{errors.cryptoWalletAddress}</p>}
                     </div>
                   </div>
                 )}
@@ -267,6 +272,7 @@ export default function Signup() {
                     type="checkbox"
                     checked={formData.agreeToTerms}
                     onChange={handleChange}
+                    aria-describedby={errors.agreeToTerms ? "terms-error" : undefined}
                     className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                   />
                 </div>
@@ -293,7 +299,7 @@ export default function Signup() {
                     {' '}*
                   </label>
                   {errors.agreeToTerms && (
-                    <p className="mt-1 text-sm text-red-600">{errors.agreeToTerms}</p>
+                    <p id="terms-error" className="mt-1 text-sm text-red-600">{errors.agreeToTerms}</p>
                   )}
                 </div>
               </div>
