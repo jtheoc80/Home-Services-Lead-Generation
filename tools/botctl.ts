@@ -30,7 +30,7 @@ function setupCommands() {
     .action(async () => {
       console.log('🤖 Launching DB Wire Bot...');
       try {
-        await dbWireMain(['node', 'db-wire']);
+        await dbWireMain(process.argv);
         process.exit(0);
       } catch (error) {
         console.error('❌ DB Wire Bot failed:', error);
