@@ -15,18 +15,18 @@
     "supa:smoke": "tsx scripts/supaSmoke.ts",
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
-    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+
+
+    "etl:delta": "tsx scripts/etlDelta.ts",
+
     "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
-
     "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
-
     "e2e:supabase": "tsx scripts/e2e_supabase_delta.ts",
-
     "security:check": "./scripts/security-check.sh",
     "security:audit": "npm audit && cd frontend && npm audit",
     "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
     "schema:drift": "tsx scripts/schema-drift-check.ts",
-    "db:wire": "tsx tools/bots/dbWire.ts",
+    "db:wire": "tsx tools/botctl.ts db:wire",
     "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
     "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
     "test:leads:sql": "tsx scripts/test_leads_sql.ts",
@@ -39,15 +39,23 @@
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
     "visual:dry-run": "node scripts/visual-regression-dry-run.js",
-
-
     "botctl": "tsx tools/botctl.ts",
     "bot:resolve": "tsx tools/bots/resolveConflicts.ts",
+
     "bot:resolve-json": "tsx tools/bots/resolveJsonConflicts.ts",
+
+
+    "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
+
+
+    "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
+
+    "bot:resolve-json": "tsx tools/bots/resolveConflicts.ts --strategy json",
+
     "db:wire": "tsx tools/botctl.ts db:wire",
+
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb"
-
   },
   "workspaces": [
     "frontend"
@@ -57,11 +65,14 @@
     "@types/pg": "^8.15.5",
     "axios": "^1.11.0",
     "commander": "^14.0.0",
+    "execa": "^9.6.0",
+    "json-stable-stringify": "^1.3.0",
     "next": "^14.0.0",
     "pg": "^8.16.3",
     "playwright": "^1.40.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "semver": "^7.7.2",
     "undici": "^7.13.0"
   },
   "devDependencies": {
