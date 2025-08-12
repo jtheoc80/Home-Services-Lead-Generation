@@ -225,7 +225,7 @@ class QBPlatformAuditor {
       // Look for hardcoded tokens in KV pattern
       /['"`]AX[A-Za-z0-9_]{20,}['"`]/g,
       // Look for hardcoded supabase service role keys (JWT pattern)
-      /['"`]eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*service_role[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*['"`]/g,
+      /['"\`]eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*service_role[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*['"\`]/g,
       // Look for hardcoded database URLs with credentials
       /['"`]postgres(ql)?:\/\/[^\/\s]+:[^\/\s]+@[^\/\s]+\/[^\/\s]+['"`]/g
     ];
