@@ -1,4 +1,5 @@
 import HealthBanner from '../components/HealthBanner'
+import '../styles/globals.css'
 
 export const metadata = {
   title: 'Lead Ledger Pro',
