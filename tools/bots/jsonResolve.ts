@@ -79,6 +79,12 @@ function mergeScripts(ours: Dict = {}, theirs: Dict = {}): Dict {
 async function readStageBlob(stage: 2 | 3, file: string): Promise<any> {
   // Stage 2 = ours, Stage 3 = theirs
   const blob = await execa("git", ["show", `:${stage}:${file}`], { stdout: "pipe" });
+  let blob;
+  try {
+    blob = await execa("git", ["show", `:${stage}:${file}`], { stdout: "pipe" });
+  } catch (e) {
+    throw new Error(`Failed to read ${file} from git stage ${stage}: ${(e as Error).message}`);
+  }
   try {
     return JSON.parse(blob.stdout);
   } catch (e) {
