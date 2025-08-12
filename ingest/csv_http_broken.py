@@ -552,7 +552,11 @@ class CSVHTTPConnector:
             except ValueError:
                 continue
                 
-        logger.warning(f"Could not parse date: {date_value}")
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+                
+        logger.warning(f"Could not parse date: {value}")
         return None
         
     def _normalize_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
