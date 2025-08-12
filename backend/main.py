@@ -13,12 +13,17 @@ import asyncio
 import secrets
 import base64
 import time
-from typing import Dict, Any, Optional
+import uuid
+from typing import Dict, Any, Optional, List
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Depends, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
+# Import scoring module
+from scoring.v0 import score_v0
 
 # Import existing subscription API
 from app.subscription_api import get_subscription_api
@@ -195,6 +200,29 @@ class ExportDataRequest(BaseModel):
     format: Optional[str] = "csv"  # csv, json, xlsx
     filters: Optional[Dict[str, Any]] = None
     admin_override: Optional[bool] = False
+
+# Lead scoring models
+class LeadScoreInput(BaseModel):
+    lead_id: Optional[str] = None
+    created_at: Optional[str] = None  
+    trade_tags: Optional[List[str]] = None
+    value: Optional[float] = None
+    year_built: Optional[int] = None
+    owner_kind: Optional[str] = None
+    address: Optional[str] = None
+    description: Optional[str] = None
+    jurisdiction: Optional[str] = None
+
+class LeadScoreRequest(BaseModel):
+    lead: LeadScoreInput
+    version: Optional[str] = "v0"
+
+class LeadScoreResponse(BaseModel):
+    lead_id: Optional[str]
+    version: str
+    score: int
+    reasons: List[str]
+    scored_at: str
 
 
 @app.get("/")
@@ -603,6 +631,116 @@ async def api_get_user_claims(user: AuthUser = Depends(auth_user)):
     return await get_user_claims(user)
 
 
+# ===== LEAD SCORING API ROUTES =====
+
+@app.post("/v1/lead-score", response_model=LeadScoreResponse)
+async def score_lead_v1(request: LeadScoreRequest):
+    """
+    Score a lead using the specified scoring algorithm version.
+    
+    This endpoint accepts a normalized lead payload and returns a score (0-100)
+    with detailed reasons. Supports versioned scoring algorithms for A/B testing
+    and algorithm evolution.
+    
+    Args:
+        request: Lead scoring request containing lead data and optional version
+        
+    Returns:
+        Lead score response with score, reasons, and metadata
+        
+    Raises:
+        HTTPException: For invalid input data or scoring errors
+    """
+    try:
+        # Validate scoring version
+        if request.version not in ["v0"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported scoring version: {request.version}"
+            )
+        
+        # Convert Pydantic model to dict for scoring function
+        lead_data = request.lead.dict(exclude_none=True)
+        
+        # Generate lead_id if not provided
+        if not lead_data.get('lead_id'):
+            lead_data['lead_id'] = str(uuid.uuid4())
+        
+        # Score the lead using v0 algorithm
+        if request.version == "v0":
+            result = score_v0(lead_data)
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Scoring algorithm not implemented"
+            )
+        
+        # Persist score to database
+        try:
+            await persist_lead_score(
+                lead_id=lead_data['lead_id'],
+                version=request.version,
+                score=result['score'],
+                reasons=result['reasons']
+            )
+        except Exception as e:
+            logger.warning(f"Failed to persist lead score: {str(e)}")
+            # Continue processing even if persistence fails
+        
+        # Build response
+        response = LeadScoreResponse(
+            lead_id=lead_data['lead_id'],
+            version=request.version,
+            score=result['score'],
+            reasons=result['reasons'],
+            scored_at=datetime.now().isoformat()
+        )
+        
+        logger.info(f"Lead scored: {lead_data['lead_id']} -> {result['score']}/100")
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error scoring lead: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error during lead scoring"
+        )
+
+
+async def persist_lead_score(lead_id: str, version: str, score: int, reasons: List[str]):
+    """
+    Persist lead score to gold.lead_scores table.
+    
+    Args:
+        lead_id: UUID string for the lead
+        version: Scoring algorithm version (e.g., 'v0')
+        score: Integer score 0-100
+        reasons: List of scoring reason strings
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # Insert into gold.lead_scores table
+        result = supabase.table('gold.lead_scores').insert({
+            'lead_id': lead_id,
+            'version': version,
+            'score': score,
+            'reasons': reasons,  # This will be stored as JSONB
+            'created_at': datetime.now().isoformat()
+        }).execute()
+        
+        if not result.data:
+            raise Exception("No data returned from insert")
+            
+        logger.info(f"Persisted score for lead {lead_id}: {score}/100 (version {version})")
+        
+    except Exception as e:
+        logger.error(f"Failed to persist lead score: {str(e)}")
+        raise
+
+
 # ===== DEBUG TRACE API ROUTE =====
 
 @app.get("/api/leads/trace/{trace_id}")
@@ -782,12 +920,23 @@ async def get_trace_debug(
         duration_ms = round((time.time() - start_time) * 1000, 2)
         logger.error({
             "trace_id": trace_id,
+
+            "path": path,
+
+
             "error": str(e),
             "duration_ms": duration_ms,
             "status": 500
         })
         
         raise HTTPException(
+
+            status_code=500,
+            detail="Internal server error"
+        )
+
+
+
             status_code=500, 
             detail="Internal server error"
         )
@@ -826,6 +975,7 @@ def verify_debug_key(x_debug_key: str = Header(None)) -> bool:
         )
     
     return True
+
 
 
 @app.get("/api/leads/trace/{trace_id}")
@@ -870,6 +1020,7 @@ async def get_trace_logs_endpoint(
             status_code=500,
             detail="Internal server error"
         )
+
 
 # Global exception handler
 @app.exception_handler(Exception)
