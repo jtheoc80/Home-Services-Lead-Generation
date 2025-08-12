@@ -339,7 +339,7 @@ jobs:
             echo "" >> comment.md
             echo "**Files requiring manual resolution:**" >> comment.md
             echo "\`\`\`" >> comment.md
-            echo "$failed" >> comment.md
+            echo "$failed" | xargs >> comment.md
             echo "\`\`\`" >> comment.md
             echo "" >> comment.md
             echo "Please resolve these conflicts manually and try again." >> comment.md
