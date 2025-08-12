@@ -38,7 +38,7 @@ export default function Home() {
             { title: "Public records data", sub: "Verified sources" },
             { title: "Hourly refresh", sub: "Near-real-time" },
             { title: "Cancel anytime", sub: "No contracts" },
-          ].map((b, i) => (
+          {TRUST_BADGES.map((b, i) => (
             <div key={i} className="rounded-lg border border-gray-200 p-4 bg-white shadow-sm">
               <div className="text-sm font-medium text-gray-900">{b.title}</div>
               <div className="text-sm text-gray-500 mt-1">{b.sub}</div>
