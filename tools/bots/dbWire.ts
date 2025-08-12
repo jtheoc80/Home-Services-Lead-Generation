@@ -195,7 +195,7 @@ async function executeWiring(client: Client, leadsTestMode: boolean): Promise<Db
  */
 function printSummary(result: DbWireResult, leadsTestMode: boolean): void {
   console.log('\n📊 Database Wiring Summary:');
-  console.log('=' .repeat(50));
+  console.log('='.repeat(50));
   
   if (result.created.length > 0) {
     console.log('\n✅ Created:');
