@@ -1,6 +1,5 @@
 """Test script for Texas data ingestion pipeline components."""
 
-import os
 import sys
 import logging
 from pathlib import Path
