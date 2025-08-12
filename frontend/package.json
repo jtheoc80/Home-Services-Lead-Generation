@@ -2,18 +2,6 @@
   "name": "leadledderpro-frontend",
   "version": "1.0.0",
   "description": "LeadLedgerPro - Home Services Lead Generation Frontend",
-  "scripts": {
-    "dev": "next dev",
-    "dev:strict": "npm run preflight && npm run type-check && npm run lint && npm run dev",
-    "build": "next build",
-    "build:production": "DISABLE_ESLINT=true next build",
-    "start": "next start",
-    "lint": "next lint",
-    "type-check": "tsc --noEmit",
-    "test": "echo 'No tests configured yet for frontend' && exit 0",
-    "preflight": "node scripts/preflight.js",
-    "health:check": "node scripts/health-check.js"
-  },
   "dependencies": {
     "@stripe/stripe-js": "^7.8.0",
     "@supabase/supabase-js": "^2.54.0",
@@ -21,34 +9,10 @@
     "next": "^15.4.6",
     "pino": "^9.8.0",
     "pino-pretty": "^13.1.1",
-
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "stripe": "^18.4.0",
-    "uuid": "^11.1.0",
-
-
-
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "stripe": "^18.4.0",
-    "uuid": "^11.1.0",
-
-
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-
-
-
-
     "stripe": "^18.4.0",
     "uuid": "^11.1.0",
-
-
-
     "zod": "^4.0.17"
   },
   "devDependencies": {
@@ -61,5 +25,17 @@
     "postcss": "^8.0.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "next build",
+    "build:production": "DISABLE_ESLINT=true next build",
+    "dev": "next dev",
+    "dev:strict": "npm run preflight && npm run type-check && npm run lint && npm run dev",
+    "health:check": "node scripts/health-check.js",
+    "lint": "next lint",
+    "preflight": "node scripts/preflight.js",
+    "start": "next start",
+    "test": "echo 'No tests configured yet for frontend' && exit 0",
+    "type-check": "tsc --noEmit"
   }
 }

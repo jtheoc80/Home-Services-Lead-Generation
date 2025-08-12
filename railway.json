@@ -4,25 +4,33 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "SERVICE_TYPE=backend poetry run python backend/main.py",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
+    "restartPolicyMaxRetries": 5,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 5
+    "startCommand": "SERVICE_TYPE=backend poetry run python backend/main.py"
   },
   "environments": {
-    "production": {
+    "development": {
       "variables": {
-        "ENVIRONMENT": "production",
-        "DEBUG": "false",
+        "DEBUG": "true",
+        "ENVIRONMENT": "development",
         "SERVICE_TYPE": "backend"
       }
     },
-    "development": {
+    "production": {
       "variables": {
-        "ENVIRONMENT": "development", 
-        "DEBUG": "true",
+        "DEBUG": "false",
+        "ENVIRONMENT": "production",
         "SERVICE_TYPE": "backend"
+      }
+    }
+  },
+  "plugins": {
+    "postgres": {
+      "type": "postgresql",
+      "environmentMappings": {
+        "DATABASE_URL": "DATABASE_URL"
       }
     }
   },
@@ -32,29 +40,15 @@
         "builder": "NIXPACKS"
       },
       "deploy": {
-        "startCommand": "SERVICE_TYPE=backend poetry run python backend/main.py",
         "healthcheckPath": "/health",
         "healthcheckTimeout": 120,
+        "restartPolicyMaxRetries": 5,
         "restartPolicyType": "ON_FAILURE",
-        "restartPolicyMaxRetries": 5
+        "startCommand": "SERVICE_TYPE=backend poetry run python backend/main.py"
       },
       "variables": {
-        "SERVICE_TYPE": "backend",
-        "PYTHONPATH": "/app"
-      }
-    },
-    "scraper": {
-      "build": {
-        "builder": "NIXPACKS"
-      },
-      "deploy": {
-        "startCommand": "SERVICE_TYPE=scraper poetry run python -m permit_leads --daemon --interval 3600",
-        "restartPolicyType": "ON_FAILURE",
-        "restartPolicyMaxRetries": 3
-      },
-      "variables": {
-        "SERVICE_TYPE": "scraper",
-        "PYTHONPATH": "/app"
+        "PYTHONPATH": "/app",
+        "SERVICE_TYPE": "backend"
       }
     },
     "frontend": {
@@ -62,22 +56,28 @@
         "builder": "NIXPACKS"
       },
       "deploy": {
-        "startCommand": "SERVICE_TYPE=frontend cd frontend && npm start",
         "healthcheckPath": "/",
         "healthcheckTimeout": 60,
+        "restartPolicyMaxRetries": 3,
         "restartPolicyType": "ON_FAILURE",
-        "restartPolicyMaxRetries": 3
+        "startCommand": "SERVICE_TYPE=frontend cd frontend && npm start"
       },
       "variables": {
         "SERVICE_TYPE": "frontend"
       }
-    }
-  },
-  "plugins": {
-    "postgres": {
-      "type": "postgresql",
-      "environmentMappings": {
-        "DATABASE_URL": "DATABASE_URL"
+    },
+    "scraper": {
+      "build": {
+        "builder": "NIXPACKS"
+      },
+      "deploy": {
+        "restartPolicyMaxRetries": 3,
+        "restartPolicyType": "ON_FAILURE",
+        "startCommand": "SERVICE_TYPE=scraper poetry run python -m permit_leads --daemon --interval 3600"
+      },
+      "variables": {
+        "PYTHONPATH": "/app",
+        "SERVICE_TYPE": "scraper"
       }
     }
   }

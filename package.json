@@ -1,56 +1,8 @@
 {
   "name": "home-services-lead-generation",
   "version": "1.0.0",
-  "type": "module",
   "description": "LeadLedgerPro - Home Services Lead Generation Platform",
-  "scripts": {
-    "dev": "cd frontend && npm run dev",
-    "dev:strict": "cd frontend && npm run dev:strict",
-    "build": "cd frontend && npm run build",
-    "start": "cd frontend && npm run start",
-    "lint": "cd frontend && npm run lint",
-    "typecheck": "cd frontend && npm run type-check",
-    "test": "cd frontend && npm run test",
-    "install-frontend": "cd frontend && npm install",
-    "supa:smoke": "tsx scripts/supaSmoke.ts",
-    "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
-    "scrape:harris": "node scripts/scrape-harris.cjs",
-    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
-    "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
-
-    "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
-
-    "e2e:supabase": "tsx scripts/e2e_supabase_delta.ts",
-
-    "security:check": "./scripts/security-check.sh",
-    "security:audit": "npm audit && cd frontend && npm audit",
-    "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
-    "schema:drift": "tsx scripts/schema-drift-check.ts",
-    "db:wire": "tsx tools/bots/dbWire.ts",
-    "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
-    "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
-    "test:leads:sql": "tsx scripts/test_leads_sql.ts",
-    "test:leads:integration": "tsx scripts/test_leads_sql_integration.ts",
-    "demo:leads:setup": "tsx scripts/demo_leads_setup.ts",
-    "redis:smoke": "python scripts/redis_smoketest.py",
-    "redis:chaos": "python scripts/redis_chaos_smoketest.py",
-    "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
-    "visual:test": "node scripts/visual-regression.js",
-    "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
-    "visual:install": "npx playwright install chromium",
-    "visual:dry-run": "node scripts/visual-regression-dry-run.js",
-
-
-    "botctl": "tsx tools/botctl.ts",
-    "bot:resolve": "tsx tools/bots/resolveConflicts.ts",
-    "db:wire": "tsx tools/botctl.ts db:wire",
-    "e2e:jt": "tsx tools/botctl.ts e2e:jt",
-    "audit:qb": "tsx tools/botctl.ts audit:qb"
-
-  },
-  "workspaces": [
-    "frontend"
-  ],
+  "type": "module",
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
     "@types/pg": "^8.15.5",
@@ -67,9 +19,54 @@
     "@apidevtools/swagger-parser": "^12.0.0",
     "@playwright/test": "^1.54.2",
     "@redocly/cli": "^2.0.2",
+    "execa": "^9",
     "globby": "^14.0.0",
+    "json-stable-stringify": "^1",
+    "semver": "^7",
     "tsx": "^4.0.0",
     "yaml": "^2.0.0"
   },
-  "private": true
+  "private": true,
+  "scripts": {
+    "audit:qb": "tsx tools/botctl.ts audit:qb",
+    "bot:resolve": "tsx tools/bots/resolveConflicts.ts",
+    "bot:resolve-json": "tsx tools/bots/jsonResolve.ts",
+    "botctl": "tsx tools/botctl.ts",
+    "build": "cd frontend && npm run build",
+    "db:wire": "tsx tools/botctl.ts db:wire",
+    "demo:leads:setup": "tsx scripts/demo_leads_setup.ts",
+    "dev": "cd frontend && npm run dev",
+    "dev:strict": "cd frontend && npm run dev:strict",
+    "e2e:jt": "tsx tools/botctl.ts e2e:jt",
+    "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
+    "e2e:supabase": "tsx scripts/e2e_supabase_delta.ts",
+    "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
+    "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+    "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
+    "install-frontend": "cd frontend && npm install",
+    "lint": "cd frontend && npm run lint",
+    "redis:chaos": "python scripts/redis_chaos_smoketest.py",
+    "redis:smoke": "python scripts/redis_smoketest.py",
+    "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
+    "schema:drift": "tsx scripts/schema-drift-check.ts",
+    "scrape:harris": "node scripts/scrape-harris.cjs",
+    "security:audit": "npm audit && cd frontend && npm audit",
+    "security:check": "./scripts/security-check.sh",
+    "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
+    "start": "cd frontend && npm run start",
+    "supa:smoke": "tsx scripts/supaSmoke.ts",
+    "test": "cd frontend && npm run test",
+    "test:leads:integration": "tsx scripts/test_leads_sql_integration.ts",
+    "test:leads:sql": "tsx scripts/test_leads_sql.ts",
+    "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
+    "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
+    "typecheck": "cd frontend && npm run type-check",
+    "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
+    "visual:dry-run": "node scripts/visual-regression-dry-run.js",
+    "visual:install": "npx playwright install chromium",
+    "visual:test": "node scripts/visual-regression.js"
+  },
+  "workspaces": [
+    "frontend"
+  ]
 }
