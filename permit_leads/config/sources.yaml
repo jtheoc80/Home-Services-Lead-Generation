@@ -1,9 +1,11 @@
-# Houston area starter config — you can add/disable sources as you go.
+# Texas permits configuration with multi-city coverage
 sources:
   # HARRIS COUNTY — Issued Permits (ArcGIS) — contains ISSUEDDATE and PERMITNUMBER
   - name: Harris County Issued Permits (ArcGIS)
     type: arcgis_feature_service
     url: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0/query"
+    updated_field: "ISSUEDDATE"
+    primary_key: "PERMITNUMBER"
     date_field: "ISSUEDDATE"
     out_fields: "*"
     mappings:
@@ -15,11 +17,88 @@ sources:
       work_class: "APPTYPE"
       category: "APPTYPE"
 
+  # DALLAS — Building Permits (Socrata) — Dallas Open Data Portal
+  - name: Dallas Building Permits (Socrata)
+    type: socrata
+    domain: "www.dallasopendata.com"
+    dataset_id: "e7gq-4sah"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    date_field: "issued_date"
+    mappings:
+      permit_number: "permit_number"
+      issued_date: "issued_date"
+      address: "address"
+      description: "work_description"
+      status: "permit_status"
+      work_class: "permit_type_desc"
+      category: "permit_class"
+      value: "estimated_cost"
+      applicant: "contractor_name"
+
+  # AUSTIN — Building Permits (Socrata) — Austin Open Data Portal
+  - name: Austin Building Permits (Socrata)
+    type: socrata
+    domain: "data.austintexas.gov"
+    dataset_id: "3syk-w9eu"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    date_field: "issued_date"
+    mappings:
+      permit_number: "permit_number"
+      issued_date: "issued_date"
+      address: "original_address1"
+      description: "description"
+      status: "status_current"
+      work_class: "permit_type_desc"
+      category: "permit_class_mapped"
+      value: "total_valuation"
+      applicant: "applicant_name"
+
+  # ARLINGTON — Issued Permits (ArcGIS) — City of Arlington Feature Service
+  - name: Arlington Issued Permits (ArcGIS)
+    type: arcgis_feature_service
+    url: "https://gis.arlingtontx.gov/arcgis/rest/services/OpenData/Permits/FeatureServer/0/query"
+    updated_field: "IssueDate"
+    primary_key: "PermitNumber"
+    date_field: "IssueDate"
+    out_fields: "*"
+    mappings:
+      permit_number: "PermitNumber"
+      issued_date: "IssueDate"
+      address: "Address"
+      description: "Description"
+      status: "Status"
+      work_class: "PermitType"
+      category: "PermitTypeGroup"
+      value: "EstimatedCost"
+      applicant: "ContractorName"
+
+  # HOUSTON — Open Records Request (TPIA) — Manual CSV processing
+  - name: Houston Open Records (TPIA)
+    type: tpia_csv
+    jurisdiction: "houston"
+    description: "Manual CSV processing from TPIA requests"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    mappings:
+      permit_number: "permit_number"
+      issued_date: "issue_date"
+      address: "address"
+      description: "work_description"
+      status: "permit_status"
+      work_class: "permit_type"
+      category: "permit_category"
+      value: "project_value"
+      applicant: "applicant_name"
+
   # CITY OF GALVESTON — Building Permits (ArcGIS) — GAL_* fields
   - name: City of Galveston Building Permits (ArcGIS)
     type: arcgis_feature_service
     url: "https://gis.galvestontx.gov/server/rest/services/Accela/Building_Permits/MapServer/0/query"
-    date_field: "GAL_REC_DATE"       # consider GAL_STATDATE depending on your need
+    updated_field: "GAL_REC_DATE"
+    primary_key: "ID"
+    date_field: "GAL_REC_DATE"
     out_fields: "*"
     mappings:
       permit_number: "ID"
@@ -30,30 +109,16 @@ sources:
       work_class: "GAL_PER_SUB_TYPE"
       category: "GAL_PER_CATEGORY"
 
-  # CITY OF HOUSTON — Sold Permits (HTML) — manual selectors TBD
+  # CITY OF HOUSTON — Sold Permits (HTML) — placeholder for future API
   - name: City of Houston Sold Permits (HTML)
     type: accela_html
     url: "https://www.cohtora.houstontx.gov/approot/soldpermits/online_permit.htm"
-    table_selector: "table"            # Placeholder; refine selectors after inspecting the results table
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    table_selector: "table"
     header_selector: "thead th"
     row_selector: "tbody tr"
     cell_selector: "td"
     max_pages: 3
 
-  # GALVESTON COUNTY — OpenGov portal (account often required)
-  - name: Galveston County OpenGov (placeholder)
-    type: accela_html
-    url: "https://www.galvestoncountytx.gov/county-offices/engineering-right-of-way"
-    table_selector: "table"            # placeholder
 
-  # FORT BEND — TBD
-  - name: Fort Bend County Permits (placeholder)
-    type: accela_html
-    url: "https://www.fortbendcountytx.gov/government/departments/county-services/engineering/permits/development-permit"
-    table_selector: "table"            # placeholder
-
-  # BRAZORIA — TBD
-  - name: Brazoria County Permits (placeholder)
-    type: accela_html
-    url: "https://www.brazoriacountytx.gov/departments/engineering/permits"
-    table_selector: "table"            # placeholder
