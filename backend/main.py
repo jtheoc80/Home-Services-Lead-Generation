@@ -860,7 +860,7 @@ async def get_trace_logs_endpoint(
         logger.error(f"Error in trace logs endpoint: {str(e)}")
         raise HTTPException(
             status_code=500,
-
+            status_code=500,
             detail="Internal server error"
         )
 
