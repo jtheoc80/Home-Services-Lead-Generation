@@ -116,6 +116,15 @@ app.include_router(test_supabase_router, tags=["test", "supabase"])
 # Include Supabase environment check router
 app.include_router(supa_env_check_router, tags=["health", "supabase"])
 
+# Include demand index API router
+try:
+    from app.demand_index_api import router as demand_index_router
+    app.include_router(demand_index_router, tags=["forecast", "demand-index"])
+    DEMAND_INDEX_AVAILABLE = True
+except ImportError:
+    demand_index_router = None
+    DEMAND_INDEX_AVAILABLE = False
+
 
 # Pydantic models for request/response validation
 class CancellationRequest(BaseModel):
