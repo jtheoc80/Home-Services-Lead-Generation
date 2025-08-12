@@ -156,7 +156,11 @@ export async function fetchHarrisIssuedPermits(sinceMs: number): Promise<PermitR
           const attrs = feature.attributes;
           
           const permit: PermitRecord = {
-            event_id: attrs.EVENTID?.toString() || attrs.OBJECTID?.toString() || `unknown_${Date.now()}_${Math.random()}`,
+          if (!attrs.EVENTID && !attrs.OBJECTID) {
+            throw new Error('Permit record missing both EVENTID and OBJECTID; cannot assign event_id.');
+          }
+          const permit: PermitRecord = {
+            event_id: attrs.EVENTID?.toString() || attrs.OBJECTID?.toString(),
             permit_number: attrs.PERMITNUMBER || null,
             permit_name: attrs.PERMITNAME || attrs.PROJECTNAME || null,
             app_type: attrs.APPTYPE || null,
