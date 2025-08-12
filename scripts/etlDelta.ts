@@ -268,7 +268,7 @@ async function upsertPermits(supabase: any, permits: PermitRecord[]): Promise<{ 
   return { inserted: insertedCount, updated: updatedCount };
 }
 
-async function ensureTableExists(supabase: any): Promise<void> {
+async function ensureTableExists(supabase: SupabaseClient): Promise<void> {
   try {
     const { error } = await supabase
       .from('permits_raw_harris')
