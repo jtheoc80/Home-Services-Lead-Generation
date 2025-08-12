@@ -282,7 +282,24 @@ class DatabaseWireChecker {
     } catch (error) {
       console.error('\n💥 DB Wire check failed:');
       console.error(error instanceof Error ? error.message : String(error));
-      process.exit(2);
+  async run(): Promise<number> {
+    try {
+      const health = await this.performHealthCheck();
+      this.generateHealthReport(health);
+
+      // Return appropriate exit code
+      const isHealthy = health.connection && health.tablesAccessible && health.readOperations;
+      if (!isHealthy) {
+        console.log('\n❌ Database health check FAILED');
+        return 1;
+      } else {
+        console.log('\n✅ Database health check PASSED');
+        return 0;
+      }
+    } catch (error) {
+      console.error('\n💥 DB Wire check failed:');
+      console.error(error instanceof Error ? error.message : String(error));
+      return 2;
     }
   }
 }
