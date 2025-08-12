@@ -262,6 +262,74 @@ make billing-seed  # copy the price IDs to your environment variables
 - ✅ Test webhook endpoint receives events
 - ✅ Test checkout flow end-to-end
 
+### 🔄 Environment Variables & Redeploy Steps
+
+When updating environment variables, follow these steps to ensure all services reflect the changes:
+
+**Core Environment Variables Required:**
+```bash
+# Supabase Configuration (both server-only and public)
+SUPABASE_URL=https://your-project.supabase.co                    # Server only
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key                  # Server only (SENSITIVE)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co        # Public (browser safe)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key                      # Public (browser safe)
+
+# Application Configuration
+LEADS_TEST_MODE=false                                            # Server only (controls RLS)
+HC_ISSUED_PERMITS_URL=https://www.gis.hctx.net/.../FeatureServer/0  # Public API URL
+```
+
+**Vercel (Frontend) Redeploy Steps:**
+```bash
+# Add/update environment variables
+vercel env add SUPABASE_URL production
+vercel env add SUPABASE_SERVICE_ROLE_KEY production
+vercel env add NEXT_PUBLIC_SUPABASE_URL production  
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+vercel env add LEADS_TEST_MODE production
+vercel env add HC_ISSUED_PERMITS_URL production
+
+# Pull environment variables to local for testing
+vercel env pull .env.local
+
+# Redeploy to apply changes
+vercel redeploy --prod
+```
+
+**Railway (Backend) Redeploy Steps:**
+```bash
+# Set environment variables
+railway variables set SUPABASE_URL=https://your-project.supabase.co
+railway variables set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+railway variables set NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+railway variables set NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+railway variables set LEADS_TEST_MODE=false
+railway variables set HC_ISSUED_PERMITS_URL=https://www.gis.hctx.net/.../FeatureServer/0
+
+# Restart service to apply changes
+railway restart
+```
+
+**Important Security Notes:**
+- 🔒 **Server-only variables** (`SUPABASE_SERVICE_ROLE_KEY`, `LEADS_TEST_MODE`) must NEVER be prefixed with `NEXT_PUBLIC_`
+- 🌐 **Public variables** (`NEXT_PUBLIC_*`) are safe for browser exposure but should not contain sensitive data
+- ⚠️ Always set `LEADS_TEST_MODE=false` in production unless specifically testing
+- 🔄 Always redeploy after environment variable changes to ensure they take effect
+
+**Verification After Redeploy:**
+```bash
+# Check health endpoints
+curl https://your-backend.railway.app/healthz
+curl https://your-frontend.vercel.app/api/health
+
+# Verify environment variables are loaded (check logs)
+vercel logs --app your-app
+railway logs
+
+# Test core functionality
+npm run test:smoke
+```
+
 ## 🛡️ Security
 
 This project includes comprehensive security measures to protect against vulnerabilities and ensure license compliance:
