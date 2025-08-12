@@ -11,7 +11,6 @@ import sys
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 # Add backend to path for imports
@@ -173,7 +172,7 @@ def test_normalization_function(conn):
             new_count = result['new_count'] 
             updated_count = result['updated_count']
             
-            print(f"📊 Normalization Results:")
+            print("📊 Normalization Results:")
             print(f"   Processed: {processed_count}")
             print(f"   New: {new_count}")
             print(f"   Updated: {updated_count}")
@@ -271,7 +270,7 @@ def main():
     # Get database connection
     try:
         db_url = get_database_url()
-        print(f"Connecting to database...")
+        print("Connecting to database...")
         conn = psycopg2.connect(db_url)
         print("✅ Database connection established")
     except Exception as e:

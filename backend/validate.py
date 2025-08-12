@@ -7,7 +7,6 @@ functionality works without requiring a full database setup.
 """
 
 import sys
-import json
 from pathlib import Path
 
 def test_imports():

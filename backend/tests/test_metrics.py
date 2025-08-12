@@ -9,7 +9,7 @@ import unittest
 import os
 import sys
 import base64
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from fastapi import FastAPI, Header
 
@@ -18,9 +18,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 
 # Import metrics components
 from metrics import (
-    http_requests_total, 
-    http_request_duration_seconds, 
-    ingest_rows_total,
     MetricsTracker,
     get_metrics,
     track_ingestion

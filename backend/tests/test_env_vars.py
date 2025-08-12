@@ -8,9 +8,7 @@ This module tests the notifications, cache, and export control utilities.
 import os
 import unittest
 import json
-from unittest.mock import patch, MagicMock
 import sys
-import tempfile
 
 # Add the backend app directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))

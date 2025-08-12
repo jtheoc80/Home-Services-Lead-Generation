@@ -11,9 +11,8 @@ import sys
 import logging
 import psycopg2
 import psycopg2.extras
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import json
+from datetime import datetime
+from typing import Dict
 import math
 
 # Setup logging

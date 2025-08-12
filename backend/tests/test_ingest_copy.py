@@ -8,7 +8,6 @@ import os
 import tempfile
 import csv
 from unittest.mock import patch, MagicMock
-from datetime import datetime
 
 # Set required environment variables for testing
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret'

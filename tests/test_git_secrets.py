@@ -4,9 +4,7 @@ Test suite for git-secrets configuration
 This test demonstrates that git-secrets correctly prevents committing sensitive data
 """
 
-import os
 import subprocess
-import tempfile
 import unittest
 from pathlib import Path
 

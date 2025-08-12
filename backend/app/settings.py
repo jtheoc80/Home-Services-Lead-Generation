@@ -5,7 +5,6 @@ This module uses Pydantic for configuration management with environment variable
 All configuration values should be defined here rather than hardcoded throughout the application.
 """
 
-import os
 from pathlib import Path
 from typing import Optional
 from pydantic import Field

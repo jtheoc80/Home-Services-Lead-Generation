@@ -3,7 +3,7 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 from redis.asyncio import Redis
 
 REDIS_URL = os.getenv("REDIS_URL")

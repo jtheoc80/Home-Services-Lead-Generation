@@ -4,7 +4,7 @@ Abstract base scraper class with common utilities for permit data collection.
 import logging
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 import requests
 from requests.adapters import HTTPAdapter

@@ -32,7 +32,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         
@@ -161,7 +161,7 @@ jobs:
         
     - name: Upload data artifacts
       if: steps.scrape.outputs.new_permits > 0
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
     - name: Set date output
       id: set_date
@@ -169,7 +169,7 @@ jobs:
 
     - name: Upload data artifacts
       if: steps.scrape.outputs.new_permits > 0
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}
         path: data/

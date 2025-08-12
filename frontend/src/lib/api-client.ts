@@ -14,7 +14,7 @@ import {
 
 export * from './apis';
 export * from './models';
-export { Configuration, ConfigurationParameters } from './runtime';
+export type { Configuration, ConfigurationParameters } from './runtime';
 
 /**
  * API client collection with all available services

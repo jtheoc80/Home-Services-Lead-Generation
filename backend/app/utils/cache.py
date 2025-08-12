@@ -9,8 +9,8 @@ performance of lead processing and API responses.
 import os
 import json
 import logging
-from typing import Optional, Any, Dict, List, Union
-from datetime import datetime, timedelta, timezone
+from typing import Optional, Any, Dict
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 # Configure logging

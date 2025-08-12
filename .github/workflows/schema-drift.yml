@@ -163,7 +163,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.drift-check.outputs.pr_needed == 'true' && steps.migration-summary.outputs.migration_exists == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |

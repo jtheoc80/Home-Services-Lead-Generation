@@ -7,7 +7,7 @@ and dependency injection for protecting routes.
 
 import os
 import jwt
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv

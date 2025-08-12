@@ -3,11 +3,9 @@ Tests for ML training and inference pipeline.
 """
 
 import unittest
-import json
 import tempfile
 import os
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Mock database connection for testing
 class MockConnection:

@@ -1,10 +1,15 @@
 /**
  * Frontend configuration for Home Services Lead Generation.
  * 
- * This module centralizes all frontend configuration by reading NEXT_PUBLIC_* 
- * environment variables. All configuration should be defined here rather than
- * scattered throughout the frontend codebase.
+ * This module centralizes all frontend configuration by using validated
+ * environment variables from lib/env.ts. All configuration should be 
+ * defined here rather than scattered throughout the frontend codebase.
  */
+
+import { env, validateClientEnv } from './env';
+
+// Validate critical client environment variables at module load
+validateClientEnv();
 
 interface AppConfig {
   // API and backend configuration
@@ -44,62 +49,42 @@ interface AppConfig {
 }
 
 /**
- * Parse boolean environment variable with default fallback
- */
-function parseBooleanEnv(value: string | undefined, defaultValue: boolean = false): boolean {
-  if (!value) return defaultValue;
-  return value.toLowerCase() === 'true';
-}
-
-/**
- * Parse array environment variable (comma-separated)
- */
-function parseArrayEnv(value: string | undefined, defaultValue: string[] = []): string[] {
-  if (!value) return defaultValue;
-  return value.split(',').map(item => item.trim()).filter(Boolean);
-}
-
-/**
- * Get application configuration from environment variables
+ * Get application configuration from validated environment variables
  */
 export const config: AppConfig = {
   // API and backend configuration
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
-  apiBase: process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000',
-  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  apiBaseUrl: '/api', // Always use relative path for API routes
+  apiBase: env.NEXT_PUBLIC_API_BASE,
+  supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
+  supabaseAnonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   
   // Application scope and features  
-  launchScope: process.env.NEXT_PUBLIC_LAUNCH_SCOPE || 'houston',
-  defaultRegion: process.env.NEXT_PUBLIC_DEFAULT_REGION || 'tx-houston',
-  exportsEnabled: parseBooleanEnv(process.env.NEXT_PUBLIC_EXPORTS_ENABLED),
-  mlScoringEnabled: parseBooleanEnv(process.env.NEXT_PUBLIC_ML_SCORING_ENABLED),
+  launchScope: env.NEXT_PUBLIC_LAUNCH_SCOPE,
+  defaultRegion: env.NEXT_PUBLIC_DEFAULT_REGION,
+  exportsEnabled: env.NEXT_PUBLIC_EXPORTS_ENABLED,
+  mlScoringEnabled: env.NEXT_PUBLIC_ML_SCORING_ENABLED,
   
   // UI configuration
-  environment: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
-  debugMode: parseBooleanEnv(process.env.NEXT_PUBLIC_DEBUG_MODE),
-  showAdminFeatures: parseBooleanEnv(process.env.NEXT_PUBLIC_SHOW_ADMIN_FEATURES),
+  environment: env.NEXT_PUBLIC_ENVIRONMENT,
+  debugMode: env.NEXT_PUBLIC_DEBUG_MODE,
+  showAdminFeatures: env.NEXT_PUBLIC_SHOW_ADMIN_FEATURES,
   
   // Notification configuration
-  notificationsEnabled: parseBooleanEnv(process.env.NEXT_PUBLIC_NOTIFICATIONS_ENABLED, true),
-  realTimeUpdates: parseBooleanEnv(process.env.NEXT_PUBLIC_REALTIME_UPDATES, true),
+  notificationsEnabled: env.NEXT_PUBLIC_NOTIFICATIONS_ENABLED,
+  realTimeUpdates: env.NEXT_PUBLIC_REALTIME_UPDATES,
   
   // Geographic defaults
-  defaultCounties: parseArrayEnv(process.env.NEXT_PUBLIC_DEFAULT_COUNTIES, [
-    'tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston'
-  ]),
-  supportedRegions: parseArrayEnv(process.env.NEXT_PUBLIC_SUPPORTED_REGIONS, [
-    'tx-houston'
-  ]),
+  defaultCounties: env.NEXT_PUBLIC_DEFAULT_COUNTIES,
+  supportedRegions: env.NEXT_PUBLIC_SUPPORTED_REGIONS,
   
   // Feature flags
   features: {
-    csvExport: parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_CSV_EXPORT),
-    bulkActions: parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_BULK_ACTIONS, true),
-    advancedFilters: parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_ADVANCED_FILTERS, true),
-    leadScoring: parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_LEAD_SCORING, true),
-    notifications: parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_NOTIFICATIONS, true),
-    analytics: parseBooleanEnv(process.env.NEXT_PUBLIC_FEATURE_ANALYTICS, true),
+    csvExport: env.NEXT_PUBLIC_FEATURE_CSV_EXPORT,
+    bulkActions: env.NEXT_PUBLIC_FEATURE_BULK_ACTIONS,
+    advancedFilters: env.NEXT_PUBLIC_FEATURE_ADVANCED_FILTERS,
+    leadScoring: env.NEXT_PUBLIC_FEATURE_LEAD_SCORING,
+    notifications: env.NEXT_PUBLIC_FEATURE_NOTIFICATIONS,
+    analytics: env.NEXT_PUBLIC_FEATURE_ANALYTICS,
   }
 };
 

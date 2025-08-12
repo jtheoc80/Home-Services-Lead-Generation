@@ -1,0 +1,42 @@
+# Code Owners File
+# This file defines who is responsible for code in different parts of the repository
+
+# Global owners - these users will be requested for review on every PR
+* @jtheoc80
+
+# Frontend specific
+frontend/ @jtheoc80
+*.tsx @jtheoc80
+*.ts @jtheoc80
+*.js @jtheoc80
+*.css @jtheoc80
+
+# Backend specific
+backend/ @jtheoc80
+*.py @jtheoc80
+
+# Scraping and ETL
+permit_leads/ @jtheoc80
+
+# Infrastructure and CI/CD
+.github/ @jtheoc80
+Dockerfile* @jtheoc80
+docker-compose*.yml @jtheoc80
+nixpacks.toml @jtheoc80
+railway.json @jtheoc80
+vercel.json @jtheoc80
+
+# Configuration files
+pyproject.toml @jtheoc80
+package.json @jtheoc80
+Makefile @jtheoc80
+
+# Documentation
+README.md @jtheoc80
+docs/ @jtheoc80
+*.md @jtheoc80
+
+# OpenAPI and schemas
+openapi.yaml @jtheoc80
+scripts/generate-*.sh @jtheoc80
+scripts/generate-*.py @jtheoc80

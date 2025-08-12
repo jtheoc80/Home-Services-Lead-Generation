@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 import pandas as pd
-import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

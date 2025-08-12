@@ -88,10 +88,7 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
               </span>
               
               {/* Lead Feedback Buttons */}
-
-              <LeadFeedbackButtons leadId={lead.id} />
-
-              <LeadFeedbackButtons leadId={String(lead.id)} initialVote={lead.initialVote} />
+              <LeadFeedbackButtons leadId={lead.id} initialVote={lead.initialVote} />
 
             </div>
           </div>

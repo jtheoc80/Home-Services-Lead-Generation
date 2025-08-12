@@ -14,7 +14,6 @@ from .lead_export import export_leads
 from .export_leads import export_enriched_leads
 from .migrate_db import add_enrichment_columns
 from .region_adapter import RegionAwareAdapter
-from .config_loader import get_config_loader
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +278,7 @@ def handle_scrape(args: argparse.Namespace):
     
     total_permits = len(all_permits)
     residential_permits = sum(1 for p in all_permits if p.is_residential())
-    print(f"\n=== SCRAPING SUMMARY ===")
+    print("\n=== SCRAPING SUMMARY ===")
     print(f"Total permits: {total_permits}")
     print(f"Residential permits: {residential_permits}")
     print(f"Sources processed: {len(sources_processed)}")
@@ -290,7 +289,7 @@ def handle_scrape(args: argparse.Namespace):
             storage = Storage(db_path=output_paths['db'])
             latest = storage.get_latest(5)
             if latest:
-                print(f"\nLatest permits:")
+                print("\nLatest permits:")
                 for permit in latest:
                     print(f"  {permit.get('permit_id', 'N/A')} - {permit.get('address', 'N/A')}")
 
