@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import EmptyState from '@/components/EmptyState';
-import { Lead } from '../../../types/supabase';
+import { Lead } from '@/types/supabase';
 
 interface LeadsResponse {
   data: Lead[];
