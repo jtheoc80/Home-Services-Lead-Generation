@@ -589,7 +589,7 @@ async function main(): Promise<void> {
 }
 
 // Run the auditor if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   main();
 }
 
