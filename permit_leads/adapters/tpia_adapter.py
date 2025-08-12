@@ -3,7 +3,6 @@ Texas Public Information Act (TPIA) adapter for Houston and other municipalities
 Handles CSV processing from manually requested public records.
 """
 
-import os
 import csv
 import logging
 from datetime import datetime
