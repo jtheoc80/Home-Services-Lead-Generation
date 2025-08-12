@@ -160,7 +160,7 @@ def main():
         demo_api_integration(trace_id)
     
     # Demo 3: Scraper integration
-    scraper_trace_id = demo_scraper_integration()
+    demo_scraper_integration()
     
     print("\n🎉 Demo completed!")
     print("\nTo test the API endpoint:")
