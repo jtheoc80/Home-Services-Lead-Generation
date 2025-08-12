@@ -5,6 +5,18 @@
  * 
  * Resolves Git merge conflicts in package.json and lockfiles with intelligent merging.
  * Handles dependencies, scripts, and lockfile regeneration automatically.
+ * 
+ * Usage:
+ *   npx tsx tools/bots/jsonResolve.ts
+ *   npm run bot:json-resolve
+ * 
+ * Features:
+ * - Detects conflicted files using `git diff --name-only --diff-filter=U`
+ * - Targets only package.json and lockfiles (package-lock.json, pnpm-lock.yaml, yarn.lock)
+ * - Merges package.json with intelligent dependency resolution using semver
+ * - Handles script conflicts by keeping ours and adding theirs with :theirs suffix
+ * - Regenerates lockfiles using the appropriate package manager
+ * - Provides detailed summary reporting
  */
 
 import { execSync } from 'child_process';
@@ -55,15 +67,19 @@ class JsonConflictResolver {
    */
   private filterTargetFiles(files: string[]): string[] {
     const targetPatterns = [
+      'package.json',
       '**/package.json',
+      'package-lock.json',
       '**/package-lock.json',
-      '**/pnpm-lock.yaml', 
+      'pnpm-lock.yaml',
+      '**/pnpm-lock.yaml',
+      'yarn.lock',
       '**/yarn.lock'
     ];
 
     return files.filter(file => {
       return targetPatterns.some(pattern => {
-        const regex = new RegExp(pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'));
+        const regex = new RegExp('^' + pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*') + '$');
         return regex.test(file);
       });
     });
@@ -236,6 +252,11 @@ class JsonConflictResolver {
       const packageManager = this.detectPackageManager(filePath);
       if (!packageManager) {
         console.error(`Unknown lockfile type: ${filePath}`);
+        this.results.push({
+          file: filePath,
+          action: 'skipped',
+          details: 'Unknown lockfile type'
+        });
         return false;
       }
 
@@ -244,6 +265,18 @@ class JsonConflictResolver {
 
       const workingDir = dirname(filePath);
       
+      // Check if package.json exists in the working directory
+      const packageJsonPath = join(workingDir, 'package.json');
+      if (!existsSync(packageJsonPath)) {
+        console.error(`No package.json found in ${workingDir} for lockfile regeneration`);
+        this.results.push({
+          file: filePath,
+          action: 'skipped',
+          details: 'No package.json found'
+        });
+        return false;
+      }
+
       // Regenerate lockfile without installing
       let regenerateCmd: string;
       switch (packageManager) {
@@ -272,11 +305,11 @@ class JsonConflictResolver {
       console.log(`✓ Regenerated and staged ${filePath} using ${packageManager}`);
       return true;
     } catch (error) {
-      console.error(`Failed to resolve lockfile conflict in ${filePath}:`, error);
+      console.error(`Failed to resolve lockfile conflict in ${filePath}:`, error.message || error);
       this.results.push({
         file: filePath,
         action: 'skipped',
-        details: `Error: ${error.message}`
+        details: `Error: ${error.message || 'Unknown error'}`
       });
       return false;
     }
@@ -303,8 +336,13 @@ class JsonConflictResolver {
     console.log(`📋 Found ${targetFiles.length} target files in conflict:`);
     targetFiles.forEach(file => console.log(`   - ${file}`));
 
-    // Process each file
-    for (const filePath of targetFiles) {
+    // Process each file in the right order: package.json first, then lockfiles
+    const packageJsonFiles = targetFiles.filter(f => f.endsWith('package.json'));
+    const lockfileFiles = targetFiles.filter(f => !f.endsWith('package.json'));
+    
+    const orderedFiles = [...packageJsonFiles, ...lockfileFiles];
+
+    for (const filePath of orderedFiles) {
       console.log(`\n🔍 Processing: ${filePath}`);
 
       if (filePath.endsWith('package.json')) {
