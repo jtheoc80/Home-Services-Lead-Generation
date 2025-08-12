@@ -1,0 +1,417 @@
+name: Texas Statewide Data Ingestion
+
+on:
+  schedule:
+    # Nightly at 6:00 AM UTC (1:00 AM Central) for Tier-1 sources
+    - cron: '0 6 * * *'
+    # Weekly on Sundays at 7:00 AM UTC (2:00 AM Central) for Tier-2 sources
+    - cron: '0 7 * * 0'
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: 'Which tier to process'
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - 'all'
+      full_refresh:
+        description: 'Full refresh (ignore last ingest dates)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+jobs:
+  detect-tier:
+    runs-on: ubuntu-latest
+    outputs:
+      tier: ${{ steps.determine-tier.outputs.tier }}
+      is_nightly: ${{ steps.determine-tier.outputs.is_nightly }}
+      is_weekly: ${{ steps.determine-tier.outputs.is_weekly }}
+    steps:
+      - name: Determine tier to process
+        id: determine-tier
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tier=${{ github.event.inputs.tier }}" >> $GITHUB_OUTPUT
+            echo "is_nightly=false" >> $GITHUB_OUTPUT
+            echo "is_weekly=false" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 6 * * *" ]; then
+            echo "tier=1" >> $GITHUB_OUTPUT
+            echo "is_nightly=true" >> $GITHUB_OUTPUT
+            echo "is_weekly=false" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 7 * * 0" ]; then
+            echo "tier=2" >> $GITHUB_OUTPUT
+            echo "is_nightly=false" >> $GITHUB_OUTPUT
+            echo "is_weekly=true" >> $GITHUB_OUTPUT
+          else
+            echo "tier=1" >> $GITHUB_OUTPUT
+            echo "is_nightly=false" >> $GITHUB_OUTPUT
+            echo "is_weekly=false" >> $GITHUB_OUTPUT
+          fi
+
+  load-raw-data:
+    runs-on: ubuntu-latest
+    needs: detect-tier
+    outputs:
+      load_result: ${{ steps.load-data.outputs.result }}
+      records_processed: ${{ steps.load-data.outputs.records_processed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyyaml requests beautifulsoup4 tenacity
+
+      - name: Load raw data
+        id: load-data
+        run: |
+          echo "Starting Tier-${{ needs.detect-tier.outputs.tier }} data ingestion..."
+          
+          # Set full refresh flag
+          FULL_REFRESH=""
+          if [ "${{ github.event.inputs.full_refresh }}" = "true" ]; then
+            FULL_REFRESH="--full-refresh"
+          fi
+          
+          # Run the load pipeline
+          cd ${{ github.workspace }}
+          python pipelines/load_raw.py \
+            --tier ${{ needs.detect-tier.outputs.tier }} \
+            --sources-config config/sources_tx.yaml \
+            --db-url "$DATABASE_URL" \
+            $FULL_REFRESH > load_result.json
+          
+          # Extract results for downstream jobs
+          RECORDS_PROCESSED=$(python -c "
+          import json
+          with open('load_result.json') as f:
+              data = json.load(f)
+          if isinstance(data, dict) and 'summary' in data:
+              print(data['summary'].get('successful', 0))
+          else:
+              print(0)
+          ")
+          
+          echo "records_processed=$RECORDS_PROCESSED" >> $GITHUB_OUTPUT
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          cat load_result.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload raw data results
+        uses: actions/upload-artifact@v3
+        with:
+          name: raw-data-results-tier-${{ needs.detect-tier.outputs.tier }}
+          path: load_result.json
+          retention-days: 30
+
+  normalize-data:
+    runs-on: ubuntu-latest
+    needs: [detect-tier, load-raw-data]
+    if: needs.load-raw-data.outputs.records_processed > 0
+    outputs:
+      normalize_result: ${{ steps.normalize.outputs.result }}
+      normalized_count: ${{ steps.normalize.outputs.normalized_count }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyyaml
+
+      - name: Normalize data
+        id: normalize
+        run: |
+          echo "Starting data normalization..."
+          
+          cd ${{ github.workspace }}
+          python pipelines/normalize.py \
+            --sources-config config/sources_tx.yaml \
+            --db-url "$DATABASE_URL" \
+            --batch-size 2000 > normalize_result.json
+          
+          # Extract normalized count
+          NORMALIZED_COUNT=$(python -c "
+          import json
+          with open('normalize_result.json') as f:
+              data = json.load(f)
+          print(data.get('processed', 0))
+          ")
+          
+          echo "normalized_count=$NORMALIZED_COUNT" >> $GITHUB_OUTPUT
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          cat normalize_result.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload normalization results
+        uses: actions/upload-artifact@v3
+        with:
+          name: normalize-results-tier-${{ needs.detect-tier.outputs.tier }}
+          path: normalize_result.json
+          retention-days: 30
+
+  derive-risk:
+    runs-on: ubuntu-latest
+    needs: [detect-tier, load-raw-data, normalize-data]
+    if: needs.normalize-data.outputs.normalized_count > 0
+    outputs:
+      risk_result: ${{ steps.risk-analysis.outputs.result }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyyaml requests shapely geopandas pandas
+
+      - name: Derive risk indicators
+        id: risk-analysis
+        run: |
+          echo "Starting risk analysis..."
+          
+          cd ${{ github.workspace }}
+          python pipelines/derive_risk.py \
+            --sources-config config/sources_tx.yaml \
+            --db-url "$DATABASE_URL" > risk_result.json
+          
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          cat risk_result.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload risk analysis results
+        uses: actions/upload-artifact@v3
+        with:
+          name: risk-results-tier-${{ needs.detect-tier.outputs.tier }}
+          path: risk_result.json
+          retention-days: 30
+
+  validate-data-quality:
+    runs-on: ubuntu-latest
+    needs: [detect-tier, load-raw-data, normalize-data, derive-risk]
+    if: always() && needs.load-raw-data.result == 'success'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install great-expectations
+
+      - name: Run data quality checks
+        id: quality-checks
+        run: |
+          echo "Running Great Expectations validation..."
+          
+          # Create basic Great Expectations validation
+          cd ${{ github.workspace }}
+          python -c "
+          import psycopg2
+          import json
+          import os
+          from datetime import datetime, timedelta
+          
+          # Connect to database
+          conn = psycopg2.connect(os.environ['DATABASE_URL'])
+          cur = conn.cursor()
+          
+          # Basic data quality checks
+          checks = {}
+          
+          # 1. Check for recent data
+          cur.execute('''
+              SELECT COUNT(*) FROM raw_permits 
+              WHERE extracted_at >= %s
+          ''', (datetime.now() - timedelta(days=1),))
+          recent_count = cur.fetchone()[0]
+          checks['recent_data_count'] = recent_count
+          checks['has_recent_data'] = recent_count > 0
+          
+          # 2. Check for duplicate permits
+          cur.execute('''
+              SELECT COUNT(*) as total,
+                     COUNT(DISTINCT (source_id, raw_data->>'permit_id')) as unique_permits
+              FROM raw_permits
+              WHERE extracted_at >= %s
+          ''', (datetime.now() - timedelta(days=7),))
+          row = cur.fetchone()
+          total, unique = row
+          duplicate_rate = (total - unique) / total if total > 0 else 0
+          checks['duplicate_rate'] = round(duplicate_rate, 4)
+          checks['duplicate_rate_acceptable'] = duplicate_rate < 0.05
+          
+          # 3. Check coordinate coverage
+          cur.execute('''
+              SELECT 
+                  COUNT(*) as total,
+                  COUNT(latitude) as with_coords
+              FROM permits
+              WHERE normalized_at >= %s
+          ''', (datetime.now() - timedelta(days=1),))
+          row = cur.fetchone()
+          if row[0] > 0:
+              coord_coverage = row[1] / row[0]
+              checks['coordinate_coverage'] = round(coord_coverage, 4)
+              checks['coordinate_coverage_acceptable'] = coord_coverage > 0.6
+          else:
+              checks['coordinate_coverage'] = 0
+              checks['coordinate_coverage_acceptable'] = False
+          
+          # 4. Check validation errors
+          cur.execute('''
+              SELECT 
+                  COUNT(*) as total,
+                  COUNT(validation_errors) as with_errors
+              FROM permits
+              WHERE normalized_at >= %s
+          ''', (datetime.now() - timedelta(days=1),))
+          row = cur.fetchone()
+          if row[0] > 0:
+              error_rate = row[1] / row[0]
+              checks['validation_error_rate'] = round(error_rate, 4)
+              checks['validation_error_rate_acceptable'] = error_rate < 0.1
+          else:
+              checks['validation_error_rate'] = 0
+              checks['validation_error_rate_acceptable'] = True
+          
+          # Overall quality score
+          passed_checks = sum(1 for k, v in checks.items() if k.endswith('_acceptable') and v)
+          total_checks = sum(1 for k in checks.keys() if k.endswith('_acceptable'))
+          checks['overall_quality_score'] = passed_checks / total_checks if total_checks > 0 else 0
+          checks['quality_check_passed'] = checks['overall_quality_score'] >= 0.8
+          
+          conn.close()
+          
+          # Save results
+          with open('quality_results.json', 'w') as f:
+              json.dump(checks, f, indent=2)
+          
+          print(json.dumps(checks, indent=2))
+          "
+
+      - name: Upload quality check results
+        uses: actions/upload-artifact@v3
+        with:
+          name: quality-results-tier-${{ needs.detect-tier.outputs.tier }}
+          path: quality_results.json
+          retention-days: 30
+
+      - name: Fail on quality issues
+        run: |
+          QUALITY_PASSED=$(python -c "
+          import json
+          with open('quality_results.json') as f:
+              data = json.load(f)
+          print('true' if data.get('quality_check_passed', False) else 'false')
+          ")
+          
+          if [ "$QUALITY_PASSED" = "false" ]; then
+            echo "❌ Data quality checks failed"
+            exit 1
+          else
+            echo "✅ Data quality checks passed"
+          fi
+
+  notify-completion:
+    runs-on: ubuntu-latest
+    needs: [detect-tier, load-raw-data, normalize-data, derive-risk, validate-data-quality]
+    if: always()
+    steps:
+      - name: Determine notification status
+        id: status
+        run: |
+          # Determine overall status
+          if [ "${{ needs.load-raw-data.result }}" = "success" ] && \
+             [ "${{ needs.normalize-data.result }}" = "success" ] && \
+             [ "${{ needs.derive-risk.result }}" = "success" ] && \
+             [ "${{ needs.validate-data-quality.result }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.load-raw-data.result }}" = "success" ]; then
+            echo "status=partial" >> $GITHUB_OUTPUT
+            echo "emoji=⚠️" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+          fi
+          
+          # Determine run type
+          if [ "${{ needs.detect-tier.outputs.is_nightly }}" = "true" ]; then
+            echo "run_type=Nightly" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.detect-tier.outputs.is_weekly }}" = "true" ]; then
+            echo "run_type=Weekly" >> $GITHUB_OUTPUT
+          else
+            echo "run_type=Manual" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create summary
+        run: |
+          cat << EOF > summary.md
+          ## ${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.run_type }} TX Ingestion - Tier ${{ needs.detect-tier.outputs.tier }}
+          
+          **Status**: ${{ steps.status.outputs.status }}
+          **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          **Workflow**: [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ### Results Summary
+          - **Raw Data**: ${{ needs.load-raw-data.outputs.records_processed || 'N/A' }} records processed
+          - **Normalized**: ${{ needs.normalize-data.outputs.normalized_count || 'N/A' }} permits normalized
+          - **Risk Analysis**: ${{ needs.derive-risk.result == 'success' && '✅ Completed' || '❌ Failed' }}
+          - **Quality Checks**: ${{ needs.validate-data-quality.result == 'success' && '✅ Passed' || '❌ Failed' }}
+          
+          ### Next Steps
+          - Monitor data freshness in [TX Coverage Dashboard](./docs/tx_coverage.md)
+          - Review any failed sources in the monitoring dashboard
+          - Check for data quality alerts
+          EOF
+          
+          echo "### Summary"
+          cat summary.md
+
+      - name: Upload summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ingestion-summary-tier-${{ needs.detect-tier.outputs.tier }}
+          path: summary.md
+          retention-days: 90

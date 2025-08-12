@@ -1,0 +1,69 @@
+Houston Building Permits Request
+Texas Public Information Act (TPIA) Request
+
+Date: {request_date}
+
+To: Public Information Office
+City of Houston
+P.O. Box 1562
+Houston, TX 77251-1562
+Email: pia@houstontx.gov
+
+Subject: Request for Building Permit Records
+
+Dear Public Information Officer,
+
+I am requesting access to the following public records under the Texas Public Information Act (Chapter 552, Texas Government Code):
+
+REQUESTED RECORDS:
+Building permit records issued by the City of Houston for the period from {start_date} to {end_date}, including the following information for each permit:
+
+1. Permit number/ID
+2. Issue date
+3. Application date (if different from issue date)
+4. Property address (complete address)
+5. Property owner name
+6. Applicant name
+7. Contractor name and license number
+8. Work description/project description
+9. Permit type/category
+10. Permit status
+11. Estimated project value/cost
+12. Square footage (if applicable)
+13. Number of units (if applicable)
+14. Expiration date
+15. Finalization date (if applicable)
+16. Inspector assigned
+17. Inspection results/status
+
+PREFERRED FORMAT:
+Please provide the records in electronic format, preferably as a CSV (comma-separated values) file or Excel spreadsheet. If electronic format is not available, printed copies are acceptable.
+
+COMMERCIAL PURPOSE STATEMENT:
+This request is being made for commercial purposes. The requested information will be used for lead generation services for home improvement contractors and service providers.
+
+REQUESTOR INFORMATION:
+Name: {requestor_name}
+Organization: {organization_name}
+Address: {requestor_address}
+Phone: {requestor_phone}
+Email: {requestor_email}
+
+I understand that under Texas Government Code §552.221, the city may charge for providing copies of public records. Please provide an estimate of copying costs if the charges will exceed $40.
+
+If any portion of the requested records is considered confidential or exempt from disclosure, please provide the remaining portions and cite the specific exemption for any withheld information.
+
+Please acknowledge receipt of this request and provide an estimated completion date. I look forward to your response within the timeframe required by the Texas Public Information Act.
+
+Thank you for your assistance.
+
+Sincerely,
+
+{requestor_signature}
+{requestor_name}
+{requestor_title}
+
+---
+Request submitted on: {submission_date}
+Expected response deadline: {response_deadline}
+Follow-up date: {followup_date}
