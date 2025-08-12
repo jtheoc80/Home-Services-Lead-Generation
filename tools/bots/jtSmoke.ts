@@ -143,7 +143,8 @@ async function runSmokeTest(baseUrl: string): Promise<void> {
     console.error(`⏰ Failed at: ${new Date().toISOString()}`);
     
     // Exit with non-zero status for CI/CD failure detection
-    process.exit(1);
+    // Propagate error to be handled at the module level
+    throw error;
   }
 }
 
