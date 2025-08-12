@@ -42,12 +42,15 @@
     "botctl": "tsx tools/botctl.ts",
     "bot:resolve": "tsx tools/bots/resolveConflicts.ts",
 
-    "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
+    "bot:resolve-json": "tsx tools/bots/resolveJsonConflicts.ts",
 
 
     "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
+
+
 
     "bot:resolve-json": "tsx tools/bots/resolveConflicts.ts --strategy json",
+
     "db:wire": "tsx tools/botctl.ts db:wire",
 
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
