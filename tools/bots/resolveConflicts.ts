@@ -92,7 +92,11 @@ class ConflictResolver {
         cwd: process.cwd(),
         absolute: false 
       });
-      return matched.length > 0;
+      const matchedFiles = await globby(patterns, { 
+        cwd: process.cwd(),
+        absolute: false 
+      });
+      return matchedFiles.includes(filePath);
     } catch {
       // Fallback to simple pattern matching if globby fails
       return patterns.some(pattern => {
