@@ -4,10 +4,13 @@ This repository uses GitHub Actions to automate permit scraping and lead generat
 
 ## Overview
 
-The repository includes two main workflows:
+The repository includes several automated workflows:
 
 1. **`permit_scrape.yml`** - Main scraping workflow with manual and scheduled triggers
-2. **`nightly-scrape.yml`** - Legacy nightly scraping workflow
+2. **`nightly-scrape.yml`** - Legacy nightly scraping workflow  
+3. **`merge-conflict-resolver.yml`** - Automated merge conflict resolution for PRs
+4. **`ci.yml`** - Continuous integration with linting, testing, and quality checks
+5. **`quality-gate.yml`** - PR quality gate with auto-formatting
 
 ## Workflows
 
@@ -47,6 +50,38 @@ The repository includes two main workflows:
 3. Runs scraper for last 7 days
 4. Uploads CSV and SQLite artifacts
 
+### 3. Merge Conflict Resolver (`merge-conflict-resolver.yml`)
+
+**Purpose**: Automated merge conflict resolution for pull requests with different strategies.
+
+**Triggers**:
+- **Manual**: Via workflow_dispatch with inputs
+
+**Manual Run Parameters**:
+- `pr_number`: Pull request number to resolve conflicts for (required)
+- `strategy`: Resolution strategy - `safe`, `theirs-all`, or `ours-all` (required)
+
+**Example Usage for PR 172**:
+```
+pr_number: 172
+strategy: safe
+```
+
+**What it does**:
+1. Validates PR state and fetches branch information
+2. Attempts merge with specified strategy
+3. Applies path-based conflict resolution rules
+4. Commits and pushes resolved changes to a new branch
+5. Comments on the PR with resolution status
+6. Fails if conflicts cannot be automatically resolved
+
+**Strategy Options**:
+- `safe`: Conservative - only auto-resolves docs, configs, and lock files
+- `theirs-all`: Accept all incoming changes from PR branch  
+- `ours-all`: Keep all current changes from base branch
+
+See [MERGE_CONFLICT_RESOLVER.md](MERGE_CONFLICT_RESOLVER.md) for detailed documentation.
+
 ## Setup Requirements
 
 ### Repository Settings
@@ -66,8 +101,9 @@ Currently, **no repository secrets are required**. The workflows operate using:
 ### Permissions
 
 The workflows require the following permissions (automatically granted to `GITHUB_TOKEN`):
-- `contents: write` - To commit scraped data back to repository
+- `contents: write` - To commit scraped data and resolved conflicts back to repository
 - `actions: read` - To access workflow artifacts
+- `pull-requests: write` - To comment on PRs (merge conflict resolver only)
 
 ## Configuration
 

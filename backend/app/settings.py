@@ -151,6 +151,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "allow"  # Allow extra environment variables
         
         @classmethod
         def parse_env_var(cls, field_name: str, raw_val: str) -> any:

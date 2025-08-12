@@ -1,0 +1,380 @@
+name: Merge Conflict Resolver
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to resolve conflicts for'
+        required: true
+        type: number
+      strategy:
+        description: 'Merge conflict resolution strategy'
+        required: true
+        type: choice
+        options:
+          - safe
+          - theirs-all
+          - ours-all
+        default: safe
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-latest
+    name: Resolve Merge Conflicts
+
+    steps:
+      - name: Validate inputs
+        run: |
+          echo "Processing PR #${{ inputs.pr_number }} with strategy: ${{ inputs.strategy }}"
+          if [ "${{ inputs.pr_number }}" -le 0 ]; then
+            echo "❌ Invalid PR number: ${{ inputs.pr_number }}"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get PR information
+        id: pr-info
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          echo "Fetching PR #${PR_NUMBER} information..."
+          
+          # Get PR details using GitHub CLI
+          pr_data=$(gh pr view ${PR_NUMBER} --json baseRefName,headRefName,headRepository,baseRepository,state,mergeable)
+          
+          echo "PR Data: $pr_data"
+          
+          # Extract values
+          base_ref=$(echo "$pr_data" | jq -r '.baseRefName')
+          head_ref=$(echo "$pr_data" | jq -r '.headRefName')
+          head_repo=$(echo "$pr_data" | jq -r '.headRepository.nameWithOwner')
+          base_repo=$(echo "$pr_data" | jq -r '.baseRepository.nameWithOwner')
+          state=$(echo "$pr_data" | jq -r '.state')
+          mergeable=$(echo "$pr_data" | jq -r '.mergeable')
+          
+          echo "base_ref=$base_ref" >> $GITHUB_OUTPUT
+          echo "head_ref=$head_ref" >> $GITHUB_OUTPUT
+          echo "head_repo=$head_repo" >> $GITHUB_OUTPUT
+          echo "base_repo=$base_repo" >> $GITHUB_OUTPUT
+          echo "state=$state" >> $GITHUB_OUTPUT
+          echo "mergeable=$mergeable" >> $GITHUB_OUTPUT
+          
+          echo "📊 PR Information:"
+          echo "   Base: $base_repo/$base_ref"
+          echo "   Head: $head_repo/$head_ref"
+          echo "   State: $state"
+          echo "   Mergeable: $mergeable"
+
+      - name: Validate PR state
+        run: |
+          if [ "${{ steps.pr-info.outputs.state }}" != "OPEN" ]; then
+            echo "❌ PR #${{ inputs.pr_number }} is not open (state: ${{ steps.pr-info.outputs.state }})"
+            exit 1
+          fi
+          
+          if [ "${{ steps.pr-info.outputs.mergeable }}" = "CONFLICTING" ]; then
+            echo "🔍 PR has conflicts - proceeding with resolution using strategy: ${{ inputs.strategy }}"
+          elif [ "${{ steps.pr-info.outputs.mergeable }}" = "MERGEABLE" ]; then
+            echo "✅ PR is already mergeable - no conflicts to resolve"
+            echo "Consider merging the PR directly instead of using conflict resolution"
+          else
+            echo "⚠️ PR mergeable state: ${{ steps.pr-info.outputs.mergeable }}"
+            echo "Proceeding with merge attempt..."
+          fi
+
+      - name: Setup git configuration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch all branches and prepare merge
+        env:
+          BASE_REF: ${{ steps.pr-info.outputs.base_ref }}
+          HEAD_REF: ${{ steps.pr-info.outputs.head_ref }}
+          HEAD_REPO: ${{ steps.pr-info.outputs.head_repo }}
+        run: |
+          echo "🔄 Fetching all references..."
+          
+          # Fetch all branches
+          git fetch origin
+          
+          # If head repo is different (fork), add it as remote and fetch
+          if [ "$HEAD_REPO" != "${{ github.repository }}" ]; then
+            echo "📥 Adding fork remote: $HEAD_REPO"
+            git remote add fork "https://github.com/$HEAD_REPO.git"
+            git fetch fork
+            HEAD_SHA=$(git rev-parse "fork/$HEAD_REF")
+          else
+            HEAD_SHA=$(git rev-parse "origin/$HEAD_REF")
+          fi
+          
+          BASE_SHA=$(git rev-parse "origin/$BASE_REF")
+          
+          echo "base_sha=$BASE_SHA" >> $GITHUB_ENV
+          echo "head_sha=$HEAD_SHA" >> $GITHUB_ENV
+          
+          echo "📍 Commit SHAs:"
+          echo "   Base ($BASE_REF): $BASE_SHA"
+          echo "   Head ($HEAD_REF): $HEAD_SHA"
+
+      - name: Create merge branch and attempt merge
+        id: merge-attempt
+        env:
+          BASE_REF: ${{ steps.pr-info.outputs.base_ref }}
+          HEAD_REF: ${{ steps.pr-info.outputs.head_ref }}
+          STRATEGY: ${{ inputs.strategy }}
+        run: |
+          echo "🌿 Creating merge resolution branch..."
+          
+          # Create a unique branch name for this merge attempt
+          MERGE_BRANCH="merge-resolve/pr-${{ inputs.pr_number }}-$(date +%s)"
+          echo "merge_branch=$MERGE_BRANCH" >> $GITHUB_OUTPUT
+          echo "merge_branch=$MERGE_BRANCH" >> $GITHUB_ENV
+          
+          # Checkout base branch and create merge branch
+          git checkout "origin/$BASE_REF"
+          git checkout -b "$MERGE_BRANCH"
+          
+          echo "🔀 Attempting merge with strategy: $STRATEGY"
+          
+          # Attempt the merge
+          set +e  # Don't exit on error
+          if [ "$STRATEGY" = "theirs-all" ]; then
+            git merge "$head_sha" -X theirs --no-edit
+          elif [ "$STRATEGY" = "ours-all" ]; then
+            git merge "$head_sha" -X ours --no-edit
+          else
+            # Safe strategy - standard merge
+            git merge "$head_sha" --no-edit
+          fi
+          
+          merge_exit_code=$?
+          set -e  # Re-enable exit on error
+          
+          echo "merge_exit_code=$merge_exit_code" >> $GITHUB_OUTPUT
+          
+          if [ $merge_exit_code -eq 0 ]; then
+            echo "✅ Merge completed successfully with no conflicts!"
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Merge has conflicts - proceeding with path-based resolution"
+            echo "merge_success=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply path-based conflict resolution rules
+        id: path-rules
+        if: steps.merge-attempt.outputs.merge_success == 'false'
+        env:
+          STRATEGY: ${{ inputs.strategy }}
+        run: |
+          echo "🛠️ Applying path-based conflict resolution rules..."
+          
+          # Get list of conflicted files
+          conflicted_files=$(git diff --name-only --diff-filter=U)
+          
+          if [ -z "$conflicted_files" ]; then
+            echo "✅ No conflicted files found after merge attempt"
+            echo "resolution_success=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "📁 Conflicted files:"
+          echo "$conflicted_files"
+          
+          resolved_files=""
+          resolved_files=()
+          failed_files=()
+          
+          # Process each conflicted file based on path rules and strategy
+          for file in $conflicted_files; do
+            echo "🔧 Processing: $file"
+            
+            if [ "$STRATEGY" = "safe" ]; then
+              # Safe strategy: only auto-resolve specific file types
+              case "$file" in
+                *.md|*.txt|*.json|*.yml|*.yaml|CHANGELOG*|README*)
+                  echo "   📝 Auto-resolving documentation/config file with 'theirs' strategy"
+                  git checkout --theirs "$file"
+                  git add "$file"
+                  resolved_files="$resolved_files $file"
+                  ;;
+                package-lock.json|*.lock|yarn.lock|poetry.lock)
+                  echo "   🔒 Auto-resolving lock file with 'theirs' strategy"
+                  git checkout --theirs "$file"
+                  git add "$file"
+                  resolved_files="$resolved_files $file"
+                  ;;
+                *)
+                  echo "   ⚠️ Requires manual resolution (code/critical file)"
+                  failed_files="$failed_files $file"
+                  ;;
+              esac
+            elif [ "$STRATEGY" = "theirs-all" ]; then
+              echo "   ⬅️ Taking incoming changes (theirs)"
+              git checkout --theirs "$file"
+              git add "$file"
+              resolved_files="$resolved_files $file"
+            elif [ "$STRATEGY" = "ours-all" ]; then
+              echo "   ➡️ Keeping current changes (ours)"
+              git checkout --ours "$file"
+              git add "$file"
+              resolved_files="$resolved_files $file"
+            fi
+          done
+          
+          echo "resolved_files=$resolved_files" >> $GITHUB_OUTPUT
+          echo "failed_files=$failed_files" >> $GITHUB_OUTPUT
+          
+          if [ -n "$failed_files" ]; then
+            echo "resolution_success=false" >> $GITHUB_OUTPUT
+            echo "❌ Some files still require manual resolution"
+          else
+            echo "resolution_success=true" >> $GITHUB_OUTPUT
+            echo "✅ All conflicts resolved automatically"
+          fi
+
+      - name: Commit resolved changes
+        id: commit-changes
+        if: steps.merge-attempt.outputs.merge_success == 'true' || steps.path-rules.outputs.resolution_success == 'true'
+        env:
+          STRATEGY: ${{ inputs.strategy }}
+          BASE_REF: ${{ steps.pr-info.outputs.base_ref }}
+          HEAD_REF: ${{ steps.pr-info.outputs.head_ref }}
+        run: |
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "📭 No changes to commit"
+            echo "commit_success=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "💾 Committing resolved changes..."
+          
+          # Create commit message
+          if [ "${{ steps.merge-attempt.outputs.merge_success }}" = "true" ]; then
+            commit_msg="Merge branch '$HEAD_REF' into $BASE_REF - Automated merge with strategy: $STRATEGY (PR #${{ inputs.pr_number }})"
+          else
+            commit_msg="Resolve merge conflicts for PR #${{ inputs.pr_number }} using strategy: $STRATEGY"
+          fi
+          
+          git commit -m "$commit_msg"
+          echo "commit_success=true" >> $GITHUB_OUTPUT
+          echo "✅ Changes committed successfully"
+
+      - name: Push resolved changes
+        if: steps.commit-changes.outputs.commit_success == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🚀 Pushing resolved changes..."
+          
+          # Push the merge branch
+          git push origin "$merge_branch"
+          
+          echo "✅ Pushed merge resolution to branch: $merge_branch"
+
+      - name: Create summary comment on PR
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          STRATEGY: ${{ inputs.strategy }}
+        run: |
+          # Create status summary
+          if [ "${{ steps.merge-attempt.outputs.merge_success }}" = "true" ]; then
+            status="✅ **Merge completed successfully**"
+            echo "## 🔀 Merge Conflict Resolution Report" > comment.md
+            echo "" >> comment.md
+            echo "$status" >> comment.md
+            echo "" >> comment.md
+            echo "**Strategy used:** \`$STRATEGY\`" >> comment.md
+            echo "**Workflow run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> comment.md
+            echo "" >> comment.md
+            echo "The merge was completed without conflicts using strategy: \`$STRATEGY\`" >> comment.md
+          elif [ "${{ steps.path-rules.outputs.resolution_success }}" = "true" ]; then
+            status="✅ **Conflicts resolved successfully**"
+            resolved="${{ steps.path-rules.outputs.resolved_files }}"
+            echo "## 🔀 Merge Conflict Resolution Report" > comment.md
+            echo "" >> comment.md
+            echo "$status" >> comment.md
+            echo "" >> comment.md
+            echo "**Strategy used:** \`$STRATEGY\`" >> comment.md
+            echo "**Workflow run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> comment.md
+            echo "" >> comment.md
+            echo "Conflicts were automatically resolved using strategy: \`$STRATEGY\`" >> comment.md
+            echo "" >> comment.md
+            echo "**Resolved files:**" >> comment.md
+            echo "\`\`\`" >> comment.md
+            echo "$resolved" | xargs >> comment.md
+            echo "\`\`\`" >> comment.md
+          else
+            status="❌ **Manual intervention required**"
+            failed="${{ steps.path-rules.outputs.failed_files }}"
+            echo "## 🔀 Merge Conflict Resolution Report" > comment.md
+            echo "" >> comment.md
+            echo "$status" >> comment.md
+            echo "" >> comment.md
+            echo "**Strategy used:** \`$STRATEGY\`" >> comment.md
+            echo "**Workflow run:** [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> comment.md
+            echo "" >> comment.md
+            echo "Some conflicts could not be automatically resolved with strategy: \`$STRATEGY\`" >> comment.md
+            echo "" >> comment.md
+            echo "**Files requiring manual resolution:**" >> comment.md
+            echo "\`\`\`" >> comment.md
+            echo "$failed" | xargs >> comment.md
+            echo "\`\`\`" >> comment.md
+            echo "" >> comment.md
+            echo "Please resolve these conflicts manually and try again." >> comment.md
+          fi
+          
+          echo "" >> comment.md
+          echo "---" >> comment.md
+          echo "*Automated by merge-conflict-resolver workflow*" >> comment.md
+          
+          gh pr comment "$PR_NUMBER" --body-file comment.md
+
+      - name: Fail if conflicts remain
+        if: steps.path-rules.outputs.resolution_success == 'false'
+        run: |
+          echo "❌ Merge conflict resolution failed"
+          echo "The following files still have conflicts and require manual resolution:"
+          echo "${{ steps.path-rules.outputs.failed_files }}"
+          echo ""
+          echo "Please resolve these conflicts manually in the PR branch and try again."
+          exit 1
+
+      - name: Success summary
+        if: steps.merge-attempt.outputs.merge_success == 'true' || steps.path-rules.outputs.resolution_success == 'true'
+        run: |
+          echo "## 🎉 Merge Conflict Resolution Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**PR:** #${{ inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Strategy:** ${{ inputs.strategy }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Resolution branch:** \`$merge_branch\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.merge-attempt.outputs.merge_success }}" = "true" ]; then
+            echo "✅ Merge completed without conflicts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Conflicts resolved using path-based rules" >> $GITHUB_STEP_SUMMARY
+            echo "**Resolved files:** ${{ steps.path-rules.outputs.resolved_files }}" >> $GITHUB_STEP_SUMMARY
+          fi
