@@ -1,11 +1,4 @@
-import { NextResponse } from 'next/server';
-
-// Temporary placeholder for Stripe webhook
-// TODO: Fix syntax errors in the original file
-
-
-export async function POST(req: Request) {
-  return NextResponse.json({ message: 'Stripe webhook temporarily disabled due to syntax errors' }, { status: 200 });
+import { NextResponse, NextRequest } from 'next/server';
 
 // Disable Next.js body parsing to get raw body for signature verification
 export const dynamic = 'force-dynamic';
@@ -231,6 +224,4 @@ async function handleInvoicePaid(invoice: any, supabase: any) {
 
 async function handleInvoiceFailed(invoice: any, supabase: any) {
   await handleInvoicePaid(invoice, supabase); // Same logic, different status
-}
-
 }
