@@ -51,3 +51,25 @@ export interface LeadUpdate {
   zip?: string | null;
   status?: string | null;
 }
+
+/**
+ * Ingest log interface for tracking lead processing stages
+ */
+export interface IngestLog {
+  id: number;
+  trace_id: string;
+  stage: string;
+  ok: boolean;
+  details?: any;
+  created_at: string;
+}
+
+/**
+ * Ingest log insert payload interface
+ */
+export interface IngestLogInsert {
+  trace_id: string;
+  stage: string;
+  ok: boolean;
+  details?: any;
+}
