@@ -28,6 +28,7 @@ interface LeadsGetResponse {
 
 async function smokePOST(baseUrl: string): Promise<{ ok: boolean; trace_id?: string; email: string }> {
   const timestamp = Date.now();
+  // Using @example.com for test emails is safe: example.com is reserved for documentation/testing and will never receive real email.
   const smokeEmail = `smoke+${timestamp}@example.com`;
   
   const payload = {
