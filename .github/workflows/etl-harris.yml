@@ -1,0 +1,139 @@
+name: Harris County ETL Pipeline
+
+on:
+  # Run hourly at the top of every hour
+  schedule:
+    - cron: '0 * * * *'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      days_lookback:
+        description: 'Number of days to look back for permits'
+        required: false
+        default: '7'
+        type: string
+
+jobs:
+  etl-harris:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Harris County ETL Delta Test
+        env:
+          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || 'https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🚀 Starting Harris County ETL Pipeline"
+          echo "Harris County URL: $HC_ISSUED_PERMITS_URL"
+          echo "Supabase URL: $SUPABASE_URL"
+          
+          # Run the ETL delta test with JSON output for monitoring
+          npx tsx scripts/etlDelta.ts 2>&1 | tee etl-output.log
+          
+          # Check exit code
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ ETL Pipeline failed"
+            exit 1
+          else
+            echo "✅ ETL Pipeline completed successfully"
+          fi
+      
+      - name: Extract JSON logs
+        if: always()
+        run: |
+          # Extract JSON summary from output for monitoring
+          if [ -f etl-output.log ]; then
+            echo "Extracting JSON logs..."
+            grep -o '{.*"test".*"etl-delta".*}' etl-output.log > etl-summary.json || echo '{"error": "No JSON summary found"}' > etl-summary.json
+            
+            echo "ETL Summary:"
+            cat etl-summary.json
+          else
+            echo '{"error": "No log file found"}' > etl-summary.json
+          fi
+      
+      - name: Upload ETL logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harris-etl-logs-${{ github.run_number }}
+          path: |
+            etl-output.log
+            etl-summary.json
+          retention-days: 30
+      
+      - name: Check for stale data (24h failure protection)
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔍 Checking for stale data..."
+          
+          # Check if we have recent data (within last 24 hours)
+          npx tsx -e "
+            import { createClient } from '@supabase/supabase-js';
+            
+            const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            
+            supabase
+              .from('permits_raw_harris')
+              .select('event_id', { count: 'exact', head: true })
+              .gte('created_at', twentyFourHoursAgo)
+              .then(({ count, error }) => {
+                if (error) {
+                  console.error('❌ Error checking recent data:', error.message);
+                  process.exit(1);
+                }
+                
+                console.log(\`Found \${count} records created in last 24 hours\`);
+                
+                if (count === 0) {
+                  console.error('❌ No new records in last 24 hours - data may be stale');
+                  process.exit(1);
+                } else {
+                  console.log('✅ Recent data found - pipeline is healthy');
+                }
+              })
+              .catch(err => {
+                console.error('❌ Stale data check failed:', err.message);
+                process.exit(1);
+              });
+          "
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Harris County ETL Pipeline failed"
+          echo "Check the logs and artifacts for details"
+          
+          # Log failure summary
+          echo "Failure Summary:" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: Harris County ETL Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f etl-summary.json ]; then
+            echo "- ETL Summary:" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat etl-summary.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
