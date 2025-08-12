@@ -6,12 +6,123 @@ on:
     branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop"]
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: 'Deployment URL for E2E testing'
+        required: false
+        type: string
 
 env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
 
 jobs:
+  # Bot Control Jobs
+  audit:
+    runs-on: ubuntu-latest
+    name: QB Auditor Bot - Schema Audit
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run QB Auditor Bot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run audit:qb
+
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-audit-results
+          path: |
+            schema-drift-migration.sql
+            schema-drift-details.json
+
+  db-wire:
+    runs-on: ubuntu-latest
+    name: DB Wire Bot - Database Health Check
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DB Wire Bot
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run db:wire
+
+  e2e:
+    runs-on: ubuntu-latest
+    name: JT Smoke Bot - E2E Testing
+    if: >
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success') ||
+      github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine BASE_URL
+        id: determine-url
+        run: |
+          if [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "BASE_URL=${{ github.event.deployment_status.target_url }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.deployment_url }}" ]; then
+            echo "BASE_URL=${{ inputs.deployment_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "BASE_URL=https://home-services-lead-generation.vercel.app" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run JT Smoke Bot
+        env:
+          BASE_URL: ${{ steps.determine-url.outputs.BASE_URL }}
+          LEADS_TEST_MODE: true
+        run: npm run e2e:jt -- --baseUrl "$BASE_URL"
+
+      - name: Upload E2E test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            *.log
+
+  # Existing Jobs
   python-ci:
     runs-on: ubuntu-latest
     strategy:

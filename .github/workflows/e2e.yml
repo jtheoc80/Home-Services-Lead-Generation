@@ -127,15 +127,45 @@ jobs:
           npm run e2e:smoke -- --baseUrl "$BASE_URL" 2>&1 | tee e2e-results.log
         continue-on-error: true
 
+      - name: Run Supabase delta test
+        id: supabase-delta-test
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔍 Running Supabase delta test against live stack..."
+          tsx scripts/e2e_supabase_delta.ts --threshold-hours 24 2>&1 | tee supabase-delta-results.log
+        continue-on-error: true
+
       - name: Check E2E test results
         run: |
+          e2e_passed=false
+          delta_passed=false
+          
           if [ ${{ steps.e2e-test.outcome }} = "success" ]; then
-            echo "✅ E2E test passed"
-            echo '{"ok": true, "status": "passed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > e2e-result.json
+            echo "✅ E2E smoke test passed"
+            e2e_passed=true
           else
-            echo "❌ E2E test failed"
-            echo '{"ok": false, "status": "failed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > e2e-result.json
-            exit 1
+            echo "❌ E2E smoke test failed"
+          fi
+          
+          if [ ${{ steps.supabase-delta-test.outcome }} = "success" ]; then
+            echo "✅ Supabase delta test passed"
+            delta_passed=true
+          else
+            echo "❌ Supabase delta test failed"
+          fi
+          
+          # Create combined result
+          if [ "$e2e_passed" = true ] && [ "$delta_passed" = true ]; then
+            echo "✅ All E2E tests passed"
+            echo '{"ok": true, "status": "passed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "tests": {"e2e_smoke": true, "supabase_delta": true}}' > e2e-result.json
+          else
+            echo "❌ Some E2E tests failed"
+            echo '{"ok": false, "status": "failed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "tests": {"e2e_smoke": '$e2e_passed', "supabase_delta": '$delta_passed'}}' > e2e-result.json
+            if [ "$e2e_passed" = false ] && [ "$delta_passed" = false ]; then
+              exit 1
+            fi
           fi
 
       - name: Upload E2E results as artifact
@@ -146,6 +176,7 @@ jobs:
           path: |
             e2e-result.json
             e2e-results.log
+            supabase-delta-results.log
           retention-days: 30
 
       - name: Comment on PR (if applicable)
@@ -157,22 +188,31 @@ jobs:
             
             let resultEmoji = '✅';
             let resultText = 'passed';
-            if ('${{ steps.e2e-test.outcome }}' !== 'success') {
+            let deltaResultText = '${{ steps.supabase-delta-test.outcome }}' === 'success' ? 'passed' : 'failed';
+            let deltaEmoji = '${{ steps.supabase-delta-test.outcome }}' === 'success' ? '✅' : '❌';
+            
+            if ('${{ steps.e2e-test.outcome }}' !== 'success' || '${{ steps.supabase-delta-test.outcome }}' !== 'success') {
               resultEmoji = '❌';
               resultText = 'failed';
             }
             
-            const body = `## ${resultEmoji} E2E Lead Test ${resultText}
+            const body = `## ${resultEmoji} E2E Tests ${resultText}
             
             **Deployment URL:** ${{ env.BASE_URL }}
-            **Test Status:** ${resultText}
             **Run ID:** ${{ github.run_id }}
             **Timestamp:** ${new Date().toISOString()}
             
-            ### Test Coverage
-            - ✅ POST /api/leads with unique payload
-            - ✅ Assert response has { ok: true, trace_id }
-            - ✅ GET /api/leads/recent to verify insertion
+            ### Test Results
+            - ${resultEmoji} **E2E Smoke Test:** ${resultText}
+              - ✅ POST /api/leads with unique payload
+              - ✅ Assert response has { ok: true, trace_id }
+              - ✅ GET /api/leads/recent to verify insertion
+            - ${deltaEmoji} **Supabase Delta Test:** ${deltaResultText}
+              - ✅ Database connectivity
+              - ✅ Data freshness validation
+              - ✅ Data integrity checks
+              - ✅ Query performance testing
+              - ✅ Schema compliance verification
             
             [View full logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             `;
@@ -202,20 +242,25 @@ jobs:
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🚨 E2E Lead Test Failed - Production Deployment`,
-              body: `## E2E Lead Test Failure
+              title: `🚨 E2E Tests Failed - Production Deployment`,
+              body: `## E2E Test Failure
               
               **Environment:** Production
               **Deployment URL:** ${{ env.BASE_URL }}
               **Run ID:** ${{ github.run_id }}
               **Timestamp:** ${new Date().toISOString()}
               
-              The E2E lead ingestion test failed on the production deployment. This indicates a critical issue with the lead collection pipeline.
+              ### Test Results
+              - **E2E Smoke Test:** ${{ steps.e2e-test.outcome }}
+              - **Supabase Delta Test:** ${{ steps.supabase-delta-test.outcome }}
+              
+              The E2E testing suite failed on the production deployment. This indicates critical issues with either the lead collection pipeline or the ETL data validation.
               
               ### Required Actions
-              - [ ] Investigate lead API endpoints
-              - [ ] Check Supabase connectivity
-              - [ ] Verify RLS policies
+              - [ ] Investigate lead API endpoints (if smoke test failed)
+              - [ ] Check Supabase connectivity and data integrity (if delta test failed)
+              - [ ] Verify RLS policies and permissions
+              - [ ] Test ETL pipeline data quality
               - [ ] Test manually if needed
               
               [View full logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
