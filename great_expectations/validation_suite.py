@@ -77,7 +77,7 @@ class DataValidationSuite:
             lat, lon = record.get("latitude"), record.get("longitude")
             if lat and lon:
                 if not self._is_valid_texas_coordinates(lat, lon):
-                    warnings.append(f"Record {i}: Coordinates outside Texas bounds: {lat}, {lon}")
+                    warnings.append(f"Record {i}: Coordinates outside Texas bounds: [REDACTED]")
                     
         # Check for duplicates
         permit_numbers = [r.get("permit_number") for r in data if r.get("permit_number")]
@@ -368,7 +368,9 @@ class DataValidationSuite:
                 if result["warnings"]:
                     logger.warning(f"  Warnings: {len(result['warnings'])}")
             else:
-                logger.error(f"✗ {json_file.name}: {result['message']}")
+                # Sanitize message to avoid logging sensitive data
+                sanitized_message = result['message'].replace("Coordinates outside Texas bounds:", "Coordinates outside Texas bounds: [REDACTED]")
+                logger.error(f"✗ {json_file.name}: {sanitized_message}")
                 if result["errors"]:
                     logger.error(f"  Errors: {len(result['errors'])}")
                     
