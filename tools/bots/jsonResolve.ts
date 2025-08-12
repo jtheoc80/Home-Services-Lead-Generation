@@ -123,7 +123,12 @@ async function regenLockfile(lockfile: string): Promise<MergeSummary> {
   const cwd = path.dirname(lockfile);
 
   // Reset to a non-conflicted state to allow install
-  await execa("git", ["checkout", "--ours", lockfile]);
+  try {
+    await execa("git", ["checkout", "--ours", lockfile]);
+  } catch (err) {
+    // If the lockfile doesn't exist in the 'ours' stage, skip checkout and log a warning
+    console.warn(`Warning: Could not checkout 'ours' version of ${lockfile}: ${err.message || err}`);
+  }
   await runGit(["add", lockfile]);
 
   // Detect manager and regenerate lock only
