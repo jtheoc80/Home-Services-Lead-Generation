@@ -1,0 +1,108 @@
+{
+  "timestamp": "2025-08-12T03:53:14.437Z",
+  "environment": "staging",
+  "configuration": {
+    "headless": true,
+    "reporter": "json",
+    "baseUrl": "https://staging.leadledderpro.com",
+    "apiUrl": "https://api-staging.leadledderpro.com",
+    "timeout": 60000
+  },
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "duration": 13324,
+    "successRate": "100.00",
+    "status": "PASSED"
+  },
+  "categories": [
+    {
+      "category": "lead-processing",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "duration": 3274,
+      "tests": [
+        {
+          "name": "Lead Ingestion API",
+          "status": "passed",
+          "duration": 1250
+        },
+        {
+          "name": "Data Transformation",
+          "status": "passed",
+          "duration": 890
+        },
+        {
+          "name": "Notification Delivery",
+          "status": "passed",
+          "duration": 456
+        },
+        {
+          "name": "Database Persistence",
+          "status": "passed",
+          "duration": 678
+        }
+      ]
+    },
+    {
+      "category": "user-interface",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "duration": 6050,
+      "tests": [
+        {
+          "name": "Dashboard Load",
+          "status": "passed",
+          "duration": 2100
+        },
+        {
+          "name": "Lead Filter System",
+          "status": "passed",
+          "duration": 1800
+        },
+        {
+          "name": "Search Functionality",
+          "status": "passed",
+          "duration": 950
+        },
+        {
+          "name": "Mobile Responsive",
+          "status": "passed",
+          "duration": 1200
+        }
+      ]
+    },
+    {
+      "category": "integrations",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "duration": 4000,
+      "tests": [
+        {
+          "name": "Supabase Authentication",
+          "status": "passed",
+          "duration": 800
+        },
+        {
+          "name": "Stripe Payment Processing",
+          "status": "passed",
+          "duration": 1500
+        },
+        {
+          "name": "Email Notification Service",
+          "status": "passed",
+          "duration": 600
+        },
+        {
+          "name": "External API Connections",
+          "status": "passed",
+          "duration": 1100
+        }
+      ]
+    }
+  ]
+}

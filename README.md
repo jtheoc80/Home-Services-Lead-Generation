@@ -34,6 +34,7 @@ This platform is currently scoped to serve **Houston Metro area only**, includin
 - **Dashboard-Only Access**: No CSV exports - all data accessible through the web dashboard
 - **Real-Time Updates**: Live notifications when new matching leads are available
 - **OpenAPI Integration**: Auto-generated TypeScript and Python clients with API validation
+- **🤖 Botctl Commands**: Unified automation interface with `audit:qb`, `db:wire`, and `e2e:jt`
 
 ## ⚡ 5-Minute Quickstart
 
@@ -792,6 +793,110 @@ Configure your notification preferences to receive alerts for:
 - **Value Threshold**: Minimum estimated project value
 
 Access notification settings at: `/api/me/notifications/prefs`
+
+## 🤖 Botctl Commands
+
+LeadLedgerPro includes a unified command interface (`botctl`) for common automation tasks. These commands can be run via npm scripts and are designed for use in both development and CI/CD environments.
+
+### Available Commands
+
+#### `npm run audit:qb`
+QuickBooks audit and reconciliation operations.
+
+```bash
+# Run basic audit
+npm run audit:qb
+
+# Run with verbose output  
+npm run audit:qb -- --verbose
+
+# Run in dry-run mode (no changes)
+npm run audit:qb -- --dry-run --verbose
+```
+
+**Features:**
+- ✅ Connectivity testing to QuickBooks APIs
+- ✅ Transaction data reconciliation
+- ✅ Discrepancy identification and reporting
+- ✅ Automated audit report generation
+
+#### `npm run db:wire`
+Database wiring and connectivity operations.
+
+```bash
+# Wire all database connections
+npm run db:wire
+
+# Check status without making changes
+npm run db:wire -- --check
+
+# Wire specific target
+npm run db:wire -- --target postgres
+npm run db:wire -- --target supabase  
+npm run db:wire -- --target redis
+```
+
+**Features:**
+- ✅ Multi-database connectivity testing (PostgreSQL, Supabase, Redis)
+- ✅ Schema validation and migration status
+- ✅ Data pipeline setup and verification
+- ✅ Connection health monitoring
+
+#### `npm run e2e:jt`
+JT-specific end-to-end testing suite.
+
+```bash
+# Run E2E tests locally
+npm run e2e:jt
+
+# Run against staging environment
+npm run e2e:jt -- --env staging
+
+# Run against production with detailed output
+npm run e2e:jt -- --env production --reporter json
+
+# Run in headed mode (show browser)
+npm run e2e:jt -- --headed
+```
+
+**Features:**
+- ✅ Lead processing pipeline testing
+- ✅ User interface and dashboard validation  
+- ✅ Third-party integration testing (Supabase, Stripe)
+- ✅ Multi-environment support (local, staging, production)
+- ✅ Comprehensive test reporting (JSON, JUnit, HTML)
+
+### Programmatic Usage
+
+All botctl commands can also be imported and used programmatically:
+
+```javascript
+// Import individual command modules
+const auditQb = require('./scripts/botctl/commands/audit-qb.cjs');
+const dbWire = require('./scripts/botctl/commands/db-wire.cjs');
+const e2eJt = require('./scripts/botctl/commands/e2e-jt.cjs');
+
+// Use in your own scripts
+const auditResult = await auditQb.execute({ verbose: true, dryRun: false });
+const wireResult = await dbWire.execute({ target: 'postgres', check: true });
+const testResult = await e2eJt.execute({ env: 'staging', headless: true });
+```
+
+### CI/CD Integration
+
+These commands are designed for easy integration into GitHub Actions and other CI/CD systems:
+
+```yaml
+# Example workflow step
+- name: Run QuickBooks Audit
+  run: npm run audit:qb -- --dry-run --verbose
+
+- name: Verify Database Wiring  
+  run: npm run db:wire -- --check
+
+- name: E2E Testing
+  run: npm run e2e:jt -- --env staging --reporter junit
+```
 
 ## 🏗️ Development
 

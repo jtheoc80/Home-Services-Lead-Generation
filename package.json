@@ -29,7 +29,10 @@
     "visual:test": "node scripts/visual-regression.js",
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
-    "visual:dry-run": "node scripts/visual-regression-dry-run.js"
+    "visual:dry-run": "node scripts/visual-regression-dry-run.js",
+    "audit:qb": "node scripts/audit-qb-shim.cjs",
+    "db:wire": "node scripts/db-wire-shim.cjs",
+    "e2e:jt": "node scripts/e2e-jt-shim.cjs"
   },
   "workspaces": [
     "frontend"
