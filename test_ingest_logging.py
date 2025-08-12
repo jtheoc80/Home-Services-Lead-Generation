@@ -42,7 +42,7 @@ def test_trace_id_generation():
 def test_ingest_tracer_context():
     """Test IngestTracer context manager."""
     try:
-        from backend.app.ingest_logger import IngestTracer
+        from app.ingest_logger import IngestTracer
         
         with IngestTracer() as tracer:
             print(f"✓ Created IngestTracer with trace_id: {tracer.trace_id}")
