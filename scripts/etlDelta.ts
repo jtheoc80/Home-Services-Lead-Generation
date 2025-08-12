@@ -195,7 +195,8 @@ async function fetchPermits(baseUrl: string, since: Date): Promise<PermitRecord[
       
       // Safety check to prevent infinite loops
       if (offset > 100000) {
-        console.warn('Reached maximum offset limit (100,000), stopping pagination');
+      if (offset > MAX_OFFSET_LIMIT) {
+        console.warn(`Reached maximum offset limit (${MAX_OFFSET_LIMIT}), stopping pagination`);
         hasMore = false;
       }
       
