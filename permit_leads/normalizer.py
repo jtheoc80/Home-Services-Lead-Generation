@@ -193,7 +193,7 @@ class PermitNormalizer:
         if fallback_fields:
             import hashlib
             composite = f"{jurisdiction}:{':'.join(fallback_fields)}"
-            return hashlib.md5(composite.encode()).hexdigest()[:16]
+            return hashlib.sha256(composite.encode()).hexdigest()[:16]
         
         return f"{jurisdiction}_unknown_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
