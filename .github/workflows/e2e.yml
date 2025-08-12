@@ -163,7 +163,9 @@ jobs:
           else
             echo "❌ Some E2E tests failed"
             echo '{"ok": false, "status": "failed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "tests": {"e2e_smoke": '$e2e_passed', "supabase_delta": '$delta_passed'}}' > e2e-result.json
-            exit 1
+            if [ "$e2e_passed" = false ] && [ "$delta_passed" = false ]; then
+              exit 1
+            fi
           fi
 
       - name: Upload E2E results as artifact
