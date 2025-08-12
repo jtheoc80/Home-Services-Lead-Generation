@@ -9,3 +9,10 @@ strategies:
       - '.github/**'
     ours:
       - '**/.env.example'
+  json:
+    theirs:
+      - '**/*lock*.json'
+      - '**/pnpm-lock.yaml'
+      - '**/yarn.lock'
+      - 'package-lock.json'
+      - '**/package-lock.json'
