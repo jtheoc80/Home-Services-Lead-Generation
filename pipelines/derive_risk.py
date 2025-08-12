@@ -26,7 +26,7 @@ except ImportError:
     logger.warning("Shapely not available - some geospatial features will be limited")
 
 try:
-    import geopandas as gpd
+    import geopandas
     import pandas as pd
     GEOPANDAS_AVAILABLE = True
 except ImportError:
