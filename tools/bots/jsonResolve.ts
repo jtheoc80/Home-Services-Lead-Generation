@@ -50,7 +50,7 @@ function mergeDeps(ours: Dict = {}, theirs: Dict = {}, prefer: "higher" | "ours"
         const ca = semver.coerce(a!);
         const cb = semver.coerce(b!);
         if (ca && cb) {
-          const higher = semver.rcompare(ca, cb) <= 0 ? cb : ca;
+          const higher = semver.rcompare(ca, cb) > 0 ? ca : cb;
           out[k] = `^${higher.version}`;
         } else {
           out[k] = b!;
