@@ -11,7 +11,7 @@ import uuid
 from unittest.mock import patch, MagicMock
 
 # Add backend to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'backend')))
 
 # Set up minimal environment to avoid errors
 os.environ.update({
