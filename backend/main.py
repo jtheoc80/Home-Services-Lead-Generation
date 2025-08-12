@@ -845,7 +845,7 @@ async def get_trace_logs_endpoint(
     except Exception as e:
 
         duration_ms = round((time.time() - start_time) * 1000, 2)
-        
+        duration_ms = round((time.time() - start_time) * 1000, 2)
         logger.error({
             "trace_id": trace_id,
             "path": path,
