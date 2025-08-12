@@ -1,3 +1,6 @@
+
+"""Texas data ingestion connectors package."""
+
 """
 Ingest package initialization.
 
@@ -5,11 +8,21 @@ This module provides the main connectors for different data source types
 and utilities for creating connectors from configuration.
 """
 
+
 from .arcgis import ArcGISConnector, create_arcgis_connector
 from .socrata import SocrataConnector, create_socrata_connector
 from .csv_http import CSVHTTPConnector, create_csv_http_connector
 
 __all__ = [
+
+    "ArcGISConnector",
+    "SocrataConnector", 
+    "CSVHTTPConnector",
+    "create_arcgis_connector",
+    "create_socrata_connector",
+    "create_csv_http_connector"
+]
+
     'ArcGISConnector',
     'SocrataConnector', 
     'CSVHTTPConnector',
@@ -47,3 +60,4 @@ def create_connector(source_config):
         return None
     else:
         raise ValueError(f"Unsupported source kind: {kind}")
+

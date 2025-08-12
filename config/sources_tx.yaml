@@ -1,3 +1,29 @@
+
+# Texas Data Sources Configuration - City-First APIs + FOIA Placeholders
+# Comprehensive coverage for permits, code violations, inspections, bids/awards, contractor licensing (TDLR)
+
+sources:
+  # ==========================================
+  # PERMITS - Building & Construction Permits  
+  # ==========================================
+  
+  # HARRIS COUNTY (Houston Metro) - Issued Permits
+  - name: Harris County Issued Permits
+    type: arcgis_feature_service
+    url: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0/query"
+    updated_field: "ISSUEDDATE"
+    primary_key: "PERMITNUMBER"
+    date_field: "ISSUEDDATE"
+    category: "permits"
+    jurisdiction: "harris-county"
+    rate_limit: 5  # requests per second
+    pagination: 
+      method: "offset"
+      page_size: 1000
+    mappings:
+      permit_number: "PERMITNUMBER"
+      issued_date: "ISSUEDDATE"
+=======
 # Texas Statewide Data Sources Registry
 # Tier-1 cities/counties with high-volume permit activity
 
@@ -26,11 +52,327 @@ tier_1_sources:
       permit_id: "PERMITNUMBER"
       permit_name: "PERMITNAME"
       issue_date: "ISSUEDDATE"
+
       address: "FULLADDRESS"
       description: "PROJECTNAME"
       status: "STATUS"
       work_class: "APPTYPE"
       category: "APPTYPE"
+
+      value: "VALUATION"
+      applicant: "APPLICANTNAME"
+
+  # DALLAS - Building Permits  
+  - name: Dallas Building Permits
+    type: socrata
+    domain: "www.dallasopendata.com"
+    dataset_id: "e7gq-4sah"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    category: "permits"
+    jurisdiction: "dallas"
+    rate_limit: 5
+    pagination:
+      method: "offset"
+      page_size: 1000
+    mappings:
+      permit_number: "permit_number"
+      issued_date: "issued_date"
+      address: "address"
+      description: "work_description"
+      status: "permit_status"
+      work_class: "permit_type_desc"
+      category: "permit_class"
+      value: "estimated_cost"
+      applicant: "contractor_name"
+
+  # AUSTIN - Building Permits
+  - name: Austin Building Permits
+    type: socrata
+    domain: "data.austintexas.gov"
+    dataset_id: "3syk-w9eu"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    category: "permits"
+    jurisdiction: "austin"
+    rate_limit: 5
+    pagination:
+      method: "offset"
+      page_size: 1000
+    mappings:
+      permit_number: "permit_number"
+      issued_date: "issued_date"
+      address: "original_address1"
+      description: "description"
+      status: "status_current"
+      work_class: "permit_type_desc"
+      category: "permit_class_mapped"
+      value: "total_valuation"
+      applicant: "applicant_name"
+
+  # FORT WORTH - Building Permits
+  - name: Fort Worth Building Permits
+    type: socrata
+    domain: "data.fortworthtexas.gov"
+    dataset_id: "9zgg-hgvf"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    category: "permits"
+    jurisdiction: "fort-worth"
+    rate_limit: 5
+    pagination:
+      method: "offset"
+      page_size: 1000
+    mappings:
+      permit_number: "permit_number"
+      issued_date: "issued_date"
+      address: "address"
+      description: "work_description"
+      status: "permit_status"
+      work_class: "permit_type"
+      value: "estimated_cost"
+      applicant: "contractor_name"
+
+  # SAN ANTONIO - Building Permits (FOIA Placeholder)
+  - name: San Antonio Building Permits
+    type: foia_placeholder
+    jurisdiction: "san-antonio"
+    category: "permits"
+    description: "Manual FOIA request process for building permits"
+    contact:
+      department: "Development Services Department"
+      email: "DSD.OpenRecords@sanantonio.gov"
+      phone: "(210) 207-1111"
+    request_template: "Building permits issued since {start_date}"
+    
+  # ==========================================
+  # CODE VIOLATIONS - Enforcement Actions
+  # ==========================================
+  
+  # DALLAS - Code Violations
+  - name: Dallas Code Violations
+    type: socrata
+    domain: "www.dallasopendata.com"
+    dataset_id: "8jk6-wd9t"
+    updated_field: "case_created_date"
+    primary_key: "case_number"
+    category: "violations"
+    jurisdiction: "dallas"
+    rate_limit: 5
+    pagination:
+      method: "offset"
+      page_size: 1000
+    mappings:
+      case_number: "case_number"
+      created_date: "case_created_date"
+      address: "property_address"
+      violation_type: "violation_code_description"
+      status: "case_status"
+      description: "violation_description"
+
+  # AUSTIN - Code Violations
+  - name: Austin Code Violations
+    type: socrata
+    domain: "data.austintexas.gov"
+    dataset_id: "7d8e-dm7r"
+    updated_field: "created_date"
+    primary_key: "case_number"
+    category: "violations"
+    jurisdiction: "austin"
+    rate_limit: 5
+    pagination:
+      method: "offset"
+      page_size: 1000
+    mappings:
+      case_number: "case_number"
+      created_date: "created_date"
+      address: "address"
+      violation_type: "violation_type"
+      status: "status"
+      description: "description"
+
+  # HOUSTON - Code Violations (FOIA Placeholder)
+  - name: Houston Code Violations
+    type: foia_placeholder
+    jurisdiction: "houston"
+    category: "violations"
+    description: "Manual FOIA request process for code enforcement cases"
+    contact:
+      department: "Housing and Community Development"
+      email: "hcd-foia@houstontx.gov"
+      phone: "(832) 394-6200"
+    request_template: "Code enforcement cases opened since {start_date}"
+
+  # ==========================================
+  # INSPECTIONS - Building Inspections
+  # ==========================================
+  
+  # HARRIS COUNTY - Building Inspections (FOIA Placeholder)
+  - name: Harris County Building Inspections  
+    type: foia_placeholder
+    jurisdiction: "harris-county"
+    category: "inspections"
+    description: "Manual FOIA request process for building inspections"
+    contact:
+      department: "Harris County Engineering Department"
+      email: "eng_admin@hctx.net"
+      phone: "(713) 274-3000"
+    request_template: "Building inspections conducted since {start_date}"
+
+  # DALLAS - Building Inspections (FOIA Placeholder)
+  - name: Dallas Building Inspections
+    type: foia_placeholder
+    jurisdiction: "dallas"
+    category: "inspections"
+    description: "Manual FOIA request process for building inspections"
+    contact:
+      department: "Development Services Department"
+      email: "DSD@dallascityhall.com"
+      phone: "(214) 670-4557"
+    request_template: "Building inspections completed since {start_date}"
+
+  # ==========================================
+  # BIDS & AWARDS - Government Contracts
+  # ==========================================
+  
+  # TEXAS STATE - Procurement Bids/Awards
+  - name: Texas State Procurement
+    type: csv_http
+    url: "https://www.txsmartbuy.com/sp/search/award-search/export"
+    updated_field: "award_date"
+    primary_key: "contract_number"
+    category: "awards"
+    jurisdiction: "texas-state"
+    rate_limit: 2
+    pagination:
+      method: "date_range"
+      page_size: 500
+    mappings:
+      contract_number: "contract_number"
+      award_date: "award_date"
+      vendor_name: "vendor_name"
+      description: "commodity_description"
+      amount: "contract_amount"
+      agency: "agency_name"
+
+  # HARRIS COUNTY - Procurement (FOIA Placeholder)
+  - name: Harris County Procurement
+    type: foia_placeholder
+    jurisdiction: "harris-county"
+    category: "bids"
+    description: "Manual FOIA request for procurement records"
+    contact:
+      department: "Harris County Purchasing Department"
+      email: "purchasing@hctx.net"
+      phone: "(713) 755-5113"
+    request_template: "Awarded contracts since {start_date}"
+
+  # DALLAS - City Procurement (FOIA Placeholder)
+  - name: Dallas City Procurement
+    type: foia_placeholder
+    jurisdiction: "dallas"
+    category: "bids"
+    description: "Manual FOIA request for city procurement records"
+    contact:
+      department: "Office of Procurement Services"
+      email: "procurement.services@dallascityhall.com"
+      phone: "(214) 670-3663"
+    request_template: "Contract awards since {start_date}"
+
+  # ==========================================
+  # CONTRACTOR LICENSING - TDLR
+  # ==========================================
+  
+  # TEXAS DEPARTMENT OF LICENSING AND REGULATION (TDLR)
+  - name: TDLR Contractor Licenses
+    type: csv_http
+    url: "https://www.tdlr.texas.gov/LicenseSearch/licfile.asp"
+    updated_field: "license_issue_date"
+    primary_key: "license_number"
+    category: "contractors"
+    jurisdiction: "texas-state"
+    rate_limit: 3
+    pagination:
+      method: "alphabetical"
+      page_size: 1000
+    mappings:
+      license_number: "license_number"
+      license_type: "license_type"
+      business_name: "business_name"
+      owner_name: "owner_name"
+      address: "business_address"
+      city: "business_city"
+      zip_code: "business_zip"
+      license_status: "license_status"
+      issue_date: "license_issue_date"
+      expiration_date: "license_expiration_date"
+
+  # TDLR Air Conditioning Contractors
+  - name: TDLR AC Contractors
+    type: csv_http
+    url: "https://www.tdlr.texas.gov/LicenseSearch/acefile.asp"
+    updated_field: "license_issue_date"
+    primary_key: "license_number"
+    category: "contractors"
+    jurisdiction: "texas-state"
+    specialty: "air_conditioning"
+    rate_limit: 3
+    pagination:
+      method: "alphabetical"
+      page_size: 1000
+    mappings:
+      license_number: "license_number"
+      license_type: "license_type"
+      business_name: "business_name"
+      owner_name: "owner_name"
+      address: "business_address"
+      city: "business_city"
+      zip_code: "business_zip"
+      license_status: "license_status"
+      issue_date: "license_issue_date"
+      expiration_date: "license_expiration_date"
+
+  # TDLR Electrical Contractors
+  - name: TDLR Electrical Contractors
+    type: csv_http
+    url: "https://www.tdlr.texas.gov/LicenseSearch/elefile.asp"
+    updated_field: "license_issue_date"
+    primary_key: "license_number"
+    category: "contractors"
+    jurisdiction: "texas-state"
+    specialty: "electrical"
+    rate_limit: 3
+    pagination:
+      method: "alphabetical"
+      page_size: 1000
+    mappings:
+      license_number: "license_number"
+      license_type: "license_type"
+      business_name: "business_name"
+      owner_name: "owner_name"
+      address: "business_address"
+      city: "business_city"
+      zip_code: "business_zip"
+      license_status: "license_status"
+      issue_date: "license_issue_date"
+      expiration_date: "license_expiration_date"
+
+# Refresh cadences (in hours)
+refresh_schedules:
+  permits: 6     # Every 6 hours for building permits
+  violations: 24 # Daily for code violations
+  inspections: 12 # Twice daily for inspections
+  bids: 168      # Weekly for procurement bids
+  awards: 24     # Daily for contract awards
+  contractors: 720 # Monthly for licensing data
+
+# Quality thresholds
+quality_checks:
+  min_records_per_batch: 10
+  max_missing_fields_pct: 0.15
+  geo_validation_required: true
+  duplicate_check_required: true
+=======
       value: "PERMITVALUATION"
       applicant: "APPLICANTNAME"
       owner: "OWNERNAME"
@@ -371,3 +713,4 @@ quality_thresholds:
   required_fields: ["permit_id", "issue_date", "address"]
   geo_validation: true
   duplicate_tolerance: 0.05  # 5% duplicates allowed
+
