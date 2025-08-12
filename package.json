@@ -13,18 +13,16 @@
     "test": "cd frontend && npm run test",
     "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
-
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
     "harris:permits": "tsx scripts/harrisCounty/issuedPermits.ts",
+    "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
     "security:check": "./scripts/security-check.sh",
     "security:audit": "npm audit && cd frontend && npm audit",
     "security:licenses": "license-checker --summary && cd frontend && license-checker --summary",
     "schema:drift": "tsx scripts/schema-drift-check.ts",
     "test:smoke": "npx playwright test tests/e2e/smoke.spec.ts",
     "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
-    "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
-    "scrape:harris": "node scripts/scrape-harris.cjs",
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
     "redis:smoke:all": "python scripts/redis_smoketest.py --chaos",
@@ -32,7 +30,6 @@
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
     "visual:dry-run": "node scripts/visual-regression-dry-run.js"
-
   },
   "workspaces": [
     "frontend"
@@ -40,6 +37,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
     "axios": "^1.11.0",
+    "commander": "^14.0.0",
     "next": "^14.0.0",
     "playwright": "^1.40.0",
     "react": "^18.0.0",
@@ -47,12 +45,9 @@
     "undici": "^7.13.0"
   },
   "devDependencies": {
-
     "@apidevtools/swagger-parser": "^12.0.0",
-    "@redocly/cli": "^2.0.2",
-
     "@playwright/test": "^1.54.2",
-
+    "@redocly/cli": "^2.0.2",
     "tsx": "^4.0.0"
   },
   "private": true
