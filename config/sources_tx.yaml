@@ -1,716 +1,95 @@
 
-# Texas Data Sources Configuration - City-First APIs + FOIA Placeholders
-# Comprehensive coverage for permits, code violations, inspections, bids/awards, contractor licensing (TDLR)
-
-sources:
-  # ==========================================
-  # PERMITS - Building & Construction Permits  
-  # ==========================================
-  
-  # HARRIS COUNTY (Houston Metro) - Issued Permits
-  - name: Harris County Issued Permits
-    type: arcgis_feature_service
-    url: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0/query"
-    updated_field: "ISSUEDDATE"
-    primary_key: "PERMITNUMBER"
-    date_field: "ISSUEDDATE"
-    category: "permits"
-    jurisdiction: "harris-county"
-    rate_limit: 5  # requests per second
-    pagination: 
-      method: "offset"
-      page_size: 1000
-    mappings:
-      permit_number: "PERMITNUMBER"
-      issued_date: "ISSUEDDATE"
-=======
-# Texas Statewide Data Sources Registry
-# Tier-1 cities/counties with high-volume permit activity
+# Texas Data Sources Registry - City-First APIs with TPIA placeholders
+# Initial focus: Dallas Socrata, Austin Socrata/Tyler, Arlington ArcGIS, Houston (TPIA/CSV)
 
 metadata:
   state: "TX"
   coverage_version: "1.0.0"
   last_updated: "2024-12-19"
   tier_1_definition: "Population > 100K or high permit volume (>1K permits/year)"
-  tier_2_definition: "Medium volume jurisdictions (100-1K permits/year)"
 
-# Tier-1 Sources (High Priority - Nightly Refresh)
-tier_1_sources:
-  # Major Counties
-  - id: "tx-harris-county"
-    name: "Harris County"
+# Primary Sources (Daily Ingestion)
+sources:
+  # Dallas - Building Permits (Socrata)
+  - id: "tx-dallas-permits"
+    name: "Dallas Building Permits"
+    kind: "socrata"
+    endpoint: "https://www.dallasopendata.com/resource/e7gq-4sah.json"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    entity: "permits"
+    license: "open_data"
+    provenance_url: "https://www.dallasopendata.com/City-Services/Building-Permits/e7gq-4sah"
+
+  # Austin - Building Permits (Socrata/Tyler)
+  - id: "tx-austin-permits"
+    name: "Austin Building Permits"
+    kind: "socrata"
+    endpoint: "https://data.austintexas.gov/resource/3syk-w9eu.json"
+    updated_field: "issued_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    entity: "permits"
+    license: "open_data"
+    provenance_url: "https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu"
+
+  # Arlington - Building Permits (ArcGIS)
+  - id: "tx-arlington-permits"
+    name: "Arlington Building Permits"
     kind: "arcgis"
-    jurisdiction_type: "county"
-    population: 4731145
+    endpoint: "https://gis.arlingtontx.gov/arcgis/rest/services/Permits/FeatureServer/0"
+    updated_field: "ISSUE_DATE"
+    primary_key: "PERMIT_ID"
+    cadence: "daily"
+    entity: "permits"
+    license: "public_domain"
+    provenance_url: "https://gis.arlingtontx.gov/portal/home/item.html?id=permits"
+
+  # Houston - TPIA Placeholder (CSV import)
+  - id: "tx-houston-permits"
+    name: "Houston Building Permits"
+    kind: "tpia"
+    endpoint: "manual_delivery"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "monthly"
+    entity: "permits"
+    license: "public_information"
+    provenance_url: "https://www.houstontx.gov/planning/DevelopReview/"
+
+  # Harris County - Permits (ArcGIS, backward compatibility)
+  - id: "tx-harris-county"
+    name: "Harris County Building Permits"
+    kind: "arcgis"
     endpoint: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
     updated_field: "ISSUEDDATE"
     primary_key: "PERMITNUMBER"
     cadence: "daily"
+    entity: "permits"
     license: "public_domain"
-    coverage_score: 95
-    field_mapping:
-      permit_id: "PERMITNUMBER"
-      permit_name: "PERMITNAME"
-      issue_date: "ISSUEDDATE"
+    provenance_url: "https://hcad.org"
 
-      address: "FULLADDRESS"
-      description: "PROJECTNAME"
-      status: "STATUS"
-      work_class: "APPTYPE"
-      category: "APPTYPE"
+# Rate limiting and pagination settings
+rate_limits:
+  arcgis: 5  # requests per second
+  socrata: 5  # requests per second
+  csv_http: 2  # requests per second
+  tpia: 0  # manual processing
 
-      value: "VALUATION"
-      applicant: "APPLICANTNAME"
+pagination:
+  arcgis:
+    method: "offset"
+    page_size: 1000
+  socrata:
+    method: "offset"
+    page_size: 1000
+  csv_http:
+    method: "date_range"
+    page_size: 500
 
-  # DALLAS - Building Permits  
-  - name: Dallas Building Permits
-    type: socrata
-    domain: "www.dallasopendata.com"
-    dataset_id: "e7gq-4sah"
-    updated_field: "issued_date"
-    primary_key: "permit_number"
-    category: "permits"
-    jurisdiction: "dallas"
-    rate_limit: 5
-    pagination:
-      method: "offset"
-      page_size: 1000
-    mappings:
-      permit_number: "permit_number"
-      issued_date: "issued_date"
-      address: "address"
-      description: "work_description"
-      status: "permit_status"
-      work_class: "permit_type_desc"
-      category: "permit_class"
-      value: "estimated_cost"
-      applicant: "contractor_name"
-
-  # AUSTIN - Building Permits
-  - name: Austin Building Permits
-    type: socrata
-    domain: "data.austintexas.gov"
-    dataset_id: "3syk-w9eu"
-    updated_field: "issued_date"
-    primary_key: "permit_number"
-    category: "permits"
-    jurisdiction: "austin"
-    rate_limit: 5
-    pagination:
-      method: "offset"
-      page_size: 1000
-    mappings:
-      permit_number: "permit_number"
-      issued_date: "issued_date"
-      address: "original_address1"
-      description: "description"
-      status: "status_current"
-      work_class: "permit_type_desc"
-      category: "permit_class_mapped"
-      value: "total_valuation"
-      applicant: "applicant_name"
-
-  # FORT WORTH - Building Permits
-  - name: Fort Worth Building Permits
-    type: socrata
-    domain: "data.fortworthtexas.gov"
-    dataset_id: "9zgg-hgvf"
-    updated_field: "issued_date"
-    primary_key: "permit_number"
-    category: "permits"
-    jurisdiction: "fort-worth"
-    rate_limit: 5
-    pagination:
-      method: "offset"
-      page_size: 1000
-    mappings:
-      permit_number: "permit_number"
-      issued_date: "issued_date"
-      address: "address"
-      description: "work_description"
-      status: "permit_status"
-      work_class: "permit_type"
-      value: "estimated_cost"
-      applicant: "contractor_name"
-
-  # SAN ANTONIO - Building Permits (FOIA Placeholder)
-  - name: San Antonio Building Permits
-    type: foia_placeholder
-    jurisdiction: "san-antonio"
-    category: "permits"
-    description: "Manual FOIA request process for building permits"
-    contact:
-      department: "Development Services Department"
-      email: "DSD.OpenRecords@sanantonio.gov"
-      phone: "(210) 207-1111"
-    request_template: "Building permits issued since {start_date}"
-    
-  # ==========================================
-  # CODE VIOLATIONS - Enforcement Actions
-  # ==========================================
-  
-  # DALLAS - Code Violations
-  - name: Dallas Code Violations
-    type: socrata
-    domain: "www.dallasopendata.com"
-    dataset_id: "8jk6-wd9t"
-    updated_field: "case_created_date"
-    primary_key: "case_number"
-    category: "violations"
-    jurisdiction: "dallas"
-    rate_limit: 5
-    pagination:
-      method: "offset"
-      page_size: 1000
-    mappings:
-      case_number: "case_number"
-      created_date: "case_created_date"
-      address: "property_address"
-      violation_type: "violation_code_description"
-      status: "case_status"
-      description: "violation_description"
-
-  # AUSTIN - Code Violations
-  - name: Austin Code Violations
-    type: socrata
-    domain: "data.austintexas.gov"
-    dataset_id: "7d8e-dm7r"
-    updated_field: "created_date"
-    primary_key: "case_number"
-    category: "violations"
-    jurisdiction: "austin"
-    rate_limit: 5
-    pagination:
-      method: "offset"
-      page_size: 1000
-    mappings:
-      case_number: "case_number"
-      created_date: "created_date"
-      address: "address"
-      violation_type: "violation_type"
-      status: "status"
-      description: "description"
-
-  # HOUSTON - Code Violations (FOIA Placeholder)
-  - name: Houston Code Violations
-    type: foia_placeholder
-    jurisdiction: "houston"
-    category: "violations"
-    description: "Manual FOIA request process for code enforcement cases"
-    contact:
-      department: "Housing and Community Development"
-      email: "hcd-foia@houstontx.gov"
-      phone: "(832) 394-6200"
-    request_template: "Code enforcement cases opened since {start_date}"
-
-  # ==========================================
-  # INSPECTIONS - Building Inspections
-  # ==========================================
-  
-  # HARRIS COUNTY - Building Inspections (FOIA Placeholder)
-  - name: Harris County Building Inspections  
-    type: foia_placeholder
-    jurisdiction: "harris-county"
-    category: "inspections"
-    description: "Manual FOIA request process for building inspections"
-    contact:
-      department: "Harris County Engineering Department"
-      email: "eng_admin@hctx.net"
-      phone: "(713) 274-3000"
-    request_template: "Building inspections conducted since {start_date}"
-
-  # DALLAS - Building Inspections (FOIA Placeholder)
-  - name: Dallas Building Inspections
-    type: foia_placeholder
-    jurisdiction: "dallas"
-    category: "inspections"
-    description: "Manual FOIA request process for building inspections"
-    contact:
-      department: "Development Services Department"
-      email: "DSD@dallascityhall.com"
-      phone: "(214) 670-4557"
-    request_template: "Building inspections completed since {start_date}"
-
-  # ==========================================
-  # BIDS & AWARDS - Government Contracts
-  # ==========================================
-  
-  # TEXAS STATE - Procurement Bids/Awards
-  - name: Texas State Procurement
-    type: csv_http
-    url: "https://www.txsmartbuy.com/sp/search/award-search/export"
-    updated_field: "award_date"
-    primary_key: "contract_number"
-    category: "awards"
-    jurisdiction: "texas-state"
-    rate_limit: 2
-    pagination:
-      method: "date_range"
-      page_size: 500
-    mappings:
-      contract_number: "contract_number"
-      award_date: "award_date"
-      vendor_name: "vendor_name"
-      description: "commodity_description"
-      amount: "contract_amount"
-      agency: "agency_name"
-
-  # HARRIS COUNTY - Procurement (FOIA Placeholder)
-  - name: Harris County Procurement
-    type: foia_placeholder
-    jurisdiction: "harris-county"
-    category: "bids"
-    description: "Manual FOIA request for procurement records"
-    contact:
-      department: "Harris County Purchasing Department"
-      email: "purchasing@hctx.net"
-      phone: "(713) 755-5113"
-    request_template: "Awarded contracts since {start_date}"
-
-  # DALLAS - City Procurement (FOIA Placeholder)
-  - name: Dallas City Procurement
-    type: foia_placeholder
-    jurisdiction: "dallas"
-    category: "bids"
-    description: "Manual FOIA request for city procurement records"
-    contact:
-      department: "Office of Procurement Services"
-      email: "procurement.services@dallascityhall.com"
-      phone: "(214) 670-3663"
-    request_template: "Contract awards since {start_date}"
-
-  # ==========================================
-  # CONTRACTOR LICENSING - TDLR
-  # ==========================================
-  
-  # TEXAS DEPARTMENT OF LICENSING AND REGULATION (TDLR)
-  - name: TDLR Contractor Licenses
-    type: csv_http
-    url: "https://www.tdlr.texas.gov/LicenseSearch/licfile.asp"
-    updated_field: "license_issue_date"
-    primary_key: "license_number"
-    category: "contractors"
-    jurisdiction: "texas-state"
-    rate_limit: 3
-    pagination:
-      method: "alphabetical"
-      page_size: 1000
-    mappings:
-      license_number: "license_number"
-      license_type: "license_type"
-      business_name: "business_name"
-      owner_name: "owner_name"
-      address: "business_address"
-      city: "business_city"
-      zip_code: "business_zip"
-      license_status: "license_status"
-      issue_date: "license_issue_date"
-      expiration_date: "license_expiration_date"
-
-  # TDLR Air Conditioning Contractors
-  - name: TDLR AC Contractors
-    type: csv_http
-    url: "https://www.tdlr.texas.gov/LicenseSearch/acefile.asp"
-    updated_field: "license_issue_date"
-    primary_key: "license_number"
-    category: "contractors"
-    jurisdiction: "texas-state"
-    specialty: "air_conditioning"
-    rate_limit: 3
-    pagination:
-      method: "alphabetical"
-      page_size: 1000
-    mappings:
-      license_number: "license_number"
-      license_type: "license_type"
-      business_name: "business_name"
-      owner_name: "owner_name"
-      address: "business_address"
-      city: "business_city"
-      zip_code: "business_zip"
-      license_status: "license_status"
-      issue_date: "license_issue_date"
-      expiration_date: "license_expiration_date"
-
-  # TDLR Electrical Contractors
-  - name: TDLR Electrical Contractors
-    type: csv_http
-    url: "https://www.tdlr.texas.gov/LicenseSearch/elefile.asp"
-    updated_field: "license_issue_date"
-    primary_key: "license_number"
-    category: "contractors"
-    jurisdiction: "texas-state"
-    specialty: "electrical"
-    rate_limit: 3
-    pagination:
-      method: "alphabetical"
-      page_size: 1000
-    mappings:
-      license_number: "license_number"
-      license_type: "license_type"
-      business_name: "business_name"
-      owner_name: "owner_name"
-      address: "business_address"
-      city: "business_city"
-      zip_code: "business_zip"
-      license_status: "license_status"
-      issue_date: "license_issue_date"
-      expiration_date: "license_expiration_date"
-
-# Refresh cadences (in hours)
-refresh_schedules:
-  permits: 6     # Every 6 hours for building permits
-  violations: 24 # Daily for code violations
-  inspections: 12 # Twice daily for inspections
-  bids: 168      # Weekly for procurement bids
-  awards: 24     # Daily for contract awards
-  contractors: 720 # Monthly for licensing data
-
-# Quality thresholds
-quality_checks:
-  min_records_per_batch: 10
-  max_missing_fields_pct: 0.15
-  geo_validation_required: true
-  duplicate_check_required: true
-=======
-      value: "PERMITVALUATION"
-      applicant: "APPLICANTNAME"
-      owner: "OWNERNAME"
-
-  - id: "tx-dallas-county"
-    name: "Dallas County"
-    kind: "socrata"
-    jurisdiction_type: "county"
-    population: 2647787
-    endpoint: "https://www.dallasopendata.com/resource/permits.json"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    license: "open_data"
-    coverage_score: 85
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "work_description"
-      value: "estimated_cost"
-
-  - id: "tx-tarrant-county"
-    name: "Tarrant County"
-    kind: "arcgis"
-    jurisdiction_type: "county"
-    population: 2110640
-    endpoint: "https://gis.tarrantcounty.com/arcgis/rest/services/Planning/Permits/FeatureServer/0"
-    updated_field: "ISSUE_DATE"
-    primary_key: "PERMIT_ID"
-    cadence: "daily"
-    license: "public_domain"
-    coverage_score: 80
-    field_mapping:
-      permit_id: "PERMIT_ID"
-      issue_date: "ISSUE_DATE"
-      address: "SITE_ADDRESS"
-      description: "WORK_DESCRIPTION"
-      value: "VALUATION"
-
-  - id: "tx-bexar-county"
-    name: "Bexar County (San Antonio)"
-    kind: "socrata"
-    jurisdiction_type: "county"
-    population: 2072615
-    endpoint: "https://data.sanantonio.gov/resource/permits.json"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    license: "open_data"
-    coverage_score: 75
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "description"
-      value: "value"
-
-  # Major Cities
-  - id: "tx-houston-city"
-    name: "City of Houston"
-    kind: "csv_http"
-    jurisdiction_type: "city"
-    population: 2304580
-    endpoint: "https://www.houstontx.gov/planning/DevelopReview/permits_issued.csv"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    license: "public_domain"
-    coverage_score: 90
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "description"
-      work_class: "permit_type"
-      value: "estimated_cost"
-
-  - id: "tx-san-antonio-city"
-    name: "City of San Antonio"
-    kind: "socrata"
-    jurisdiction_type: "city"
-    population: 1547253
-    endpoint: "https://data.sanantonio.gov/resource/city-permits.json"
-    updated_field: "issued_date"
-    primary_key: "permit_no"
-    cadence: "daily"
-    license: "open_data"
-    coverage_score: 85
-    field_mapping:
-      permit_id: "permit_no"
-      issue_date: "issued_date"
-      address: "address"
-      description: "work_description"
-      value: "estimated_cost"
-
-  - id: "tx-dallas-city"
-    name: "City of Dallas"
-    kind: "socrata"
-    jurisdiction_type: "city"
-    population: 1304379
-    endpoint: "https://www.dallasopendata.com/resource/building-permits.json"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    license: "open_data"
-    coverage_score: 88
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "description"
-      work_class: "permit_type"
-      value: "valuation"
-
-  - id: "tx-austin-city"
-    name: "City of Austin"
-    kind: "socrata"
-    jurisdiction_type: "city"
-    population: 978908
-    endpoint: "https://data.austintexas.gov/resource/building-permits.json"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    license: "open_data"
-    coverage_score: 92
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "original_address1"
-      description: "description_of_work"
-      work_class: "permit_type"
-      value: "total_existing_bldg_sqft"
-
-  - id: "tx-fort-worth-city"
-    name: "City of Fort Worth"
-    kind: "arcgis"
-    jurisdiction_type: "city"
-    population: 918915
-    endpoint: "https://gis.fortworthtexas.gov/arcgis/rest/services/Permits/FeatureServer/0"
-    updated_field: "ISSUE_DATE"
-    primary_key: "PERMIT_NUMBER"
-    cadence: "daily"
-    license: "public_domain"
-    coverage_score: 82
-    field_mapping:
-      permit_id: "PERMIT_NUMBER"
-      issue_date: "ISSUE_DATE"
-      address: "ADDRESS"
-      description: "DESCRIPTION"
-      value: "VALUATION"
-
-  - id: "tx-el-paso-city"
-    name: "City of El Paso"
-    kind: "csv_http"
-    jurisdiction_type: "city"
-    population: 695044
-    endpoint: "https://www.elpasotexas.gov/development-services/permits-data.csv"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    license: "public_domain"
-    coverage_score: 75
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "work_description"
-      value: "valuation"
-
-# Tier-2 Sources (Medium Priority - Weekly Refresh)
-tier_2_sources:
-  - id: "tx-arlington-city"
-    name: "City of Arlington"
-    kind: "arcgis"
-    jurisdiction_type: "city"
-    population: 394602
-    endpoint: "https://gis.arlingtontx.gov/arcgis/rest/services/Permits/FeatureServer/0"
-    updated_field: "ISSUE_DATE"
-    primary_key: "PERMIT_ID"
-    cadence: "weekly"
-    license: "public_domain"
-    coverage_score: 70
-    field_mapping:
-      permit_id: "PERMIT_ID"
-      issue_date: "ISSUE_DATE"
-      address: "ADDRESS"
-      description: "DESCRIPTION"
-
-  - id: "tx-corpus-christi-city"
-    name: "City of Corpus Christi"
-    kind: "csv_http"
-    jurisdiction_type: "city"
-    population: 316239
-    endpoint: "https://www.cctexas.com/permits/permits-issued.csv"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "weekly"
-    license: "public_domain"
-    coverage_score: 65
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "description"
-
-  - id: "tx-plano-city"
-    name: "City of Plano"
-    kind: "socrata"
-    jurisdiction_type: "city"
-    population: 285494
-    endpoint: "https://data.plano.gov/resource/building-permits.json"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "weekly"
-    license: "open_data"
-    coverage_score: 78
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "work_description"
-
-  - id: "tx-lubbock-city"
-    name: "City of Lubbock"
-    kind: "csv_http"
-    jurisdiction_type: "city"
-    population: 258862
-    endpoint: "https://www.mylubbock.us/permits/building-permits.csv"
-    updated_field: "issue_date"
-    primary_key: "permit_number"
-    cadence: "weekly"
-    license: "public_domain"
-    coverage_score: 60
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "address"
-      description: "description"
-
-# TPIA (Texas Public Information Act) Sources
-tpia_sources:
-  - id: "tx-houston-tpia"
-    name: "Houston TPIA Data Request"
-    kind: "tpia"
-    jurisdiction_type: "city"
-    population: 2304580
-    endpoint: "manual_delivery"  # CSV files delivered via email/portal
-    request_contact: "pia@houstontx.gov"
-    request_template: "Houston_Building_Permits_TPIA_Request.txt"
-    delivery_method: "email_csv"
-    cadence: "monthly"
-    license: "public_information"
-    coverage_score: 95
-    field_mapping:
-      permit_id: "permit_number"
-      issue_date: "issue_date"
-      address: "property_address"
-      description: "work_description"
-      applicant: "applicant_name"
-      owner: "property_owner"
-      value: "project_value"
-
-# Risk Data Overlays
-risk_overlays:
-  - id: "tx-fema-flood-zones"
-    name: "FEMA Flood Zone Data"
-    kind: "arcgis"
-    endpoint: "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28"
-    updated_field: "EFFECTIVE_DATE"
-    primary_key: "DFIRM_ID"
-    cadence: "monthly"
-    license: "public_domain"
-    coverage_score: 100
-    field_mapping:
-      flood_zone: "FLD_ZONE"
-      flood_risk: "ZONE_SUBTY"
-      effective_date: "EFFECTIVE_DATE"
-
-  - id: "tx-nws-weather-alerts"
-    name: "National Weather Service Alerts"
-    kind: "api"
-    endpoint: "https://api.weather.gov/alerts/active?area=TX"
-    updated_field: "sent"
-    primary_key: "id"
-    cadence: "hourly"
-    license: "public_domain"
-    coverage_score: 100
-    field_mapping:
-      alert_id: "id"
-      event_type: "event"
-      severity: "severity"
-      urgency: "urgency"
-      headline: "headline"
-      description: "description"
-      areas: "areaDesc"
-
-# Violations and Enforcement Data
-violations_sources:
-  - id: "tx-harris-code-violations"
-    name: "Harris County Code Violations"
-    kind: "arcgis"
-    endpoint: "https://www.gis.hctx.net/arcgishcpid/rest/services/CodeEnforcement/Violations/FeatureServer/0"
-    updated_field: "VIOLATION_DATE"
-    primary_key: "CASE_NUMBER"
-    cadence: "daily"
-    license: "public_domain"
-    coverage_score: 85
-    field_mapping:
-      case_id: "CASE_NUMBER"
-      violation_date: "VIOLATION_DATE"
-      address: "PROPERTY_ADDRESS"
-      violation_type: "VIOLATION_TYPE"
-      status: "CASE_STATUS"
-      description: "VIOLATION_DESCRIPTION"
-
-  - id: "tx-houston-code-violations"
-    name: "Houston Code Violations"
-    kind: "socrata"
-    endpoint: "https://data.houstontx.gov/resource/code-violations.json"
-    updated_field: "date_created"
-    primary_key: "case_id"
-    cadence: "daily"
-    license: "open_data"
-    coverage_score: 90
-    field_mapping:
-      case_id: "case_id"
-      violation_date: "date_created"
-      address: "address"
-      violation_type: "violation_type"
-      status: "status"
-      description: "description"
-
-# Data Quality Thresholds
-quality_thresholds:
-  min_coverage_score: 60
-  max_stale_days: 7
-  required_fields: ["permit_id", "issue_date", "address"]
-  geo_validation: true
-  duplicate_tolerance: 0.05  # 5% duplicates allowed
+# Legacy environment variable backward compatibility
+# Houston permits will still work with HC_ISSUED_PERMITS_URL if set
+backward_compatibility:
+  HC_ISSUED_PERMITS_URL: "tx-harris-county"
 

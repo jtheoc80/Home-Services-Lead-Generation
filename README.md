@@ -9,31 +9,36 @@ Automated building permit intelligence platform for contractors – fresh leads 
 
 ## 1. Overview
 
-# Houston Home Services Lead Generation
+# Texas Home Services Lead Generation
 
-**LeadLedgerPro - Houston Metro Edition**
+**LeadLedgerPro - Texas Statewide Edition**
 
-A lead generation platform for home service contractors focused exclusively on the Houston metropolitan area. This system automatically collects and processes building permit data from Houston-area counties to identify high-quality leads for contractors.
+A comprehensive lead generation platform for home service contractors covering the entire state of Texas. This system automatically collects and processes building permit data, code violations, inspections, and contractor licensing information from major Texas cities and counties to identify high-quality leads for contractors.
 
-## 🏙️ Houston-First Scope
+## 🏙️ Texas-Wide Coverage
 
-This platform is currently scoped to serve **Houston Metro area only**, including:
+This platform serves **Texas statewide**, with tier-1 coverage for major metropolitan areas:
 
-- **Harris County** (tx-harris)
-- **Fort Bend County** (tx-fort-bend) 
-- **Brazoria County** (tx-brazoria)
-- **Galveston County** (tx-galveston)
+### Tier 1 Coverage (Daily Updates)
+- **Houston Metro** (Harris, Fort Bend, Brazoria, Galveston counties)
+- **Dallas-Fort Worth Metro** (Dallas, Tarrant counties) 
+- **Austin Metro** (Travis, Williamson counties)
+- **San Antonio Metro** (Bexar county)
 
-*Other regions may be added in future releases based on demand and data availability.*
+### Tier 2 Coverage (Weekly Updates)
+- Arlington, Plano, Corpus Christi, Lubbock, El Paso
+
+*Houston Metro remains our flagship demo area with the most comprehensive data coverage.*
 
 ## 🚀 Key Features
 
-- **Automated Lead Collection**: Nightly scraping of permit data from Houston-area counties
-- **Smart Notifications**: In-app notifications for leads matching your criteria
-- **Lead Scoring**: ML-powered scoring to identify the highest quality opportunities
-- **Dashboard-Only Access**: No CSV exports - all data accessible through the web dashboard
-- **Real-Time Updates**: Live notifications when new matching leads are available
-- **OpenAPI Integration**: Auto-generated TypeScript and Python clients with API validation
+- **Texas Statewide Coverage**: Automated data collection from major Texas cities and counties
+- **Multi-Source Ingestion**: Building permits, code violations, inspections, bids/awards, contractor licensing
+- **Smart Lead Scoring**: ML-powered v0 scoring algorithm to identify highest quality opportunities
+- **Real-Time Updates**: Nightly ingestion pipeline with live notifications
+- **Comprehensive Dashboard**: All data accessible through web interface (Houston demo available)
+- **API-First Architecture**: Auto-generated TypeScript and Python clients with OpenAPI validation
+- **Production-Ready**: PostGIS spatial data, Row Level Security, optimized indexing
 
 ## ⚡ 5-Minute Quickstart
 
