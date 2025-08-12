@@ -129,6 +129,14 @@ class ConflictResolver {
   async resolve(): Promise<void> {
     console.log(`🔄 Starting conflict resolution with strategy: ${this.strategy}`);
     
+    // Validate strategy first
+    const strategyConfig = this.config.strategies[this.strategy];
+    if (!strategyConfig && !['theirs-all', 'ours-all'].includes(this.strategy)) {
+      console.error(`❌ Unknown strategy: ${this.strategy}`);
+      console.log('Available strategies:', [...Object.keys(this.config.strategies), 'theirs-all', 'ours-all']);
+      process.exit(1);
+    }
+    
     const conflictedFiles = await this.getConflictedFiles();
     if (conflictedFiles.length === 0) {
       console.log('✅ No conflicted files found');
@@ -137,13 +145,6 @@ class ConflictResolver {
 
     console.log(`📋 Found ${conflictedFiles.length} conflicted files:`);
     conflictedFiles.forEach(file => console.log(`   - ${file}`));
-
-    const strategyConfig = this.config.strategies[this.strategy];
-    if (!strategyConfig) {
-      console.error(`❌ Unknown strategy: ${this.strategy}`);
-      console.log('Available strategies:', Object.keys(this.config.strategies));
-      process.exit(1);
-    }
 
     let resolvedCount = 0;
     const unresolvedFiles: string[] = [];
@@ -172,7 +173,7 @@ class ConflictResolver {
         resolved = await this.resolveFile(filePath, 'theirs');
       } else if (this.strategy === 'ours-all') {
         resolved = await this.resolveFile(filePath, 'ours');
-      } else {
+      } else if (strategyConfig) {
         // Use pattern-based resolution
         if (strategyConfig.theirs && await this.matchesPattern(filePath, strategyConfig.theirs)) {
           resolved = await this.resolveFile(filePath, 'theirs');
@@ -182,6 +183,9 @@ class ConflictResolver {
           console.log(`⚠️  No matching pattern for: ${filePath} (skipping)`);
           unresolvedFiles.push(filePath);
         }
+      } else {
+        console.log(`⚠️  No strategy configuration for: ${this.strategy} (skipping)`);
+        unresolvedFiles.push(filePath);
       }
 
       if (resolved) {
