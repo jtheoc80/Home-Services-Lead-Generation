@@ -1,0 +1,373 @@
+# Texas Statewide Data Sources Registry
+# Tier-1 cities/counties with high-volume permit activity
+
+metadata:
+  state: "TX"
+  coverage_version: "1.0.0"
+  last_updated: "2024-12-19"
+  tier_1_definition: "Population > 100K or high permit volume (>1K permits/year)"
+  tier_2_definition: "Medium volume jurisdictions (100-1K permits/year)"
+
+# Tier-1 Sources (High Priority - Nightly Refresh)
+tier_1_sources:
+  # Major Counties
+  - id: "tx-harris-county"
+    name: "Harris County"
+    kind: "arcgis"
+    jurisdiction_type: "county"
+    population: 4731145
+    endpoint: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+    updated_field: "ISSUEDDATE"
+    primary_key: "PERMITNUMBER"
+    cadence: "daily"
+    license: "public_domain"
+    coverage_score: 95
+    field_mapping:
+      permit_id: "PERMITNUMBER"
+      permit_name: "PERMITNAME"
+      issue_date: "ISSUEDDATE"
+      address: "FULLADDRESS"
+      description: "PROJECTNAME"
+      status: "STATUS"
+      work_class: "APPTYPE"
+      category: "APPTYPE"
+      value: "PERMITVALUATION"
+      applicant: "APPLICANTNAME"
+      owner: "OWNERNAME"
+
+  - id: "tx-dallas-county"
+    name: "Dallas County"
+    kind: "socrata"
+    jurisdiction_type: "county"
+    population: 2647787
+    endpoint: "https://www.dallasopendata.com/resource/permits.json"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    license: "open_data"
+    coverage_score: 85
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "work_description"
+      value: "estimated_cost"
+
+  - id: "tx-tarrant-county"
+    name: "Tarrant County"
+    kind: "arcgis"
+    jurisdiction_type: "county"
+    population: 2110640
+    endpoint: "https://gis.tarrantcounty.com/arcgis/rest/services/Planning/Permits/FeatureServer/0"
+    updated_field: "ISSUE_DATE"
+    primary_key: "PERMIT_ID"
+    cadence: "daily"
+    license: "public_domain"
+    coverage_score: 80
+    field_mapping:
+      permit_id: "PERMIT_ID"
+      issue_date: "ISSUE_DATE"
+      address: "SITE_ADDRESS"
+      description: "WORK_DESCRIPTION"
+      value: "VALUATION"
+
+  - id: "tx-bexar-county"
+    name: "Bexar County (San Antonio)"
+    kind: "socrata"
+    jurisdiction_type: "county"
+    population: 2072615
+    endpoint: "https://data.sanantonio.gov/resource/permits.json"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    license: "open_data"
+    coverage_score: 75
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "description"
+      value: "value"
+
+  # Major Cities
+  - id: "tx-houston-city"
+    name: "City of Houston"
+    kind: "csv_http"
+    jurisdiction_type: "city"
+    population: 2304580
+    endpoint: "https://www.houstontx.gov/planning/DevelopReview/permits_issued.csv"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    license: "public_domain"
+    coverage_score: 90
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "description"
+      work_class: "permit_type"
+      value: "estimated_cost"
+
+  - id: "tx-san-antonio-city"
+    name: "City of San Antonio"
+    kind: "socrata"
+    jurisdiction_type: "city"
+    population: 1547253
+    endpoint: "https://data.sanantonio.gov/resource/city-permits.json"
+    updated_field: "issued_date"
+    primary_key: "permit_no"
+    cadence: "daily"
+    license: "open_data"
+    coverage_score: 85
+    field_mapping:
+      permit_id: "permit_no"
+      issue_date: "issued_date"
+      address: "address"
+      description: "work_description"
+      value: "estimated_cost"
+
+  - id: "tx-dallas-city"
+    name: "City of Dallas"
+    kind: "socrata"
+    jurisdiction_type: "city"
+    population: 1304379
+    endpoint: "https://www.dallasopendata.com/resource/building-permits.json"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    license: "open_data"
+    coverage_score: 88
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "description"
+      work_class: "permit_type"
+      value: "valuation"
+
+  - id: "tx-austin-city"
+    name: "City of Austin"
+    kind: "socrata"
+    jurisdiction_type: "city"
+    population: 978908
+    endpoint: "https://data.austintexas.gov/resource/building-permits.json"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    license: "open_data"
+    coverage_score: 92
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "original_address1"
+      description: "description_of_work"
+      work_class: "permit_type"
+      value: "total_existing_bldg_sqft"
+
+  - id: "tx-fort-worth-city"
+    name: "City of Fort Worth"
+    kind: "arcgis"
+    jurisdiction_type: "city"
+    population: 918915
+    endpoint: "https://gis.fortworthtexas.gov/arcgis/rest/services/Permits/FeatureServer/0"
+    updated_field: "ISSUE_DATE"
+    primary_key: "PERMIT_NUMBER"
+    cadence: "daily"
+    license: "public_domain"
+    coverage_score: 82
+    field_mapping:
+      permit_id: "PERMIT_NUMBER"
+      issue_date: "ISSUE_DATE"
+      address: "ADDRESS"
+      description: "DESCRIPTION"
+      value: "VALUATION"
+
+  - id: "tx-el-paso-city"
+    name: "City of El Paso"
+    kind: "csv_http"
+    jurisdiction_type: "city"
+    population: 695044
+    endpoint: "https://www.elpasotexas.gov/development-services/permits-data.csv"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "daily"
+    license: "public_domain"
+    coverage_score: 75
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "work_description"
+      value: "valuation"
+
+# Tier-2 Sources (Medium Priority - Weekly Refresh)
+tier_2_sources:
+  - id: "tx-arlington-city"
+    name: "City of Arlington"
+    kind: "arcgis"
+    jurisdiction_type: "city"
+    population: 394602
+    endpoint: "https://gis.arlingtontx.gov/arcgis/rest/services/Permits/FeatureServer/0"
+    updated_field: "ISSUE_DATE"
+    primary_key: "PERMIT_ID"
+    cadence: "weekly"
+    license: "public_domain"
+    coverage_score: 70
+    field_mapping:
+      permit_id: "PERMIT_ID"
+      issue_date: "ISSUE_DATE"
+      address: "ADDRESS"
+      description: "DESCRIPTION"
+
+  - id: "tx-corpus-christi-city"
+    name: "City of Corpus Christi"
+    kind: "csv_http"
+    jurisdiction_type: "city"
+    population: 316239
+    endpoint: "https://www.cctexas.com/permits/permits-issued.csv"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "weekly"
+    license: "public_domain"
+    coverage_score: 65
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "description"
+
+  - id: "tx-plano-city"
+    name: "City of Plano"
+    kind: "socrata"
+    jurisdiction_type: "city"
+    population: 285494
+    endpoint: "https://data.plano.gov/resource/building-permits.json"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "weekly"
+    license: "open_data"
+    coverage_score: 78
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "work_description"
+
+  - id: "tx-lubbock-city"
+    name: "City of Lubbock"
+    kind: "csv_http"
+    jurisdiction_type: "city"
+    population: 258862
+    endpoint: "https://www.mylubbock.us/permits/building-permits.csv"
+    updated_field: "issue_date"
+    primary_key: "permit_number"
+    cadence: "weekly"
+    license: "public_domain"
+    coverage_score: 60
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "address"
+      description: "description"
+
+# TPIA (Texas Public Information Act) Sources
+tpia_sources:
+  - id: "tx-houston-tpia"
+    name: "Houston TPIA Data Request"
+    kind: "tpia"
+    jurisdiction_type: "city"
+    population: 2304580
+    endpoint: "manual_delivery"  # CSV files delivered via email/portal
+    request_contact: "pia@houstontx.gov"
+    request_template: "Houston_Building_Permits_TPIA_Request.txt"
+    delivery_method: "email_csv"
+    cadence: "monthly"
+    license: "public_information"
+    coverage_score: 95
+    field_mapping:
+      permit_id: "permit_number"
+      issue_date: "issue_date"
+      address: "property_address"
+      description: "work_description"
+      applicant: "applicant_name"
+      owner: "property_owner"
+      value: "project_value"
+
+# Risk Data Overlays
+risk_overlays:
+  - id: "tx-fema-flood-zones"
+    name: "FEMA Flood Zone Data"
+    kind: "arcgis"
+    endpoint: "https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28"
+    updated_field: "EFFECTIVE_DATE"
+    primary_key: "DFIRM_ID"
+    cadence: "monthly"
+    license: "public_domain"
+    coverage_score: 100
+    field_mapping:
+      flood_zone: "FLD_ZONE"
+      flood_risk: "ZONE_SUBTY"
+      effective_date: "EFFECTIVE_DATE"
+
+  - id: "tx-nws-weather-alerts"
+    name: "National Weather Service Alerts"
+    kind: "api"
+    endpoint: "https://api.weather.gov/alerts/active?area=TX"
+    updated_field: "sent"
+    primary_key: "id"
+    cadence: "hourly"
+    license: "public_domain"
+    coverage_score: 100
+    field_mapping:
+      alert_id: "id"
+      event_type: "event"
+      severity: "severity"
+      urgency: "urgency"
+      headline: "headline"
+      description: "description"
+      areas: "areaDesc"
+
+# Violations and Enforcement Data
+violations_sources:
+  - id: "tx-harris-code-violations"
+    name: "Harris County Code Violations"
+    kind: "arcgis"
+    endpoint: "https://www.gis.hctx.net/arcgishcpid/rest/services/CodeEnforcement/Violations/FeatureServer/0"
+    updated_field: "VIOLATION_DATE"
+    primary_key: "CASE_NUMBER"
+    cadence: "daily"
+    license: "public_domain"
+    coverage_score: 85
+    field_mapping:
+      case_id: "CASE_NUMBER"
+      violation_date: "VIOLATION_DATE"
+      address: "PROPERTY_ADDRESS"
+      violation_type: "VIOLATION_TYPE"
+      status: "CASE_STATUS"
+      description: "VIOLATION_DESCRIPTION"
+
+  - id: "tx-houston-code-violations"
+    name: "Houston Code Violations"
+    kind: "socrata"
+    endpoint: "https://data.houstontx.gov/resource/code-violations.json"
+    updated_field: "date_created"
+    primary_key: "case_id"
+    cadence: "daily"
+    license: "open_data"
+    coverage_score: 90
+    field_mapping:
+      case_id: "case_id"
+      violation_date: "date_created"
+      address: "address"
+      violation_type: "violation_type"
+      status: "status"
+      description: "description"
+
+# Data Quality Thresholds
+quality_thresholds:
+  min_coverage_score: 60
+  max_stale_days: 7
+  required_fields: ["permit_id", "issue_date", "address"]
+  geo_validation: true
+  duplicate_tolerance: 0.05  # 5% duplicates allowed
