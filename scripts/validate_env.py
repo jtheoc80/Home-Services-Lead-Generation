@@ -253,7 +253,7 @@ def main():
         if args.mode == 'vercel':
             success = validator.validate_vercel()
         elif args.mode == 'railway':
-            success = validator.validate_railway()
+            validator.validate_railway()
         elif args.mode == 'ingestion':
             success = validator.validate_ingestion()
         elif args.mode == 'all':
