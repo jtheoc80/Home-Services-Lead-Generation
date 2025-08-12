@@ -323,7 +323,7 @@ jobs:
             echo "" >> comment.md
             echo "**Resolved files:**" >> comment.md
             echo "\`\`\`" >> comment.md
-            echo "$resolved" >> comment.md
+            echo "$resolved" | xargs >> comment.md
             echo "\`\`\`" >> comment.md
           else
             status="❌ **Manual intervention required**"
