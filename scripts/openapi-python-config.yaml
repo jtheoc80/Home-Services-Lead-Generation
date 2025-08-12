@@ -1,0 +1,4 @@
+class_name: LeadLedgerProClient
+package_name: leadledderpro_client
+project_name_override: leadledderpro-client
+package_version_override: "1.0.0"

@@ -32,11 +32,16 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Install dependencies
-        run: |
-          pip install -r permit_leads/requirements.txt -r backend/requirements.txt
+        run: poetry install --no-interaction
 
       - name: Run ETL scraping
         id: etl_run
@@ -51,7 +56,7 @@ jobs:
           echo "Running ETL with --since $SINCE_PERIOD"
           
           # Run the ETL process
-          python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee etl_output.log
+          poetry run python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee etl_output.log
           
           # Check if any records were processed
           RECORD_COUNT=$(grep -o "Processed [0-9]* records" etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
@@ -69,7 +74,7 @@ jobs:
         run: |
           # Run the ingestion step - assuming there's an ingest command
           echo "Running data ingestion..."
-          python -c "
+          poetry run python -c "
           import sys
           import os
           sys.path.insert(0, 'backend')
