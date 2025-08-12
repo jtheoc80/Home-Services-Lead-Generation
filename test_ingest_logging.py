@@ -18,7 +18,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 def test_ingest_logger_import():
     """Test that ingest_logger can be imported."""
     try:
-        from backend.app.ingest_logger import IngestTracer, log_ingest_step, get_trace_logs, generate_trace_id
+        from app.ingest_logger import IngestTracer, log_ingest_step, get_trace_logs, generate_trace_id
         print("✓ Successfully imported ingest_logger module")
         return True
     except ImportError as e:
