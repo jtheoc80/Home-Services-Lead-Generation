@@ -1,6 +1,9 @@
 -- LeadLedgerPro Database Schema
 -- Multi-region lead generation system with configurable jurisdictions
 
+-- Create schemas
+CREATE SCHEMA IF NOT EXISTS gold;
+
 CREATE TYPE lead_rating AS ENUM ('no_answer','bad_contact','not_qualified','quoted','won');
 
 -- Regions: Metro areas, states, national coverage
@@ -124,6 +127,25 @@ CREATE TABLE IF NOT EXISTS lead_outcomes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Versioned lead scores table for tracking scoring algorithm performance
+CREATE TABLE IF NOT EXISTS gold.lead_scores (
+  lead_id UUID NOT NULL,
+  version TEXT NOT NULL,      -- 'v0', 'v1', etc. - scoring algorithm version
+  score INTEGER NOT NULL,     -- 0-100 score value
+  reasons JSONB NOT NULL,     -- array of scoring reason strings
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (lead_id, version),
+  
+  -- Constraints
+  CONSTRAINT lead_scores_score_range CHECK (score >= 0 AND score <= 100),
+  CONSTRAINT lead_scores_version_format CHECK (version ~ '^v[0-9]+$'),
+  CONSTRAINT lead_scores_reasons_array CHECK (jsonb_typeof(reasons) = 'array')
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS lead_scores_version_idx ON gold.lead_scores (version);
+CREATE INDEX IF NOT EXISTS lead_scores_score_idx ON gold.lead_scores (score DESC);
+CREATE INDEX IF NOT EXISTS lead_scores_created_at_idx ON gold.lead_scores (created_at DESC);
 
 -- Plans: Region-aware pricing and quotas
 CREATE TABLE IF NOT EXISTS plans (

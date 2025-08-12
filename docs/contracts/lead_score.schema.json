@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://leadledderpro.com/schemas/lead_score.schema.json",
+  "title": "Lead Score Contract",
+  "description": "Schema defining the structure and constraints for lead scoring requests and responses",
+  "version": "1.0.0",
+  
+  "definitions": {
+    "lead_input": {
+      "type": "object",
+      "title": "Lead Input",
+      "description": "Normalized lead data for scoring",
+      "properties": {
+        "lead_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the lead"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when lead was created"
+        },
+        "trade_tags": {
+          "type": "array",
+          "description": "List of trade categories identified from permit description",
+          "items": {
+            "type": "string",
+            "enum": [
+              "roofing", "kitchen", "bath", "pool", "fence", "windows",
+              "foundation", "solar", "hvac", "electrical", "plumbing"
+            ]
+          },
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "value": {
+          "type": "number",
+          "description": "Project value in USD",
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "year_built": {
+          "type": "integer",
+          "description": "Year the property was built",
+          "minimum": 1800,
+          "maximum": 2030
+        },
+        "owner_kind": {
+          "type": "string",
+          "description": "Type of property owner",
+          "enum": ["individual", "llc", "corporation", "trust", "other", "unknown"]
+        },
+        "address": {
+          "type": "string",
+          "description": "Property address",
+          "maxLength": 500
+        },
+        "description": {
+          "type": "string", 
+          "description": "Permit description",
+          "maxLength": 2000
+        },
+        "jurisdiction": {
+          "type": "string",
+          "description": "Jurisdiction slug where permit was issued",
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    
+    "score_response": {
+      "type": "object",
+      "title": "Score Response",
+      "description": "Lead scoring result",
+      "properties": {
+        "score": {
+          "type": "integer",
+          "description": "Lead score from 0 to 100",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reasons": {
+          "type": "array",
+          "description": "List of scoring reasons and explanations",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10,
+          "minItems": 1
+        }
+      },
+      "required": ["score", "reasons"],
+      "additionalProperties": false
+    }
+  },
+  
+  "oneOf": [
+    {
+      "title": "Lead Score Request",
+      "description": "Request schema for POST /v1/lead-score",
+      "type": "object",
+      "properties": {
+        "lead": {
+          "$ref": "#/definitions/lead_input"
+        },
+        "version": {
+          "type": "string",
+          "description": "Scoring algorithm version",
+          "enum": ["v0"],
+          "default": "v0"
+        }
+      },
+      "required": ["lead"],
+      "additionalProperties": false
+    },
+    {
+      "title": "Lead Score Response",
+      "description": "Response schema for POST /v1/lead-score",
+      "type": "object",
+      "properties": {
+        "lead_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Lead identifier from request"
+        },
+        "version": {
+          "type": "string",
+          "description": "Scoring algorithm version used",
+          "enum": ["v0"]
+        },
+        "score": {
+          "type": "integer",
+          "description": "Lead score from 0 to 100",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reasons": {
+          "type": "array",
+          "description": "List of scoring reasons and explanations",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 10,
+          "minItems": 1
+        },
+        "scored_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when scoring was performed"
+        }
+      },
+      "required": ["lead_id", "version", "score", "reasons", "scored_at"],
+      "additionalProperties": false
+    }
+  ]
+}
