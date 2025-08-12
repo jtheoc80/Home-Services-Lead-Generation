@@ -43,7 +43,9 @@ function validateSQLSyntax(filePath: string): boolean {
         test: () => {
           // Check for UUID, TIMESTAMPTZ, JSONB - PostgreSQL specific types
           // OR pg_tables, information_schema - PostgreSQL system tables
-          return /UUID|TIMESTAMPTZ|JSONB|pg_tables|information_schema/i.test(sql);
+          // Check for PostgreSQL-specific types, system tables, and functions
+          // Types: UUID, TIMESTAMPTZ, JSONB; Tables: pg_tables, information_schema; Functions: gen_random_uuid(), now()
+          return /UUID|TIMESTAMPTZ|JSONB|pg_tables|information_schema|gen_random_uuid\s*\(|now\s*\(/i.test(sql);
         }
       }
     ];
