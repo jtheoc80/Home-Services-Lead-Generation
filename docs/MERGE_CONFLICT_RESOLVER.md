@@ -26,13 +26,13 @@ Accepts all incoming changes from the PR branch for all conflicted files.
 #### `ours-all`
 Keeps all current changes from the base branch for all conflicted files.
 
-## Example Usage for PR 172
+## Example Usage for PR 175
 
-To resolve conflicts in PR 172 using the safe strategy:
+To resolve conflicts in PR 175 using the safe strategy:
 
 ```yaml
 # Manual trigger via GitHub Actions UI
-pr_number: 172
+pr_number: 175
 strategy: safe
 ```
 
@@ -40,13 +40,13 @@ Or via GitHub CLI:
 
 ```bash
 # Safe strategy (recommended)
-gh workflow run merge-conflict-resolver.yml -f pr_number=172 -f strategy=safe
+gh workflow run merge-conflict-resolver.yml -f pr_number=175 -f strategy=safe
 
 # Accept all incoming changes
-gh workflow run merge-conflict-resolver.yml -f pr_number=172 -f strategy=theirs-all
+gh workflow run merge-conflict-resolver.yml -f pr_number=175 -f strategy=theirs-all
 
-# Keep all current changes  
-gh workflow run merge-conflict-resolver.yml -f pr_number=172 -f strategy=ours-all
+# Keep all current changes
+gh workflow run merge-conflict-resolver.yml -f pr_number=175 -f strategy=ours-all
 ```
 
 ## Workflow Process

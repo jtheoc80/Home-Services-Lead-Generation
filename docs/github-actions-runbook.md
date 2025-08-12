@@ -61,9 +61,9 @@ The repository includes several automated workflows:
 - `pr_number`: Pull request number to resolve conflicts for (required)
 - `strategy`: Resolution strategy - `safe`, `theirs-all`, or `ours-all` (required)
 
-**Example Usage for PR 172**:
+**Example Usage for PR 175**:
 ```
-pr_number: 172
+pr_number: 175
 strategy: safe
 ```
 

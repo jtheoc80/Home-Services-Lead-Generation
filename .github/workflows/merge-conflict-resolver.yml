@@ -57,12 +57,13 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           echo "Fetching PR #${PR_NUMBER} information..."
-          
+
           # Get PR details using GitHub CLI
-          pr_data=$(gh pr view ${PR_NUMBER} --json baseRefName,headRefName,headRepository,baseRepository,state,mergeable)
-          
+          pr_data=$(gh pr view ${PR_NUMBER} \
+            --json baseRefName,headRefName,headRepository,baseRepository,state,mergeable)
+
           echo "PR Data: $pr_data"
-          
+
           # Extract values
           base_ref=$(echo "$pr_data" | jq -r '.baseRefName')
           head_ref=$(echo "$pr_data" | jq -r '.headRefName')
@@ -70,14 +71,14 @@ jobs:
           base_repo=$(echo "$pr_data" | jq -r '.baseRepository.nameWithOwner')
           state=$(echo "$pr_data" | jq -r '.state')
           mergeable=$(echo "$pr_data" | jq -r '.mergeable')
-          
+
           echo "base_ref=$base_ref" >> $GITHUB_OUTPUT
           echo "head_ref=$head_ref" >> $GITHUB_OUTPUT
           echo "head_repo=$head_repo" >> $GITHUB_OUTPUT
           echo "base_repo=$base_repo" >> $GITHUB_OUTPUT
           echo "state=$state" >> $GITHUB_OUTPUT
           echo "mergeable=$mergeable" >> $GITHUB_OUTPUT
-          
+
           echo "📊 PR Information:"
           echo "   Base: $base_repo/$base_ref"
           echo "   Head: $head_repo/$head_ref"
@@ -87,15 +88,18 @@ jobs:
       - name: Validate PR state
         run: |
           if [ "${{ steps.pr-info.outputs.state }}" != "OPEN" ]; then
-            echo "❌ PR #${{ inputs.pr_number }} is not open (state: ${{ steps.pr-info.outputs.state }})"
+            echo "❌ PR #${{ inputs.pr_number }} is not open" \
+              "(state: ${{ steps.pr-info.outputs.state }})"
             exit 1
           fi
-          
+
           if [ "${{ steps.pr-info.outputs.mergeable }}" = "CONFLICTING" ]; then
-            echo "🔍 PR has conflicts - proceeding with resolution using strategy: ${{ inputs.strategy }}"
+            echo "🔍 PR has conflicts - proceeding with resolution" \
+              "using strategy: ${{ inputs.strategy }}"
           elif [ "${{ steps.pr-info.outputs.mergeable }}" = "MERGEABLE" ]; then
             echo "✅ PR is already mergeable - no conflicts to resolve"
-            echo "Consider merging the PR directly instead of using conflict resolution"
+            echo "Consider merging the PR directly instead of using" \
+              "conflict resolution"
           else
             echo "⚠️ PR mergeable state: ${{ steps.pr-info.outputs.mergeable }}"
             echo "Proceeding with merge attempt..."
@@ -113,10 +117,10 @@ jobs:
           HEAD_REPO: ${{ steps.pr-info.outputs.head_repo }}
         run: |
           echo "🔄 Fetching all references..."
-          
+
           # Fetch all branches
           git fetch origin
-          
+
           # If head repo is different (fork), add it as remote and fetch
           if [ "$HEAD_REPO" != "${{ github.repository }}" ]; then
             echo "📥 Adding fork remote: $HEAD_REPO"
@@ -126,12 +130,12 @@ jobs:
           else
             HEAD_SHA=$(git rev-parse "origin/$HEAD_REF")
           fi
-          
+
           BASE_SHA=$(git rev-parse "origin/$BASE_REF")
-          
+
           echo "base_sha=$BASE_SHA" >> $GITHUB_ENV
           echo "head_sha=$HEAD_SHA" >> $GITHUB_ENV
-          
+
           echo "📍 Commit SHAs:"
           echo "   Base ($BASE_REF): $BASE_SHA"
           echo "   Head ($HEAD_REF): $HEAD_SHA"
@@ -144,18 +148,18 @@ jobs:
           STRATEGY: ${{ inputs.strategy }}
         run: |
           echo "🌿 Creating merge resolution branch..."
-          
+
           # Create a unique branch name for this merge attempt
           MERGE_BRANCH="merge-resolve/pr-${{ inputs.pr_number }}-$(date +%s)"
           echo "merge_branch=$MERGE_BRANCH" >> $GITHUB_OUTPUT
           echo "merge_branch=$MERGE_BRANCH" >> $GITHUB_ENV
-          
+
           # Checkout base branch and create merge branch
           git checkout "origin/$BASE_REF"
           git checkout -b "$MERGE_BRANCH"
-          
+
           echo "🔀 Attempting merge with strategy: $STRATEGY"
-          
+
           # Attempt the merge
           set +e  # Don't exit on error
           if [ "$STRATEGY" = "theirs-all" ]; then
@@ -166,12 +170,12 @@ jobs:
             # Safe strategy - standard merge
             git merge "$head_sha" --no-edit
           fi
-          
+
           merge_exit_code=$?
           set -e  # Re-enable exit on error
-          
+
           echo "merge_exit_code=$merge_exit_code" >> $GITHUB_OUTPUT
-          
+
           if [ $merge_exit_code -eq 0 ]; then
             echo "✅ Merge completed successfully with no conflicts!"
             echo "merge_success=true" >> $GITHUB_OUTPUT
@@ -187,27 +191,26 @@ jobs:
           STRATEGY: ${{ inputs.strategy }}
         run: |
           echo "🛠️ Applying path-based conflict resolution rules..."
-          
+
           # Get list of conflicted files
           conflicted_files=$(git diff --name-only --diff-filter=U)
-          
+
           if [ -z "$conflicted_files" ]; then
             echo "✅ No conflicted files found after merge attempt"
             echo "resolution_success=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           echo "📁 Conflicted files:"
           echo "$conflicted_files"
-          
+
           resolved_files=""
-          resolved_files=()
-          failed_files=()
-          
+          failed_files=""
+
           # Process each conflicted file based on path rules and strategy
           for file in $conflicted_files; do
             echo "🔧 Processing: $file"
-            
+
             if [ "$STRATEGY" = "safe" ]; then
               # Safe strategy: only auto-resolve specific file types
               case "$file" in
@@ -240,10 +243,10 @@ jobs:
               resolved_files="$resolved_files $file"
             fi
           done
-          
+
           echo "resolved_files=$resolved_files" >> $GITHUB_OUTPUT
           echo "failed_files=$failed_files" >> $GITHUB_OUTPUT
-          
+
           if [ -n "$failed_files" ]; then
             echo "resolution_success=false" >> $GITHUB_OUTPUT
             echo "❌ Some files still require manual resolution"
@@ -266,16 +269,18 @@ jobs:
             echo "commit_success=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           echo "💾 Committing resolved changes..."
-          
+
           # Create commit message
           if [ "${{ steps.merge-attempt.outputs.merge_success }}" = "true" ]; then
-            commit_msg="Merge branch '$HEAD_REF' into $BASE_REF - Automated merge with strategy: $STRATEGY (PR #${{ inputs.pr_number }})"
+            commit_msg="Merge branch '$HEAD_REF' into $BASE_REF - " \
+              "Automated merge with strategy: $STRATEGY (PR #${{ inputs.pr_number }})"
           else
-            commit_msg="Resolve merge conflicts for PR #${{ inputs.pr_number }} using strategy: $STRATEGY"
+            commit_msg="Resolve merge conflicts for PR #${{ inputs.pr_number }}" \
+              "using strategy: $STRATEGY"
           fi
-          
+
           git commit -m "$commit_msg"
           echo "commit_success=true" >> $GITHUB_OUTPUT
           echo "✅ Changes committed successfully"
@@ -286,10 +291,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🚀 Pushing resolved changes..."
-          
+
           # Push the merge branch
           git push origin "$merge_branch"
-          
+
           echo "✅ Pushed merge resolution to branch: $merge_branch"
 
       - name: Create summary comment on PR
@@ -345,11 +350,11 @@ jobs:
             echo "" >> comment.md
             echo "Please resolve these conflicts manually and try again." >> comment.md
           fi
-          
+
           echo "" >> comment.md
           echo "---" >> comment.md
           echo "*Automated by merge-conflict-resolver workflow*" >> comment.md
-          
+
           gh pr comment "$PR_NUMBER" --body-file comment.md
 
       - name: Fail if conflicts remain
@@ -371,7 +376,7 @@ jobs:
           echo "**Strategy:** ${{ inputs.strategy }}" >> $GITHUB_STEP_SUMMARY
           echo "**Resolution branch:** \`$merge_branch\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.merge-attempt.outputs.merge_success }}" = "true" ]; then
             echo "✅ Merge completed without conflicts" >> $GITHUB_STEP_SUMMARY
           else
