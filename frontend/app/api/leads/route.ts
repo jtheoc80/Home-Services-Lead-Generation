@@ -32,7 +32,11 @@ async function logIngest(supabase: any, trace_id: string, stage: string, ok: boo
     details
   };
   
-  await supabase.from('ingest_logs').insert([logEntry]);
+  try {
+    await supabase.from('ingest_logs').insert([logEntry]);
+  } catch (err) {
+    console.error('Failed to insert ingest log:', err);
+  }
 }
 
 export async function GET() {
