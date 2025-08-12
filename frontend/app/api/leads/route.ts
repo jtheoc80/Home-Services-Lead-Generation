@@ -128,7 +128,7 @@ export async function POST(req: Request) {
     
   } catch (error) {
     // Log unexpected error
-    await logIngest(supabase, trace_id, 'validate', false, {
+    await logIngest(supabase, trace_id, 'processing', false, {
       error: 'Unexpected error during processing',
       details: error instanceof Error ? error.message : 'Unknown error',
       received_at
