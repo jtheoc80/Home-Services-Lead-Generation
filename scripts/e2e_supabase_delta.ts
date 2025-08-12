@@ -9,7 +9,11 @@
  * 4. Exits non-zero with readable errors if assertions fail
  * 
  * Usage:
- *   tsx scripts/e2e_supabase_delta.ts
+ *   tsx scripts/e2e_supabase_delta.ts [--since=3d] [--dry-run]
+ * 
+ * Options:
+ *   --since=<period>    Time period to scrape (default: 3d). Examples: 1d, 7d, 24h
+ *   --dry-run          Only test Supabase connection and count reading, skip scraper
  * 
  * Environment Variables:
  *   SUPABASE_URL - Supabase project URL
@@ -18,7 +22,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { spawn } from 'child_process';
-import { randomUUID } from 'crypto';
 
 interface TestResult {
   success: boolean;
@@ -26,6 +29,49 @@ interface TestResult {
   initialCount: number;
   finalCount: number;
   deltaCount: number;
+}
+
+interface TestOptions {
+  since: string;
+  dryRun: boolean;
+}
+
+function parseArgs(): TestOptions {
+  const args = process.argv.slice(2);
+  const options: TestOptions = {
+    since: '3d',
+    dryRun: false
+  };
+  
+  for (const arg of args) {
+    if (arg.startsWith('--since=')) {
+      options.since = arg.split('=')[1];
+    } else if (arg === '--dry-run') {
+      options.dryRun = true;
+    } else if (arg === '--help' || arg === '-h') {
+      console.log(`
+Usage: tsx scripts/e2e_supabase_delta.ts [options]
+
+Options:
+  --since=<period>    Time period to scrape (default: 3d)
+                      Examples: 1d, 7d, 24h, 2024-01-01
+  --dry-run          Only test Supabase connection, skip scraper
+  --help, -h         Show this help message
+
+Environment Variables:
+  SUPABASE_URL               Supabase project URL
+  SUPABASE_SERVICE_ROLE_KEY  Supabase service role key
+
+Examples:
+  tsx scripts/e2e_supabase_delta.ts
+  tsx scripts/e2e_supabase_delta.ts --since=7d
+  tsx scripts/e2e_supabase_delta.ts --dry-run
+      `);
+      process.exit(0);
+    }
+  }
+  
+  return options;
 }
 
 function validateEnvironment(): { supabaseUrl: string; supabaseKey: string } {
@@ -61,12 +107,12 @@ async function getPermitsCount(supabase: any): Promise<number> {
   }
 }
 
-async function runHarrisScraperWithSupabase(): Promise<void> {
+async function runHarrisScraperWithSupabase(since: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    console.log('🚀 Running Harris scraper with --since=3d...');
+    console.log(`🚀 Running Harris scraper with --since=${since}...`);
     
     // Use the TypeScript Harris scraper which writes directly to Supabase
-    const child = spawn('tsx', ['scripts/harrisCounty/issuedPermits.ts', '--since', '3d'], {
+    const child = spawn('tsx', ['scripts/harrisCounty/issuedPermits.ts', '--since', since], {
       stdio: 'inherit',
       cwd: process.cwd()
     });
@@ -86,7 +132,7 @@ async function runHarrisScraperWithSupabase(): Promise<void> {
   });
 }
 
-async function runTest(): Promise<TestResult> {
+async function runTest(options: TestOptions): Promise<TestResult> {
   console.log('🏠 E2E Supabase Delta Test for Harris County Permits');
   console.log('='.repeat(60));
   
@@ -94,6 +140,8 @@ async function runTest(): Promise<TestResult> {
   const { supabaseUrl, supabaseKey } = validateEnvironment();
   
   console.log(`📊 Supabase URL: ${supabaseUrl}`);
+  console.log(`⏱️  Since: ${options.since}`);
+  console.log(`🧪 Mode: ${options.dryRun ? 'DRY RUN (Supabase test only)' : 'FULL TEST'}`);
   console.log('');
   
   // Initialize Supabase client
@@ -105,9 +153,24 @@ async function runTest(): Promise<TestResult> {
     const initialCount = await getPermitsCount(supabase);
     console.log(`   Initial count: ${initialCount}`);
     
+    if (options.dryRun) {
+      console.log('\n🧪 DRY RUN: Skipping scraper execution');
+      return {
+        success: true,
+        message: `✅ DRY RUN PASSED: Successfully connected to Supabase and read count (${initialCount})`,
+        initialCount,
+        finalCount: initialCount,
+        deltaCount: 0
+      };
+    }
+    
     // Step 2: Run Harris scraper with Supabase sink
-    console.log('\n🔄 Step 2: Running Harris scraper for --since=3d...');
-    await runHarrisScraperWithSupabase();
+    console.log(`\n🔄 Step 2: Running Harris scraper for --since=${options.since}...`);
+    await runHarrisScraperWithSupabase(options.since);
+    
+    // Wait a moment for data to settle
+    console.log('⏳ Waiting 2 seconds for data to settle...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Step 3: Get final count
     console.log('\n📊 Step 3: Reading final count from permits_raw_harris...');
@@ -116,7 +179,7 @@ async function runTest(): Promise<TestResult> {
     
     // Step 4: Calculate delta and assert
     const deltaCount = finalCount - initialCount;
-    console.log(`   Delta: +${deltaCount}`);
+    console.log(`   Delta: ${deltaCount >= 0 ? '+' : ''}${deltaCount}`);
     
     // Assertion: newCount > oldCount
     if (finalCount > initialCount) {
@@ -152,7 +215,10 @@ async function main() {
   const startTime = Date.now();
   
   try {
-    const result = await runTest();
+    // Parse command line arguments
+    const options = parseArgs();
+    
+    const result = await runTest(options);
     
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
@@ -165,13 +231,13 @@ async function main() {
     console.log(`📊 Summary: ${result.initialCount} → ${result.finalCount} (${result.deltaCount >= 0 ? '+' : ''}${result.deltaCount})`);
     
     if (result.success) {
-      console.log('\n🎉 E2E test completed successfully!');
+      console.log(`\n🎉 E2E test completed successfully!${options.dryRun ? ' (DRY RUN)' : ''}`);
       process.exit(0);
     } else {
       console.log('\n💥 E2E test failed!');
       console.log('');
       console.log('🔍 Possible causes:');
-      console.log('   • No new permits available in the last 3 days');
+      console.log(`   • No new permits available in the last ${options.since}`);
       console.log('   • Harris County API is down or rate-limited');
       console.log('   • Supabase connection issues');
       console.log('   • Scraper configuration problems');
@@ -180,8 +246,10 @@ async function main() {
       console.log('🛠️  Troubleshooting:');
       console.log('   • Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables');
       console.log('   • Verify permits_raw_harris table exists and is accessible');
-      console.log('   • Try running the Harris scraper manually with: tsx scripts/harrisCounty/issuedPermits.ts --since 3d');
+      console.log(`   • Try running the Harris scraper manually with: tsx scripts/harrisCounty/issuedPermits.ts --since ${options.since}`);
       console.log('   • Check Supabase logs for any errors');
+      console.log('   • Try a longer time period with --since=7d or --since=30d');
+      console.log('   • Use --dry-run to test just the Supabase connection');
       
       process.exit(1);
     }
