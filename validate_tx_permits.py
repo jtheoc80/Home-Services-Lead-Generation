@@ -306,7 +306,7 @@ def test_documentation():
         "Dallas (Socrata API)",
         "Austin (Socrata API)",
         "Arlington (ArcGIS FeatureServer)", 
-        "Harris County (ArcGIS FeatureServer)",
+        "Harris County Issued Permits (ArcGIS)",
         "Houston (Texas Public Information Act - TPIA)",
         "e7gq-4sah",  # Dallas dataset ID
         "3syk-w9eu",  # Austin dataset ID
