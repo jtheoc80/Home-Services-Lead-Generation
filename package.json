@@ -48,7 +48,6 @@
     "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
 
 
-    "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
 
     "bot:resolve-json": "tsx tools/bots/resolveConflicts.ts --strategy json",
 
