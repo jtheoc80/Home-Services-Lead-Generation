@@ -27,7 +27,23 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   
   // Check for debug API key in header
   const debugKey = req.headers.get('X-Debug-Key');
-  if (!debugKey || debugKey !== process.env.DEBUG_API_KEY) {
+  const configuredKey = process.env.DEBUG_API_KEY;
+  
+  // Ensure DEBUG_API_KEY is configured
+  if (!configuredKey) {
+    logger.error({ 
+      trace_id: traceId, 
+      path, 
+      status: 500 
+    }, 'DEBUG_API_KEY not configured on server');
+    
+    return NextResponse.json({ 
+      error: 'Debug endpoint not available' 
+    }, { status: 500 });
+  }
+  
+  // Validate provided key
+  if (!debugKey || debugKey !== configuredKey) {
     logger.warn({ 
       trace_id: traceId, 
       path, 
