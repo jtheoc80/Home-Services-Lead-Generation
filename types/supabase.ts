@@ -53,6 +53,26 @@ export interface LeadUpdate {
 }
 
 /**
+
+ * Ingest logs interface matching the public.ingest_logs table
+ * Used for tracking lead processing pipeline stages
+ */
+export interface IngestLog {
+  id: number;
+  created_at: string;
+  trace_id: string | null;
+  stage: string;
+  ok: boolean;
+  details: any; // jsonb field
+}
+
+/**
+ * Ingest log insert payload interface (excludes auto-generated fields)
+ * Used for creating new ingest log entries
+ */
+export interface IngestLogInsert {
+  trace_id?: string | null;
+
  * Ingest log interface for tracking lead processing stages
  */
 export interface IngestLog {
@@ -69,6 +89,7 @@ export interface IngestLog {
  */
 export interface IngestLogInsert {
   trace_id: string;
+
   stage: string;
   ok: boolean;
   details?: any;

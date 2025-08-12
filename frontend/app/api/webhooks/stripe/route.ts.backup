@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
-// Temporary placeholder for Stripe webhook
-// TODO: Fix syntax errors in the original file
-
-
-export async function POST(req: Request) {
-  return NextResponse.json({ message: 'Stripe webhook temporarily disabled due to syntax errors' }, { status: 200 });
+/**
+ * Vercel Stripe Webhook Handler (App Router)
+ * 
+ * Handles Stripe webhook events with signature verification and processing.
+ * Forwards authenticated requests to the Railway backend for database updates.
+ */
 
 // Disable Next.js body parsing to get raw body for signature verification
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
     }
 
+    // Lazy load stripe to avoid build-time issues
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+    // Verify webhook signature
+    let event;
+    try {
     // Lazy load Stripe to avoid build-time issues
     const Stripe = require('stripe');
 
@@ -57,7 +64,7 @@ export async function POST(request: NextRequest) {
       try {
         // Check if event already exists
         const { data: existingEvent } = await supabase
-          .from('billing_events')
+          .table('billing_events')
           .select('id')
           .eq('event_id', event.id)
           .single();
@@ -69,7 +76,7 @@ export async function POST(request: NextRequest) {
 
         // Store event for idempotency
         await supabase
-          .from('billing_events')
+          .table('billing_events')
           .insert({
             type: event.type,
             event_id: event.id,
@@ -197,7 +204,7 @@ async function handleCheckoutCompleted(session: any, supabase: any) {
       .from('lead_credits')
       .upsert({
         user_id: userId,
-        balance: creditPackAmount, // Note: raw SQL requires different handling in Supabase
+        balance: creditPackAmount, // This should be handled with a stored procedure for atomic increment
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
   }
@@ -231,6 +238,4 @@ async function handleInvoicePaid(invoice: any, supabase: any) {
 
 async function handleInvoiceFailed(invoice: any, supabase: any) {
   await handleInvoicePaid(invoice, supabase); // Same logic, different status
-}
-
 }

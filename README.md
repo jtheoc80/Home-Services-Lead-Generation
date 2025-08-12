@@ -419,7 +419,7 @@ See [`docs/ops/README.md`](docs/ops/README.md) for complete environment setup gu
 
 ### Required Secrets
 
-LeadLedgerPro requires three essential secrets for proper functionality:
+LeadLedgerPro requires these essential secrets for proper functionality:
 
 #### Core Required Secrets
 
@@ -427,16 +427,33 @@ LeadLedgerPro requires three essential secrets for proper functionality:
    - Format: `https://your-project-id.supabase.co`
    - Get from: Supabase Dashboard → Settings → API → Project URL
 
-2. **`SUPABASE_SERVICE_ROLE_KEY`** - Your Supabase service role key
+2. **`NEXT_PUBLIC_SUPABASE_URL`** - Your Supabase project URL (browser-exposed)
+   - Format: `https://your-project-id.supabase.co`
+   - Get from: Supabase Dashboard → Settings → API → Project URL
+
+3. **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** - Your Supabase anonymous key (browser-exposed)
+   - Format: Long JWT token starting with `eyJ`
+   - Get from: Supabase Dashboard → Settings → API → anon key
+
+4. **`SUPABASE_SERVICE_ROLE_KEY`** - Your Supabase service role key
    - Format: Long JWT token starting with `eyJ`
    - Get from: Supabase Dashboard → Settings → API → service_role key
    - ⚠️ **Keep secure** - Never expose in frontend code
 
-3. **`HC_ISSUED_PERMITS_URL`** - Harris County issued permits API endpoint
-   - Value: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
-3. **`HC_ISSUED_PERMITS_URL`** - Harris County, Texas issued building permits API endpoint
+5. **`HC_ISSUED_PERMITS_URL`** - Harris County, Texas issued building permits API endpoint
    - Value: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
    - Used for: Scraping Harris County, Texas building permit data
+
+#### Test Mode Configuration
+
+6. **`LEADS_TEST_MODE`** - Enable test mode for E2E testing
+   - Set to `true` to force service-role writes and bypass RLS for testing
+   - Set to `false` after validation to ensure proper security
+   - ⚠️ **Important**: Always set to `false` in production after testing
+
+7. **`DEBUG_API_KEY`** - API key for debug trace endpoint
+   - Used to protect `/api/leads/trace/[id]` endpoint
+   - Set to a secure random string
 
 #### Setting Secrets with GitHub CLI
 
@@ -650,6 +667,100 @@ All lead data is accessible exclusively through the web dashboard:
 - **Save Views**: Use built-in filtering and "Save View" functionality
 - **Notifications**: Get alerted when new leads match your criteria
 - **Real-Time**: Dashboard updates automatically with new leads
+
+## 🔒 Security and Testing
+
+### Test Mode and E2E Testing
+
+LeadLedgerPro includes comprehensive E2E testing capabilities for validating the lead ingestion pipeline:
+
+#### Test Mode Environment Variables
+```bash
+# Enable test mode to bypass RLS policies for testing
+LEADS_TEST_MODE=true
+
+# Required Supabase configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+
+# Debug endpoint protection
+DEBUG_API_KEY=your_debug_api_key_here
+```
+
+#### E2E Smoke Testing
+```bash
+# Run E2E smoke test locally
+npm run e2e:smoke -- --baseUrl http://localhost:3000
+
+# Run against deployed environment
+npm run e2e:smoke -- --baseUrl https://your-app.vercel.app
+```
+
+The E2E test validates:
+- POST `/api/leads` with unique payload
+- Response includes `{ ok: true, trace_id }`
+- GET `/api/leads/recent` to verify insertion
+- Complete error handling and trace logging
+
+#### Security Tightening After Testing
+
+**⚠️ IMPORTANT**: After E2E tests pass, tighten security by following these steps:
+
+1. **Disable Test Mode**
+   ```bash
+   # Set in all environments (.env, Vercel, Railway, etc.)
+   LEADS_TEST_MODE=false
+   ```
+
+2. **Remove Service Role from Lead APIs**
+   - The `/api/leads` endpoint should use anon key (subject to RLS)
+   - Only debug endpoints should use service role
+
+3. **Switch to Authenticated RLS Policies**
+   ```sql
+   -- Run this SQL in Supabase to remove temporary anon policies
+   \i docs/supabase/remove_temp_policies.sql
+   ```
+
+4. **Future Security Enhancements**
+   - Move writes behind server actions/API routes
+   - Enrich rows with `req.ip`, `userAgent`, and `user_id`
+   - Implement ownership-based policies
+   - Add rate limiting per IP/user
+
+#### Debug and Monitoring
+
+**Debug Endpoint**: `/api/leads/trace/[id]`
+- Returns all `ingest_logs` for a trace_id
+- Protected with `X-Debug-Key` header
+- Includes related leads and processing summary
+
+**Structured Logging**: All API routes use Pino for JSON logging
+- `trace_id` for request correlation
+- `path`, `status`, `duration_ms` for performance
+- Supabase error codes and messages (sensitive data masked)
+- Compatible with Vercel/Railway log parsing
+
+### Temporary RLS Policies for Testing
+
+During testing, temporary policies allow anonymous access:
+
+```sql
+-- Apply temporary policies (for testing only)
+\i docs/supabase/temp_anon_policies.sql
+
+-- Remove after testing (restore security)  
+\i docs/supabase/remove_temp_policies.sql
+```
+
+**Testing Workflow:**
+1. Apply temporary anon policies
+2. Set `LEADS_TEST_MODE=true`
+3. Run E2E tests to validate pipeline
+4. Remove temporary policies
+5. Set `LEADS_TEST_MODE=false`
+6. Verify production security
 
 ## 🔒 Data Access Policy
 
