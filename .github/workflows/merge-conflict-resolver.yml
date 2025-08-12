@@ -201,7 +201,8 @@ jobs:
           echo "$conflicted_files"
           
           resolved_files=""
-          failed_files=""
+          resolved_files=()
+          failed_files=()
           
           # Process each conflicted file based on path rules and strategy
           for file in $conflicted_files; do
