@@ -92,7 +92,6 @@ export async function POST(req: Request) {
 
   const trace_id = randomUUID();
   const received_at = new Date().toISOString();
-  const supabase = client();
   
   try {
     // Parse and validate request body
