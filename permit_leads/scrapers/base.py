@@ -12,6 +12,16 @@ from urllib3.util.retry import Retry
 
 from ..models.permit import PermitRecord
 
+# Try to import ingest logging (graceful fallback if not available)
+try:
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'backend', 'app'))
+    from ingest_logger import IngestTracer, log_ingest_step
+    INGEST_LOGGING_AVAILABLE = True
+except ImportError:
+    INGEST_LOGGING_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -163,26 +173,56 @@ class BaseScraper(ABC):
         """
         pass
     
-    def scrape_permits(self, since: datetime, limit: Optional[int] = None) -> List[PermitRecord]:
+    def scrape_permits(self, since: datetime, limit: Optional[int] = None, trace_id: Optional[str] = None) -> List[PermitRecord]:
         """
         Complete scraping workflow: fetch -> parse -> normalize.
         
         Args:
             since: Only fetch permits issued/updated since this date
             limit: Maximum number of permits to fetch (None for no limit)
+            trace_id: Optional trace ID for logging ingest steps
             
         Returns:
             List of normalized PermitRecord objects
         """
         logger.info(f"Starting scrape for {self.jurisdiction} since {since}")
         
-        # Fetch raw data
-        raw_permits = self.fetch_permits(since, limit)
-        if not raw_permits:
-            logger.warning(f"No raw permits fetched for {self.jurisdiction}")
-            return []
+        # Use trace ID logging if available
+        use_tracer = INGEST_LOGGING_AVAILABLE and trace_id
         
-        logger.info(f"Fetched {len(raw_permits)} raw permits from {self.jurisdiction}")
+        if use_tracer:
+            log_ingest_step(trace_id, "fetch_page", True, {
+                "jurisdiction": self.jurisdiction,
+                "since": since.isoformat(),
+                "limit": limit
+            })
+        
+        # Fetch raw data
+        try:
+            raw_permits = self.fetch_permits(since, limit)
+            if not raw_permits:
+                logger.warning(f"No raw permits fetched for {self.jurisdiction}")
+                if use_tracer:
+                    log_ingest_step(trace_id, "fetch_page", False, {
+                        "error": "No raw permits fetched",
+                        "jurisdiction": self.jurisdiction
+                    })
+                return []
+            
+            logger.info(f"Fetched {len(raw_permits)} raw permits from {self.jurisdiction}")
+            if use_tracer:
+                log_ingest_step(trace_id, "fetch_page", True, {
+                    "permits_fetched": len(raw_permits),
+                    "jurisdiction": self.jurisdiction
+                })
+        except Exception as e:
+            logger.error(f"Error fetching permits: {e}")
+            if use_tracer:
+                log_ingest_step(trace_id, "fetch_page", False, {
+                    "error": str(e),
+                    "jurisdiction": self.jurisdiction
+                })
+            raise
         
         # Parse and normalize
         permits = []
@@ -202,6 +242,14 @@ class BaseScraper(ABC):
         
         logger.info(f"Parsed {len(permits)} permits from {self.jurisdiction} "
                    f"({parse_errors} parse errors)")
+        
+        # Log parse results
+        if use_tracer:
+            log_ingest_step(trace_id, "parse", parse_errors == 0, {
+                "permits_parsed": len(permits),
+                "parse_errors": parse_errors,
+                "jurisdiction": self.jurisdiction
+            })
         
         return permits
     
