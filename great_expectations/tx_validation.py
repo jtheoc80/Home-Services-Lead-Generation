@@ -6,7 +6,6 @@ for the Texas statewide permit ingestion pipeline.
 """
 
 import great_expectations as ge
-from great_expectations.core.batch import BatchRequest
 from great_expectations.checkpoint import SimpleCheckpoint
 from datetime import datetime, timedelta
 import os
