@@ -7,7 +7,6 @@ and processing manually delivered CSV files from Texas jurisdictions.
 
 import logging
 import csv
-import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from pathlib import Path
