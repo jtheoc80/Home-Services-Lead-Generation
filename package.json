@@ -39,10 +39,13 @@
     "visual:baseline": "BASELINE_MODE=true node scripts/visual-regression.js",
     "visual:install": "npx playwright install chromium",
     "visual:dry-run": "node scripts/visual-regression-dry-run.js",
+
+
     "botctl": "tsx tools/botctl.ts",
     "db:wire": "tsx tools/botctl.ts db:wire",
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb"
+
   },
   "workspaces": [
     "frontend"
