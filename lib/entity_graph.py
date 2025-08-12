@@ -487,7 +487,8 @@ class EntityGraph:
         
         for rel in self.relationships:
             if rel.source_id == firm_id and rel.relationship_type == rel_type:
-                if self.entities.get(rel.target_id, {}).type == entity_type:
+                entity = self.entities.get(rel.target_id)
+                if entity is not None and entity.type == entity_type:
                     related_ids.append(rel.target_id)
                     
         return related_ids
