@@ -38,6 +38,9 @@ from app.billing_api import (
 # Import lead claiming API
 from app.lead_claims import claim_lead, get_user_claims, ClaimLeadRequest
 
+# Import ingest logging
+from app.ingest_logger import get_trace_logs
+
 
 # Import metrics if available
 try:
@@ -590,6 +593,7 @@ async def api_get_user_claims(user: AuthUser = Depends(auth_user)):
     """Get all leads claimed by the authenticated user."""
     return await get_user_claims(user)
 
+
 # ===== DEBUG TRACE API ROUTE =====
 
 @app.get("/api/leads/trace/{trace_id}")
@@ -763,12 +767,83 @@ async def get_trace_debug(
                 "stages": [log.get("stage") for log in logs],
                 "duration_ms": duration_ms
             }
+
+
+def verify_debug_key(x_debug_key: str = Header(None)) -> bool:
+    """
+    Verify X-Debug-Key header for trace endpoint access.
+    
+    Args:
+        x_debug_key: Debug key from X-Debug-Key header
+        
+    Returns:
+        True if authentication successful
+        
+    Raises:
+        HTTPException: If authentication fails
+    """
+    expected_debug_key = os.getenv("X_DEBUG_KEY")
+    
+    if not expected_debug_key:
+        raise HTTPException(
+            status_code=503, 
+            detail="Debug key not configured on server"
+        )
+    
+    if not x_debug_key:
+        raise HTTPException(
+            status_code=401,
+            detail="X-Debug-Key header required"
+        )
+    
+    if not secrets.compare_digest(x_debug_key, expected_debug_key):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid debug key"
+        )
+    
+    return True
+
+
+@app.get("/api/leads/trace/{trace_id}")
+async def get_trace_logs_endpoint(
+    trace_id: str,
+    debug_auth: bool = Depends(verify_debug_key)
+):
+    """
+    Retrieve all ingest logs for a specific trace ID.
+    
+    This endpoint is protected by X-Debug-Key header and returns all rows
+    from ingest_logs table for the given trace ID.
+    
+    Args:
+        trace_id: The trace ID to retrieve logs for
+        debug_auth: Debug authentication (injected by dependency)
+        
+    Returns:
+        List of ingest log entries for the trace ID
+    """
+    try:
+        logs = get_trace_logs(trace_id)
+        
+        if logs is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Error retrieving trace logs"
+            )
+        
+        return {
+            "trace_id": trace_id,
+            "logs": logs,
+            "total_logs": len(logs)
+
         }
         
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
+
         duration_ms = round((time.time() - start_time) * 1000, 2)
         
         logger.error({
@@ -781,6 +856,11 @@ async def get_trace_debug(
         
         raise HTTPException(
             status_code=500, 
+
+        logger.error(f"Error in trace logs endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+
             detail="Internal server error"
         )
 

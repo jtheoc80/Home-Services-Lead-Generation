@@ -90,9 +90,9 @@ class ConfigLoader:
     def __init__(self, registry_path: Optional[str] = None):
         """Initialize config loader with registry path."""
         if registry_path is None:
-            # Default to config/registry.yaml relative to project root
-            project_root = Path(__file__).parent.parent
-            registry_path = project_root / "config" / "registry.yaml"
+            # Default to config/registry.yaml relative to permit_leads directory
+            permit_leads_dir = Path(__file__).parent
+            registry_path = permit_leads_dir / "config" / "registry.yaml"
         
         self.registry_path = Path(registry_path)
         self._regions: Dict[str, Region] = {}
