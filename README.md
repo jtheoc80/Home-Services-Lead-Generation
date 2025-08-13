@@ -50,7 +50,7 @@ This platform uses a split deployment approach:
 
 The root `build` script is a no-op for backend deployments. Use `build:frontend` for local frontend builds.
 
-> **Note**: Vercel builds from /frontend only. React deps live in /frontend; root does not declare React.
+> **Note**: Vercel builds from /frontend only. React dependencies live only in /frontend; do not add React deps to root.
 
 
 ## ⚡ TX Permits - First Results in 5 Minutes
