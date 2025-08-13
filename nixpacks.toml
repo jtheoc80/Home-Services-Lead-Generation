@@ -1,127 +1,13 @@
-# Nixpacks configuration for LeadLedgerPro Multi-Service Deployment
-# Supports backend API, ETL scraper, and frontend as separate build phases
-
-[variables]
-PYTHONPATH = "/app"
-# Default to backend service, can be overridden by Railway/deployment platform
-SERVICE_TYPE = "backend"
-
 [phases.setup]
-# Include Node.js for frontend builds and Poetry for Python dependency management
-nixPkgs = ["python311", "nodejs_20", "postgresql", "poetry"]
+nixPkgs = ["python311", "poetry", "nodejs_20", "postgresql"]
 
 [phases.install]
-# Install dependencies based on service type
-cmd = """
-if [ "$SERVICE_TYPE" = "frontend" ]; then
-  echo "📦 Installing frontend dependencies..."
-  npm ci
-  cd frontend && npm ci
-elif [ "$SERVICE_TYPE" = "scraper" ]; then
-  echo "📦 Installing Python dependencies for ETL scraper..."
-  poetry install --no-dev --only main
-elif [ "$SERVICE_TYPE" = "backend" ]; then
-  echo "📦 Installing Python dependencies for backend API..."
-  poetry install --no-dev --only main
-else
-  echo "📦 Installing all dependencies (default)..."
-  poetry install --no-dev --only main
-  npm ci
-  cd frontend && npm ci
-fi
-"""
+cmds = [
+  "poetry config virtualenvs.create false",
+  "poetry install --only main --no-interaction --no-ansi",
+  "npm ci"
+]
 
 [phases.build]
-# Build assets based on service type
-cmd = """
-if [ "$SERVICE_TYPE" = "frontend" ]; then
-  echo "🏗️ Building frontend..."
-  cd frontend && npm run build
-elif [ "$SERVICE_TYPE" = "scraper" ]; then
-  echo "🏗️ Preparing ETL scraper..."
-  # No build step needed for scraper
-  echo "ETL scraper ready"
-elif [ "$SERVICE_TYPE" = "backend" ]; then
-  echo "🏗️ Preparing backend API..."
-  # Generate OpenAPI clients if needed
-  if [ -f "scripts/generate-python-client.py" ]; then
-    poetry run python scripts/generate-python-client.py || echo "Warning: Client generation failed"
-  fi
-  echo "Backend API ready"
-else
-  echo "🏗️ Building all services..."
-  cd frontend && npm run build
-  cd ..
-  poetry run python scripts/generate-python-client.py || echo "Warning: Client generation failed"
-fi
-"""
-
-# Multi-service start configurations
-[start]
-# Default start command (backend API)
-cmd = """
-if [ "$SERVICE_TYPE" = "frontend" ]; then
-  echo "🚀 Starting Next.js frontend..."
-  cd frontend && npm start
-elif [ "$SERVICE_TYPE" = "scraper" ]; then
-  echo "🚀 Starting ETL scraper service..."
-  poetry run python -m permit_leads --daemon --interval 3600
-elif [ "$SERVICE_TYPE" = "backend" ]; then
-  echo "🚀 Starting FastAPI backend..."
-  cd backend && poetry run python main.py
-else
-  echo "🚀 Starting backend API (default)..."
-  cd backend && poetry run python main.py
-fi
-"""
-
-# Health check configurations for different services
-[health-check]
-# Health check command based on service type
-cmd = """
-if [ "$SERVICE_TYPE" = "frontend" ]; then
-  curl -f http://localhost:3000/api/health || exit 1
-elif [ "$SERVICE_TYPE" = "scraper" ]; then
-  # Check if scraper process is running
-  poetry run python -c "import permit_leads; print('ETL service healthy')" || exit 1
-elif [ "$SERVICE_TYPE" = "backend" ]; then
-  curl -f http://localhost:8000/health || exit 1
-else
-  curl -f http://localhost:8000/health || exit 1
-fi
-"""
-
-# Port configurations
-[ports]
-# Backend API port
-backend = "8000"
-# Frontend port  
-frontend = "3000"
-
-# Service-specific configurations that can be used by deployment platforms
-[services.backend]
-build.cmd = "poetry install --no-dev --only main"
-start.cmd = "cd backend && poetry run python main.py"
-health-check.cmd = "curl -f http://localhost:8000/health"
-ports = ["8000"]
-
-[services.frontend]
-build.cmd = "npm ci && cd frontend && npm ci && npm run build"
-start.cmd = "cd frontend && npm start"
-health-check.cmd = "curl -f http://localhost:3000/"
-ports = ["3000"]
-
-[services.scraper]
-build.cmd = "poetry install --no-dev --only main"
-start.cmd = "poetry run python -m permit_leads --daemon --interval 3600"
-health-check.cmd = "poetry run python -c 'import permit_leads; print(\"ETL healthy\")'"
-ports = []
-
-# Environment variable templates for different deployment scenarios
-[environments.development]
-CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
-NEXT_PUBLIC_API_BASE_URL = "http://localhost:8000"
-
-[environments.production]
-CORS_ALLOWED_ORIGINS = "$FRONTEND_URL"
-NEXT_PUBLIC_API_BASE_URL = "$BACKEND_URL"
+# keep your no-op backend build; frontend builds on Vercel
+cmds = ["npm run build"]
