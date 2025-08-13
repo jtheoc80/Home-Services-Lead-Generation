@@ -18,7 +18,10 @@ from normalizers.permits import normalize, validate_normalized_record
 from normalizers.field_aliases import PERMIT_ALIASES
 from scoring.v0 import score_v0, validate_lead_input
 
-
+# Use relative imports for project modules
+from ..normalizers.permits import normalize, validate_normalized_record
+from ..normalizers.field_aliases import PERMIT_ALIASES
+from ..scoring.v0 import score_v0, validate_lead_input
 class TestTXPermitsIntegration(unittest.TestCase):
     """Test suite for TX permits integration."""
 
