@@ -19,7 +19,7 @@
     "@stripe/stripe-js": "^7.8.0",
     "@supabase/supabase-js": "^2.54.0",
     "@types/uuid": "^10.0.0",
-    "next": "^15.4.6",
+    "next": "15.4.6",
     "pino": "^9.8.0",
     "pino-pretty": "^13.1.1",
     "react": "19.1.1",
@@ -47,7 +47,7 @@
     "react-dom": "19.1.1",
     "@types/react": "19.1.10",
     "@types/react-dom": "19.1.7"
-
+  },
   "engines": {
     "node": ">=20.19.0 <21"
   }
