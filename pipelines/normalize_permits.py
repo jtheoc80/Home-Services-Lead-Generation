@@ -17,10 +17,7 @@ from psycopg2.extras import Json, RealDictCursor
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from normalizers.permits import normalize, validate_normalized_record
-# Use relative imports for sibling modules
-
-from ..normalizers.permits import normalize, validate_normalized_record
-from ..ingest.state import get_state_manager
+from ingest.state import IngestStateManager
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +31,7 @@ class PermitsNormalizer:
         if not self.db_url:
             raise ValueError("DATABASE_URL must be provided or set as environment variable")
         
-        self.state_manager = get_state_manager()
+        self.state_manager = IngestStateManager()
     
     def _get_connection(self):
         """Get database connection."""

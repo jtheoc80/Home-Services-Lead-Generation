@@ -749,10 +749,8 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Load raw permit data from Texas sources')
-    parser.add_argument('--tier', choices=['1', '2', 'all'], default='1',
-                       help='Which tier to process (default: 1)')
-    parser.add_argument('--full-refresh', action='store_true',
-                       help='Ignore last ingest dates and fetch all available data')
+    parser.add_argument('--only', help='Comma-separated list of source IDs to load')
+    parser.add_argument('--since', help='ISO date to load since (e.g., 2024-01-01)')
     parser.add_argument('--sources-config', default='config/sources_tx.yaml',
                        help='Path to sources configuration file')
     parser.add_argument('--db-url', help='PostgreSQL connection URL (or set DATABASE_URL env var)')
@@ -760,45 +758,11 @@ def main():
     args = parser.parse_args()
     
     # Setup logging
-
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-
-    # Initialize loader
-    loader = RawDataLoader()
-    
-    # Show available sources
-    sources = loader.get_available_sources()
-    print(f"Available sources: {len(sources)}")
-    for source in sources:
-        print(f"  - {source['name']} ({source['type']}) - {source['category']}")
-    
-    # Load data from permits category only
-    print("\nLoading permit data...")
-    results = loader.load_all_sources(
-        incremental=True,
-        since_date=datetime.utcnow() - timedelta(days=1),
-        categories=["permits"]
-    )
-    
-    # Print results
-    print(f"\nLoad Results:")
-    total_records = 0
-    for result in results:
-        print(f"  {result.source_name}: {result.records_loaded} records ({result.status})")
-        if result.errors:
-            print(f"    Errors: {len(result.errors)}")
-        total_records += result.records_loaded
-        
-    print(f"\nTotal records loaded: {total_records}")
-
-
-if __name__ == "__main__":
-    main()
-
     # Get database URL
     db_url = args.db_url or os.environ.get('DATABASE_URL')
     if not db_url:
@@ -806,22 +770,69 @@ if __name__ == "__main__":
         return 1
     
     try:
-        loader = RawDataLoader(db_url, args.sources_config)
+        # Load sources configuration
+        config_path = Path(__file__).parent.parent / 'config' / 'sources_tx.yaml'
         
-        if args.tier == '1':
-            result = loader.run_tier1_ingests(full_refresh=args.full_refresh)
-        elif args.tier == '2':
-            result = loader.run_tier2_ingests(full_refresh=args.full_refresh)
-        else:  # all
-            result1 = loader.run_tier1_ingests(full_refresh=args.full_refresh)
-            result2 = loader.run_tier2_ingests(full_refresh=args.full_refresh)
-            result = {
-                'tier_1': result1,
-                'tier_2': result2
-            }
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
         
-        print(json.dumps(result, indent=2, default=str))
-        return 0
+        sources = config.get('sources', [])
+        
+        # Filter sources if --only specified
+        if args.only:
+            only_sources = args.only.split(',')
+            sources = [s for s in sources if s['id'] in only_sources]
+            logger.info(f"Loading only sources: {only_sources}")
+        
+        # Override since date if specified
+        if args.since:
+            try:
+                since_date = datetime.fromisoformat(args.since)
+                # Reset state for all selected sources
+                from ingest.state import IngestStateManager
+                state_manager = IngestStateManager(db_url)
+                for source in sources:
+                    state_manager.reset_source_state(source['id'])
+                    # Set a manual state with the since date
+                    state_manager.update_last_updated_seen(source['id'], since_date, 'manual_override')
+                logger.info(f"Loading data since {args.since}")
+            except ValueError as e:
+                logger.error(f"Invalid since date format: {e}")
+                return 1
+        
+        # Load data from each source
+        results = []
+        total_records = 0
+        
+        for source in sources:
+            if source['kind'] == 'tpia':
+                logger.info(f"Skipping TPIA source {source['id']} - requires manual processing")
+                continue
+            
+            result = load_source_incremental(source)
+            results.append({**result, 'source_id': source['id']})
+            
+            if result['status'] == 'success':
+                total_records += result.get('records', 0)
+        
+        # Summary
+        successful = sum(1 for r in results if r['status'] == 'success')
+        failed = sum(1 for r in results if r['status'] == 'error')
+        
+        logger.info(f"Load complete: {successful} successful, {failed} failed, {total_records} total records")
+        
+        # Print results
+        for result in results:
+            status = result['status']
+            source_id = result['source_id']
+            if status == 'success':
+                records = result.get('records', 0)
+                print(f"✓ {source_id}: {records} records")
+            else:
+                error = result.get('error', 'Unknown error')
+                print(f"✗ {source_id}: {error}")
+        
+        return 0 if failed == 0 else 1
         
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

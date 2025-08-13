@@ -151,6 +151,18 @@ class IngestStateManager:
         except Exception as e:
             logger.error(f"Failed to reset state for {source_id}: {e}")
             return False
+    
+    def reset_source_state(self, source_id: str) -> bool:
+        """
+        Reset source state (alias for reset_state for compatibility).
+        
+        Args:
+            source_id: Source identifier
+            
+        Returns:
+            True if reset successful, False otherwise
+        """
+        return self.reset_state(source_id)
 
 
 def get_state_manager() -> IngestStateManager:
