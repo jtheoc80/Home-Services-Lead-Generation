@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "cd frontend && npm run dev",
     "dev:strict": "cd frontend && npm run dev:strict",
-    "build": "cd frontend && npm run build",
+    "build": "echo \"no-op backend build (frontend builds on Vercel)\"",
+    "build:frontend": "cd frontend && npm run build",
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint",
     "typecheck": "cd frontend && npm run type-check",

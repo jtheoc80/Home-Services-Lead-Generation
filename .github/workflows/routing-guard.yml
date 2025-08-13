@@ -1,0 +1,55 @@
+---
+name: Next.js Routing Guard
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  routing-guard:
+    runs-on: ubuntu-latest
+    name: Check for conflicting Next.js routing approaches
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for conflicting Next.js routing patterns
+        run: |
+          echo "Checking for conflicting Next.js routing patterns..."
+          
+          # Check if both app/page.tsx and pages/index.tsx exist
+          APP_PAGE_EXISTS=false
+          PAGES_INDEX_EXISTS=false
+          
+          if [ -f "frontend/app/page.tsx" ]; then
+            echo "✓ Found frontend/app/page.tsx (App Router)"
+            APP_PAGE_EXISTS=true
+          fi
+          
+          if [ -f "frontend/pages/index.tsx" ]; then
+            echo "✓ Found frontend/pages/index.tsx (Pages Router)"
+            PAGES_INDEX_EXISTS=true
+          fi
+          
+          # Fail if both exist
+          if [ "$APP_PAGE_EXISTS" = true ] && [ "$PAGES_INDEX_EXISTS" = true ]; then
+            echo "❌ ERROR: Both App Router (app/page.tsx) and Pages Router (pages/index.tsx) detected!"
+            echo "This can cause routing conflicts in Next.js."
+            echo "Please choose one routing approach:"
+            echo "  - Keep app/page.tsx for App Router (recommended)"
+            echo "  - Keep pages/index.tsx for Pages Router (legacy)"
+            exit 1
+          fi
+          
+          if [ "$APP_PAGE_EXISTS" = true ]; then
+            echo "✅ Using App Router (app/page.tsx) - OK"
+          elif [ "$PAGES_INDEX_EXISTS" = true ]; then
+            echo "✅ Using Pages Router (pages/index.tsx) - OK"
+          else
+            echo "ℹ️  No main page files found - this is OK for partial deployments"
+          fi
+          
+          echo "Routing guard check passed!"
