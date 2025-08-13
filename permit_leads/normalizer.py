@@ -46,7 +46,7 @@ class PermitNormalizer:
         'commercial': [
             r'commercial', r'office', r'retail', r'store', r'warehouse',
             r'industrial', r'manufacturing', r'factory', r'business',
-            r'renovation.*office', r'office.*renovation'
+            r'industrial', r'manufacturing', r'factory', r'business'
         ],
         'multi_family': [
             r'apartment', r'condo', r'townhouse', r'multi.?family',
