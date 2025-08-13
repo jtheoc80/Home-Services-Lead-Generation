@@ -7,7 +7,6 @@ import {
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
-import clsx from "clsx";
 
 type Lead = {
   id: string;
