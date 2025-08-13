@@ -21,7 +21,6 @@ if (major(r) !== major(rd)) {
   // If mismatch is detected and GITHUB_TOKEN has write perms, create a fix branch
   if (process.env.GITHUB_TOKEN) {
     console.log('GITHUB_TOKEN detected - would create bot/fix-react-versions branch (implementation omitted for simplicity)');
-  }
   
   process.exit(1); 
 }
