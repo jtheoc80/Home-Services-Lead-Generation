@@ -5,7 +5,6 @@ Based on the curl commands from the problem statement.
 """
 
 import requests
-import json
 import time
 from typing import Dict, Any, Optional
 
