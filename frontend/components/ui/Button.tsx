@@ -7,7 +7,7 @@ export default function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" }) {
   const variant =
-    (props as any).variant ?? "primary";
+    props.variant ?? "primary";
   return (
     <button
       {...props}
