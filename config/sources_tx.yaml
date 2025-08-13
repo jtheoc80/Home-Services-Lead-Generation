@@ -1,50 +1,59 @@
 
-# Texas Data Sources Registry - City-First APIs with TPIA placeholders
-# Initial focus: Dallas Socrata, Austin Socrata/Tyler, Arlington ArcGIS, Houston (TPIA/CSV)
+# Texas Data Sources Registry - Updated for TX Permits Integration
+# Focused on Dallas, Austin, Arlington with proper field aliases
 
 metadata:
   state: "TX"
-  coverage_version: "1.0.0"
+  coverage_version: "1.1.0"
   last_updated: "2024-12-19"
-  tier_1_definition: "Population > 100K or high permit volume (>1K permits/year)"
+  tier_1_definition: "Primary cities with real-time API access"
 
-# Primary Sources (Daily Ingestion)
+# Primary Sources for TX Permits Integration
 sources:
   # Dallas - Building Permits (Socrata)
-  - id: "tx-dallas-permits"
-    name: "Dallas Building Permits"
-    kind: "socrata"
-    endpoint: "https://www.dallasopendata.com/resource/e7gq-4sah.json"
-    updated_field: "issued_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    entity: "permits"
-    license: "open_data"
-    provenance_url: "https://www.dallasopendata.com/City-Services/Building-Permits/e7gq-4sah"
+  - id: dallas_permits
+    kind: socrata
+    domain: dallasopendata.com
+    dataset: e7gq-4sah
+    entity: permits
+    updated_field: last_update_date|issued_date|file_date
+    primary_key: permit_number|application_number|record_id
+    cadence: daily
+    license: public
+    provenance_url: https://www.dallasopendata.com/dataset/e7gq-4sah
+    jurisdiction: Dallas
+    city: Dallas
+    county: Dallas
 
-  # Austin - Building Permits (Socrata/Tyler)
-  - id: "tx-austin-permits"
-    name: "Austin Building Permits"
-    kind: "socrata"
-    endpoint: "https://data.austintexas.gov/resource/3syk-w9eu.json"
-    updated_field: "issued_date"
-    primary_key: "permit_number"
-    cadence: "daily"
-    entity: "permits"
-    license: "open_data"
-    provenance_url: "https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu"
+  # Austin - Building Permits (Socrata)
+  - id: austin_permits
+    kind: socrata
+    domain: data.austintexas.gov
+    dataset: 3syk-w9eu
+    entity: permits
+    updated_field: last_update|issued_date|applied_date
+    primary_key: permit_num|record_id|application_number
+    cadence: daily
+    license: public
+    provenance_url: https://data.austintexas.gov/d/3syk-w9eu
+    jurisdiction: Austin
+    city: Austin
+    county: Travis
 
   # Arlington - Building Permits (ArcGIS)
-  - id: "tx-arlington-permits"
-    name: "Arlington Building Permits"
-    kind: "arcgis"
-    endpoint: "https://gis.arlingtontx.gov/arcgis/rest/services/Permits/FeatureServer/0"
-    updated_field: "ISSUE_DATE"
-    primary_key: "PERMIT_ID"
-    cadence: "daily"
-    entity: "permits"
-    license: "public_domain"
-    provenance_url: "https://gis.arlingtontx.gov/portal/home/item.html?id=permits"
+  - id: arlington_permits
+    kind: arcgis
+    base_url: https://gis2.arlingtontx.gov/agsext2/rest/services/OpenData/OD_Property/MapServer
+    layer: 1
+    entity: permits
+    updated_field: EditDate|IssueDate|AppliedDate
+    primary_key: OBJECTID|PermitNum|RecordID
+    cadence: daily
+    license: public
+    provenance_url: https://gis2.arlingtontx.gov/open-data
+    jurisdiction: Arlington
+    city: Arlington
+    county: Tarrant
 
   # Houston - TPIA Placeholder (CSV import)
   - id: "tx-houston-permits"

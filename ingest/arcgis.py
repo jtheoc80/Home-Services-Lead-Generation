@@ -29,6 +29,68 @@ import time
 logger = logging.getLogger(__name__)
 
 
+def query_layer(base_url, layer, where="1=1", result_offset=0, result_record_count=1000, out_fields="*", f="json"):
+    """
+    Query ArcGIS Feature Layer with pagination support.
+    
+    Args:
+        base_url: Base URL of the ArcGIS MapServer
+        layer: Layer number to query
+        where: WHERE clause for filtering (default: "1=1")
+        result_offset: Starting offset for pagination
+        result_record_count: Number of records to return per page
+        out_fields: Fields to return (default: "*" for all)
+        f: Output format (default: "json")
+        
+    Returns:
+        ArcGIS query response with features
+        
+    Raises:
+        Exception: If API request fails
+    """
+    # Build query URL
+    query_url = f"{base_url}/{layer}/query"
+    
+    # Build parameters
+    params = {
+        'where': where,
+        'outFields': out_fields,
+        'returnGeometry': 'true',
+        'spatialRel': 'esriSpatialRelIntersects',
+        'f': f,
+        'resultOffset': result_offset,
+        'resultRecordCount': result_record_count
+    }
+    
+    # Set up headers
+    headers = {
+        'User-Agent': 'HomeServicesLeadGen/1.0 (TX Permits)',
+        'Accept': 'application/json'
+    }
+    
+    # Make request with retry
+    max_retries = 3
+    backoff_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(query_url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            data = response.json()
+            if 'error' in data:
+                raise Exception(f"ArcGIS API error: {data['error']}")
+            
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            if attempt == max_retries - 1:
+                raise Exception(f"Request failed after {max_retries} attempts: {e}")
+            time.sleep(backoff_delay * (2 ** attempt))
+    
+    return {'features': []}
+
+
 class ArcGISConnector:
 
     """Enhanced ArcGIS Feature Service connector with advanced capabilities."""

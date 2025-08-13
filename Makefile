@@ -61,8 +61,13 @@ db-migrate:
 		echo "   Set it to your PostgreSQL connection string"; \
 		exit 1; \
 	fi
-	@echo "Applying sql/2025-setup.sql to $(DATABASE_URL)"
-	psql "$(DATABASE_URL)" -f sql/2025-setup.sql
+	@echo "Applying all SQL migrations to $(DATABASE_URL)"
+	@for sql_file in sql/*.sql; do \
+		if [ -f "$$sql_file" ]; then \
+			echo "Applying $$sql_file..."; \
+			psql "$(DATABASE_URL)" -f "$$sql_file" || exit 1; \
+		fi; \
+	done
 	@echo "✅ Database migration completed successfully"
 
 # Initialize only billing tables (idempotent)
