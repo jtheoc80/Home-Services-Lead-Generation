@@ -9,7 +9,6 @@ import logging
 import os
 import sys
 import psycopg2
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from psycopg2.extras import Json, RealDictCursor
