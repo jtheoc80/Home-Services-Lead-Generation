@@ -1,4 +1,4 @@
-import Card from "@/components/ui/Card";
+import Card from "./components/ui/Card";
 
 const stats = [
   { label: "New Leads", value: "24" },
