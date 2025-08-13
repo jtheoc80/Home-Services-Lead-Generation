@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional
 from .field_aliases import (
     PERMIT_ALIASES, 
     JURISDICTION_SPECIFIC_ALIASES,
-    FIELD_TYPES,
     STATUS_MAPPINGS,
     PERMIT_TYPE_MAPPINGS
 )
