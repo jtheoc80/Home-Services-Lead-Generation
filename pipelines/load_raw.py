@@ -767,7 +767,6 @@ def main():
     db_url = args.db_url or os.environ.get('DATABASE_URL')
     if not db_url:
         logger.error("Database URL required (--db-url or DATABASE_URL env var)")
-        return 1
     
     try:
         # Load sources configuration
