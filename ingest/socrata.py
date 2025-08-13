@@ -29,6 +29,84 @@ import time
 logger = logging.getLogger(__name__)
 
 
+def fetch(domain, dataset, where=None, limit=50000, offset=0, app_token=None):
+    """
+    Fetch data from Socrata SODA API with pagination and filtering.
+    
+    Args:
+        domain: Socrata domain (e.g., 'dallasopendata.com')
+        dataset: Dataset ID (e.g., 'e7gq-4sah')
+        where: SoQL WHERE clause for filtering
+        limit: Number of records to return (max 50000)
+        offset: Starting offset for pagination
+        app_token: Optional Socrata app token (or from SODA_APP_TOKEN env var)
+        
+    Returns:
+        List of records from the API
+        
+    Raises:
+        Exception: If API request fails or returns error
+    """
+    import os
+    
+    if app_token is None:
+        app_token = os.getenv("SODA_APP_TOKEN")
+    
+    # Build URL
+    base_url = f"https://{domain}/resource/{dataset}.json"
+    
+    # Build parameters
+    params = {
+        '$limit': min(limit, 50000),  # Socrata max
+        '$offset': offset
+    }
+    
+    if where:
+        params['$where'] = where
+    
+    # Set up headers
+    headers = {
+        'User-Agent': 'HomeServicesLeadGen/1.0 (TX Permits)',
+        'Accept': 'application/json'
+    }
+    
+    if app_token:
+        headers['X-App-Token'] = app_token
+    
+    # Make request with retry and backoff for 429 errors
+    max_retries = 3
+    backoff_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(base_url, params=params, headers=headers, timeout=30)
+            
+            if response.status_code == 429:  # Rate limited
+                if attempt < max_retries - 1:
+                    wait_time = backoff_delay * (2 ** attempt)
+                    logger.warning(f"Rate limited, waiting {wait_time}s before retry...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise Exception("Rate limit exceeded after all retries")
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            # Handle Socrata error responses
+            if isinstance(data, dict) and 'error' in data:
+                raise Exception(f"Socrata API error: {data['error']}")
+            
+            return data if isinstance(data, list) else []
+            
+        except requests.exceptions.RequestException as e:
+            if attempt == max_retries - 1:
+                raise Exception(f"Request failed after {max_retries} attempts: {e}")
+            time.sleep(backoff_delay)
+    
+    return []
+
+
 class SocrataConnector:
 
     """Enhanced Socrata Open Data connector with advanced capabilities."""

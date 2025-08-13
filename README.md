@@ -40,7 +40,58 @@ This platform serves **Texas statewide**, with tier-1 coverage for major metropo
 - **API-First Architecture**: Auto-generated TypeScript and Python clients with OpenAPI validation
 - **Production-Ready**: PostGIS spatial data, Row Level Security, optimized indexing
 
-## ⚡ 5-Minute Quickstart
+## ⚡ TX Permits - First Results in 5 Minutes
+
+Get live permit data from Dallas, Austin, and Arlington with AI-powered lead scoring:
+
+### Prerequisites
+- Python 3.11+ with Poetry
+- PostgreSQL database (local or hosted)
+- Node.js 16+ for frontend
+
+### Quick Setup
+
+```bash
+# 1. Clone and install
+git clone https://github.com/jtheoc80/Home-Services-Lead-Generation.git
+cd Home-Services-Lead-Generation
+poetry install
+
+# 2. Set up database
+export DATABASE_URL="postgresql://user:password@localhost:5432/leadledderpro"
+make db-migrate
+
+# 3. Load permit data (Dallas, Austin, Arlington)
+python -m pipelines.load_raw --only dallas_permits,austin_permits,arlington_permits --since 2024-01-01
+
+# 4. Normalize to gold schema
+python -m pipelines.normalize_permits
+
+# 5. Generate lead scores
+python -m pipelines.publish
+
+# 6. View results
+# Backend: 
+cd backend && poetry run uvicorn main:app --reload
+# Frontend:
+cd frontend && npm install && npm run dev
+```
+
+Then open [http://localhost:3000/demo/tx-permits](http://localhost:3000/demo/tx-permits) to see live TX permit data!
+
+### Troubleshooting
+- **Rate limited?** Set `SODA_APP_TOKEN` for higher Socrata API limits
+- **Connection issues?** Check `DATABASE_URL` and database connectivity
+- **No data?** Try `--since 2023-01-01` for larger date range
+
+### Data Flow Overview
+```
+Dallas/Austin/Arlington APIs → pipelines.load_raw → pipelines.normalize_permits → pipelines.publish → Demo UI
+                          ↓                     ↓                        ↓
+                   Raw JSON files       gold.permits table      gold.lead_scores table
+```
+
+## ⚡ 5-Minute Quickstart (Legacy Houston Demo)
 
 Get LeadLedgerPro running locally in 5 minutes with sample data:
 
