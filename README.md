@@ -40,6 +40,8 @@ This platform serves **Texas statewide**, with tier-1 coverage for major metropo
 - **API-First Architecture**: Auto-generated TypeScript and Python clients with OpenAPI validation
 - **Production-Ready**: PostGIS spatial data, Row Level Security, optimized indexing
 
+> **Note**: Vercel builds from /frontend only. React deps live in /frontend; root does not declare React.
+
 ## ⚡ TX Permits - First Results in 5 Minutes
 
 Get live permit data from Dallas, Austin, and Arlington with AI-powered lead scoring:
