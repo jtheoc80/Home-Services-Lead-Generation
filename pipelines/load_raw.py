@@ -793,7 +793,7 @@ def main():
                 for source in sources:
                     state_manager.reset_source_state(source['id'])
                     # Set a manual state with the since date
-                    state_manager.update_last_updated_seen(source['id'], since_date, 'manual_override')
+                    state_manager.update_state(source['id'], since_date, 'manual_override')
                 logger.info(f"Loading data since {args.since}")
             except ValueError as e:
                 logger.error(f"Invalid since date format: {e}")
