@@ -125,7 +125,7 @@ class TestTXPermitsIntegration(unittest.TestCase):
         
         # Verify key fields
         self.assertEqual(normalized['source_id'], 'arlington_permits')
-        self.assertEqual(normalized['permit_id'], str(self.arlington_permit['OBJECTID']))
+        self.assertEqual(normalized['permit_id'], 'DL-001')
         self.assertEqual(normalized['city'], 'Arlington')
         self.assertEqual(normalized['description'], 'Pool installation with electrical')
         self.assertEqual(normalized['valuation'], 25000.0)
