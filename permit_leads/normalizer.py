@@ -39,17 +39,18 @@ class PermitNormalizer:
     WORK_TYPE_PATTERNS = {
         'residential': [
             r'residential', r'single.?family', r'duplex', r'house', r'home',
-            r'addition', r'renovation', r'remodel', r'kitchen', r'bathroom',
+            r'addition', r'remodel', r'renovation', r'kitchen', r'bathroom',  # Added 'renovation' for residential
             r'garage', r'deck', r'porch', r'fence', r'pool', r'shed',
-            r'single.?family.?dwelling', r'accessory.?dwelling'
+            r'single.?family.?dwelling', r'accessory.?dwelling', r'dwelling'
         ],
         'commercial': [
             r'commercial', r'office', r'retail', r'store', r'warehouse',
+            r'industrial', r'manufacturing', r'factory', r'business',
             r'industrial', r'manufacturing', r'factory', r'business'
         ],
         'multi_family': [
             r'apartment', r'condo', r'townhouse', r'multi.?family',
-            r'condominium', r'multifamily'
+            r'condominium', r'multifamily', r'complex'
         ],
         'infrastructure': [
             r'utility', r'infrastructure', r'sewer', r'water',
@@ -101,8 +102,8 @@ class PermitNormalizer:
                 self._get_mapped_value(raw_record, mappings, 'issued_date')
             )
             normalized['work_type'] = self._normalize_work_type(
-                normalized.get('work_description'),
-                normalized.get('permit_category')
+                normalized.get('description') or normalized.get('work_description'),
+                normalized.get('category') or normalized.get('permit_category') or normalized.get('work_class')
             )
             normalized['valuation'] = self._parse_valuation(
                 self._get_mapped_value(raw_record, mappings, 'value')
@@ -206,9 +207,30 @@ class PermitNormalizer:
         if isinstance(date_value, datetime):
             return date_value.isoformat()
         
+        # Handle Unix timestamps (both seconds and milliseconds)
+        if isinstance(date_value, (int, float)):
+            try:
+                # If value is very large, it's likely milliseconds
+                if date_value > 1e10:
+                    timestamp = date_value / 1000
+                else:
+                    timestamp = date_value
+                return datetime.fromtimestamp(timestamp).isoformat()
+            except (ValueError, OSError):
+                pass
+        
         date_str = str(date_value).strip()
         if not date_str or date_str.lower() in ('null', 'none', ''):
             return None
+        
+        # Try to parse as Unix timestamp string
+        try:
+            timestamp = float(date_str)
+            if timestamp > 1e10:
+                timestamp = timestamp / 1000
+            return datetime.fromtimestamp(timestamp).isoformat()
+        except (ValueError, OSError):
+            pass
         
         # Common date formats in permit data
         formats = [
@@ -234,10 +256,30 @@ class PermitNormalizer:
         """Normalize work type using description and category."""
         text = ' '.join(filter(None, [str(description or ''), str(category or '')])).lower()
         
+        # Score each work type by pattern matches
+        scores = {}
         for work_type, patterns in self.WORK_TYPE_PATTERNS.items():
+            score = 0
             for pattern in patterns:
-                if re.search(pattern, text, re.IGNORECASE):
-                    return work_type
+                matches = len(re.findall(pattern, text, re.IGNORECASE))
+                if matches > 0:
+                    # Give higher weight to more specific patterns
+                    if pattern in ['commercial', 'retail', 'office', 'store', 'business']:
+                        score += matches * 3  # Commercial patterns get higher weight
+                    elif pattern in ['apartment', 'condo', 'multi.?family', 'complex']:
+                        score += matches * 3  # Multi-family patterns get higher weight
+                    elif pattern in ['single.?family', 'dwelling', 'residential']:
+                        score += matches * 2  # Residential patterns get medium weight
+                    else:
+                    weight = self.PATTERN_WEIGHTS.get(pattern, 1)
+                    score += matches * weight
+            scores[work_type] = score
+        
+        # Return the work type with the highest score
+        if scores:
+            best_type = max(scores.items(), key=lambda x: x[1])
+            if best_type[1] > 0:
+                return best_type[0]
         
         return 'mixed_use'
     
