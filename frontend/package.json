@@ -17,7 +17,13 @@
     "tailwind-merge": "^2.5.3",
     "date-fns": "^3.6.0",
     "@tanstack/react-table": "^8.20.5",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^0.468.0",
+    "@stripe/stripe-js": "^4.0.0",
+    "stripe": "^17.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "pino": "^9.0.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
@@ -26,6 +32,7 @@
     "typescript": "^5.5.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/uuid": "^10.0.0",
     "eslint": "^9.9.0",
     "eslint-config-next": "^15.0.0"
   },
