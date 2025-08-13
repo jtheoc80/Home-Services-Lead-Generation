@@ -57,7 +57,14 @@
     "db:wire": "tsx tools/botctl.ts db:wire",
 
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
-    "audit:qb": "tsx tools/botctl.ts audit:qb"
+    "audit:qb": "tsx tools/botctl.ts audit:qb",
+    "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom"
+  },
+  "overrides": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7"
   },
   "workspaces": [
     "frontend"
@@ -73,7 +80,7 @@
     "pg": "^8.16.3",
     "playwright": "^1.40.0",
     "react": "^19.1.1",
-    "react-dom": "^18.0.0",
+    "react-dom": "^19.1.1",
     "semver": "^7.7.2",
     "undici": "^7.13.0"
   },
