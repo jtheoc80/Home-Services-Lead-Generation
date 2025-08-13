@@ -40,6 +40,15 @@ This platform serves **Texas statewide**, with tier-1 coverage for major metropo
 - **API-First Architecture**: Auto-generated TypeScript and Python clients with OpenAPI validation
 - **Production-Ready**: PostGIS spatial data, Row Level Security, optimized indexing
 
+## 🏗️ Deployment Architecture
+
+This platform uses a split deployment approach:
+
+- **Railway builds backend only (Python)**: Handles API, data processing, and Python services
+- **Vercel builds frontend from /frontend**: Handles Next.js application and static assets
+
+The root `build` script is a no-op for backend deployments. Use `build:frontend` for local frontend builds.
+
 ## ⚡ TX Permits - First Results in 5 Minutes
 
 Get live permit data from Dallas, Austin, and Arlington with AI-powered lead scoring:
