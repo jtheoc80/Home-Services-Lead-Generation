@@ -4,7 +4,7 @@ nixPkgs = ["python311", "poetry", "nodejs_20", "postgresql"]
 [phases.install]
 cmds = [
   "poetry config virtualenvs.create false",
-  "poetry install --only main --no-interaction --no-ansi",
+  "poetry install --without dev --no-interaction --no-ansi",
   "npm ci"
 ]
 
