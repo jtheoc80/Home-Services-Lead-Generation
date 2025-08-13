@@ -12,7 +12,8 @@
     "type-check": "tsc --noEmit",
     "test": "echo 'No tests configured yet for frontend' && exit 0",
     "preflight": "node scripts/preflight.js",
-    "health:check": "node scripts/health-check.js"
+    "health:check": "node scripts/health-check.js",
+    "diag:next": "node -v && npm -v && npx next info"
   },
   "dependencies": {
     "@stripe/stripe-js": "^7.8.0",
@@ -44,5 +45,8 @@
     "react-dom": "^19.1.1",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7"
+  },
+  "engines": {
+    "node": ">=20.19.0 <21"
   }
 }
