@@ -115,21 +115,30 @@ JURISDICTION_SPECIFIC_ALIASES = {
         "permit_id": ["permit_number", "record_id"],
         "issued_at": ["issued_date", "issue_date"],
         "status": ["permit_status", "status"],
-        "description": ["work_description", "description"]
+        "description": ["work_description", "description"],
+        "valuation": ["estimated_cost", "job_value", "valuation"],
+        "contractor_name": ["contractor_name", "contractor", "business_name"],
+        "address_full": ["address", "project_address", "location"]
     },
     "austin": {
         # Austin-specific field mappings  
         "permit_id": ["permit_num", "permit_number"],
         "issued_at": ["issued_date", "issue_date"],
         "status": ["status_current", "status"],
-        "description": ["description", "work_description"]
+        "description": ["description", "work_description"],
+        "valuation": ["declared_value", "estimated_cost", "valuation"],
+        "address_full": ["project_address", "address", "location"]
     },
     "arlington": {
         # Arlington ArcGIS-specific field mappings
         "permit_id": ["OBJECTID", "PERMIT_NUM", "PERMITNUM"],
         "issued_at": ["ISSUE_DATE", "ISSUEDDATE"],
         "status": ["STATUS", "PERMIT_STATUS"],
-        "description": ["DESCRIPTION", "PROJECT_DESC"]
+        "description": ["DESCRIPTION", "PROJECT_DESC"],
+        "valuation": ["VALUATION", "VALUE", "COST"],
+        "latitude": ["Y", "LATITUDE", "LAT"],
+        "longitude": ["X", "LONGITUDE", "LON"],
+        "address_full": ["ADDRESS", "FULL_ADDRESS", "LOCATION"]
     }
 }
 

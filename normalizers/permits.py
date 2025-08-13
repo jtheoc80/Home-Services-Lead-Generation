@@ -21,6 +21,12 @@ from .field_aliases import (
 
 logger = logging.getLogger(__name__)
 
+# Texas coordinate bounds for validation
+TEXAS_MIN_LATITUDE = 25.5
+TEXAS_MAX_LATITUDE = 36.5
+TEXAS_MIN_LONGITUDE = -107.0
+TEXAS_MAX_LONGITUDE = -93.0
+
 
 def pick(record: Dict[str, Any], aliases: List[str]) -> Any:
     """
@@ -246,7 +252,7 @@ def normalize(source_meta: Dict[str, Any], record: Dict[str, Any]) -> Dict[str, 
     
     # Core identification
     canonical['source_id'] = source_id
-    canonical['permit_id'] = pick(record, aliases['permit_id'])
+    canonical['permit_id'] = normalize_text(pick(record, aliases['permit_id']))
     
     # Jurisdiction information
     canonical['jurisdiction'] = source_meta.get('jurisdiction')
