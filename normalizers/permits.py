@@ -252,7 +252,7 @@ def normalize(source_meta: Dict[str, Any], record: Dict[str, Any]) -> Dict[str, 
     
     # Core identification
     canonical['source_id'] = source_id
-    canonical['permit_id'] = normalize_text(pick(record, aliases['permit_id']))
+    canonical['permit_id'] = normalize_text(pick(record, aliases.get('permit_id', [])))
     
     # Jurisdiction information
     canonical['jurisdiction'] = source_meta.get('jurisdiction')
