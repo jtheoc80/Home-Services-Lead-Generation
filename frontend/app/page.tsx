@@ -1,68 +1,114 @@
-// app/page.tsx
-
-import Link from "next/link";
+import React from 'react'
+import Link from 'next/link'
+import Footer from '@/components/Footer'
+import PublicDataDisclaimer from '@/components/PublicDataDisclaimer'
 
 export const metadata = {
-  title: "LeadLedger Pro — Fresh Local Permit Leads",
-  description: "Find permits by trade and zip. Updated hourly. Start a free trial.",
-  openGraph: { title: "LeadLedger Pro", description: "Fresh local permit leads", type: "website" },
-  twitter: { card: "summary_large_image", title: "LeadLedger Pro", description: "Fresh local permit leads" }
-};
+  title: 'LeadLedgerPro - Home Services Lead Generation',
+  description: 'Quality home service leads from public permit data',
+}
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16">
-      <section className="text-center">
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Fresh local permit leads for contractors</h1>
-        <p className="mt-4 text-lg text-gray-600">Target by trade and zip. Hourly refresh. No cold lists.</p>
-        
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link 
-            href="/signup" 
-            className="rounded-md bg-indigo-600 px-6 py-3 text-white font-semibold hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-            aria-label="Start your free trial - no credit card required"
-          >
-            Start free trial
-          </Link>
-          <Link 
-            href="/dashboard?demo=true" 
-            className="rounded-md border border-gray-300 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-            aria-label="View sample permit leads data"
-          >
-            See sample leads
-          </Link>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="bg-blue-600 text-white">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">LeadLedgerPro</h1>
+            <nav className="space-x-4">
+              <Link href="/dashboard" className="border border-white px-4 py-2 rounded hover:bg-blue-700">
+                Dashboard
+              </Link>
+              <Link href="/pricing" className="hover:text-indigo-600 focus:ring-2 focus:ring-indigo-500">
+                Pricing
+              </Link>
+              <Link href="/signup" className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">
+                Sign Up
+              </Link>
+              <Link href="/payment" className="border border-white px-4 py-2 rounded hover:bg-blue-700">
+                Demo Payment
+              </Link>
+            </nav>
+          </div>
         </div>
+      </header>
 
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { title: "Public records data", sub: "Verified sources" },
-            { title: "Hourly refresh", sub: "Near-real-time" },
-            { title: "Cancel anytime", sub: "No contracts" },
-          {TRUST_BADGES.map((b, i) => (
-            <div key={i} className="rounded-lg border border-gray-200 p-4 bg-white shadow-sm">
-              <div className="text-sm font-medium text-gray-900">{b.title}</div>
-              <div className="text-sm text-gray-500 mt-1">{b.sub}</div>
+      {/* Main Content */}
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Quality Home Service Leads
+            </h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Connect with homeowners who need your services using public permit data
+            </p>
+            
+            <div className="flex justify-center space-x-4">
+              <Link 
+                href="/signup"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-medium hover:bg-blue-700"
+              >
+                Start free trial
+              </Link>
+              <Link 
+                href="/terms"
+                className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg text-lg font-medium hover:bg-gray-50"
+              >
+                Learn More
+              </Link>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      <section className="mt-16">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-6">How it works</h2>
-        <ol className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { n: "1", t: "Pick markets & trades", d: "Choose counties/zips and the trades you care about." },
-            { n: "2", t: "We ingest permits hourly", d: "We pull from county/city systems and normalize." },
-            { n: "3", t: "Work your queue", d: "Filter, export, and contact homeowners or GCs." },
-          {HOW_IT_WORKS_STEPS.map((s) => (
-            <li key={s.n} className="rounded-lg border border-gray-200 p-4 bg-white shadow-sm">
-              <div className="text-indigo-600 font-bold text-lg mb-2">{s.n}</div>
-              <div className="font-medium text-gray-900 mb-2">{s.t}</div>
-              <div className="text-sm text-gray-600">{s.d}</div>
-            </li>
-          ))}
-        </ol>
-      </section>
-    </main>
-  );
+          {/* Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Verified Data</h3>
+              <p className="text-gray-600">
+                Leads sourced from official building permit databases
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Targeted Leads</h3>
+              <p className="text-gray-600">
+                Filtered by trade, location, and project value
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Real-Time Updates</h3>
+              <p className="text-gray-600">
+                Fresh leads delivered as permits are issued
+              </p>
+            </div>
+          </div>
+
+          {/* Public Data Disclaimer */}
+          <div className="max-w-4xl mx-auto">
+            <PublicDataDisclaimer />
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  )
 }
