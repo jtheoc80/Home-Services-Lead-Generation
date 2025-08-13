@@ -7,7 +7,7 @@ to ensure data integrity and catch issues early in the pipeline.
 
 import logging
 import os
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 import great_expectations as gx
 from great_expectations.core.expectation_configuration import ExpectationConfiguration
 from great_expectations.core.expectation_suite import ExpectationSuite
