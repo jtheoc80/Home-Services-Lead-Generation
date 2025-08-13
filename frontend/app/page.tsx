@@ -20,7 +20,7 @@ export default function Home() {
               <Link href="/dashboard" className="border border-white px-4 py-2 rounded hover:bg-blue-700">
                 Dashboard
               </Link>
-              <Link href="/pricing" className="hover:text-indigo-600 focus:ring-2 focus:ring-indigo-500">
+              <Link href="/pricing" className="hover:text-blue-300 focus:ring-2 focus:ring-blue-500">
                 Pricing
               </Link>
               <Link href="/signup" className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">
