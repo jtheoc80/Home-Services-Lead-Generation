@@ -675,6 +675,182 @@ async def api_get_user_claims(user: AuthUser = Depends(auth_user)):
     return await get_user_claims(user)
 
 
+# ===== TX PERMITS DEMO API ROUTES =====
+
+class PermitRecord(BaseModel):
+    """Permit record model for API responses."""
+    permit_id: str
+    city: str
+    permit_type: Optional[str]
+    issued_at: Optional[str]
+    valuation: Optional[float]
+    address_full: Optional[str]
+    contractor_name: Optional[str]
+    status: Optional[str]
+
+class LeadScoreRecord(BaseModel):
+    """Lead score record model for API responses."""
+    permit_id: str
+    city: str
+    issued_at: Optional[str]
+    score: int
+    reasons: List[str]
+
+@app.get("/api/demo/permits")
+async def get_demo_permits(city: Optional[str] = Query(None, description="Filter by city")):
+    """
+    Get latest 50 permits from gold.permits for demo purposes.
+    
+    This endpoint returns recent permits for the TX permits demo page,
+    optionally filtered by city (Dallas, Austin, Arlington).
+    
+    Args:
+        city: Optional city filter
+        
+    Returns:
+        List of recent permit records
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # Build query
+        query = supabase.table("gold.permits").select(
+            "permit_id, city, permit_type, issued_at, valuation, "
+            "address_full, contractor_name, status"
+        ).order("issued_at", desc=True).limit(50)
+        
+        # Apply city filter if provided
+        if city:
+            query = query.eq("city", city)
+        
+        # Execute query
+        response = query.execute()
+        
+        if response.data is None:
+            logger.warning("No permits data returned from database")
+            return []
+        
+        # Convert to response format
+        permits = []
+        for record in response.data:
+            permits.append(PermitRecord(
+                permit_id=record.get("permit_id", ""),
+                city=record.get("city", ""),
+                permit_type=record.get("permit_type"),
+                issued_at=record.get("issued_at"),
+                valuation=record.get("valuation"),
+                address_full=record.get("address_full"),
+                contractor_name=record.get("contractor_name"),
+                status=record.get("status")
+            ))
+        
+        logger.info(f"Returned {len(permits)} permits for demo (city filter: {city or 'none'})")
+        return permits
+        
+    except Exception as e:
+        logger.error(f"Error fetching demo permits: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch permits data"
+        )
+
+@app.get("/api/leads/scores")
+async def get_lead_scores(
+    city: Optional[str] = Query(None, description="Filter by city"),
+    limit: int = Query(50, ge=1, le=100, description="Number of results (1-100)")
+):
+    """
+    Get last 50 scored permits with scores and reasons.
+    
+    This endpoint returns recent permits along with their lead scores
+    from the gold.lead_scores table, joined with permit data.
+    
+    Args:
+        city: Optional city filter
+        limit: Number of results to return (default 50, max 100)
+        
+    Returns:
+        List of permits with their lead scores
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # Query to join permits with lead scores
+        # Note: Supabase doesn't support complex joins easily, so we'll do it in two queries
+        
+        # First, get recent lead scores
+        scores_query = supabase.table("gold.lead_scores").select(
+            "lead_id, score, reasons, created_at"
+        ).eq("version", "v0").order("created_at", desc=True).limit(limit)
+        
+        scores_response = scores_query.execute()
+        
+        if not scores_response.data:
+            logger.info("No lead scores found")
+            return []
+        
+        # Extract lead IDs to get corresponding permits
+        # lead_id is SHA1 hash of source_id||permit_id, so we need to match differently
+        # For now, let's get recent permits and match them up
+        
+        permits_query = supabase.table("gold.permits").select(
+            "source_id, permit_id, city, issued_at, address_full"
+        ).order("updated_at", desc=True).limit(limit * 2)  # Get more to increase match chances
+        
+        if city:
+            permits_query = permits_query.eq("city", city)
+        
+        permits_response = permits_query.execute()
+        
+        if not permits_response.data:
+            logger.info("No permits found")
+            return []
+        
+        # Build a map of permit records for matching
+        permit_map = {}
+        for permit in permits_response.data:
+            # Compute the same lead_id hash used in publishing
+            import hashlib
+            lead_id = hashlib.sha1(f"{permit['source_id']}||{permit['permit_id']}".encode()).hexdigest()
+            permit_map[lead_id] = permit
+        
+        # Match scores with permits
+        results = []
+        for score_record in scores_response.data:
+            lead_id = score_record["lead_id"]
+            
+            if lead_id in permit_map:
+                permit = permit_map[lead_id]
+                
+                # Apply city filter if specified
+                if city and permit.get("city") != city:
+                    continue
+                
+                results.append(LeadScoreRecord(
+                    permit_id=permit["permit_id"],
+                    city=permit.get("city", ""),
+                    issued_at=permit.get("issued_at"),
+                    score=score_record["score"],
+                    reasons=score_record["reasons"]
+                ))
+        
+        # Sort by score descending
+        results.sort(key=lambda x: x.score, reverse=True)
+        
+        # Limit results
+        results = results[:limit]
+        
+        logger.info(f"Returned {len(results)} scored permits (city filter: {city or 'none'})")
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error fetching lead scores: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch lead scores"
+        )
+
+
 # ===== LEAD SCORING API ROUTES =====
 
 @app.post("/v1/lead-score", response_model=LeadScoreResponse)
