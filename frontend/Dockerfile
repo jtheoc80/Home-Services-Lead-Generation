@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package files and install only production dependencies
 COPY package.json ./
-RUN npm install --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Stage 2: Builder  
 FROM node:18-alpine AS builder

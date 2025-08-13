@@ -22,11 +22,7 @@
     "pino": "^9.8.0",
     "pino-pretty": "^13.1.1",
     "react": "^19.1.1",
-
-    "react-dom": "^18.0.0",
-
     "react-dom": "^19.1.1",
-
     "stripe": "^18.4.0",
     "uuid": "^11.1.0",
     "zod": "^4.0.17"
@@ -42,5 +38,9 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   }
 }

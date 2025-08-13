@@ -19,6 +19,27 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
+  # Quick Build Verification Job
+  quick-build:
+    runs-on: ubuntu-latest
+    name: Quick Build Verification
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
   # Bot Control Jobs
   audit:
     runs-on: ubuntu-latest
