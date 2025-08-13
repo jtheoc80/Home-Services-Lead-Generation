@@ -17,7 +17,10 @@ from psycopg2.extras import Json, RealDictCursor
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from normalizers.permits import normalize, validate_normalized_record
-from ingest.state import get_state_manager
+# Use relative imports for sibling modules
+
+from ..normalizers.permits import normalize, validate_normalized_record
+from ..ingest.state import get_state_manager
 
 logger = logging.getLogger(__name__)
 
