@@ -40,6 +40,7 @@ This platform serves **Texas statewide**, with tier-1 coverage for major metropo
 - **API-First Architecture**: Auto-generated TypeScript and Python clients with OpenAPI validation
 - **Production-Ready**: PostGIS spatial data, Row Level Security, optimized indexing
 
+
 ## 🏗️ Deployment Architecture
 
 This platform uses a split deployment approach:
@@ -48,6 +49,9 @@ This platform uses a split deployment approach:
 - **Vercel builds frontend from /frontend**: Handles Next.js application and static assets
 
 The root `build` script is a no-op for backend deployments. Use `build:frontend` for local frontend builds.
+
+> **Note**: Vercel builds from /frontend only. React deps live in /frontend; root does not declare React.
+
 
 ## ⚡ TX Permits - First Results in 5 Minutes
 
