@@ -4,15 +4,7 @@
   "type": "module",
   "description": "LeadLedgerPro - Home Services Lead Generation Platform",
   "scripts": {
-    "dev": "cd frontend && npm run dev",
-    "dev:strict": "cd frontend && npm run dev:strict",
     "build": "echo \"no-op backend build (frontend builds on Vercel)\"",
-    "build:frontend": "cd frontend && npm run build",
-    "start": "cd frontend && npm run start",
-    "lint": "cd frontend && npm run lint",
-    "typecheck": "cd frontend && npm run type-check",
-    "test": "cd frontend && npm run test",
-    "install-frontend": "cd frontend && npm install",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
@@ -62,10 +54,10 @@
     "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom"
   },
   "overrides": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7"
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7"
   },
   "workspaces": [
     "frontend"
