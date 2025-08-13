@@ -18,7 +18,6 @@ This script implements these exact API calls using the project's existing infras
 """
 
 import sys
-import requests
 import json
 from pathlib import Path
 from typing import Dict, Any, List
