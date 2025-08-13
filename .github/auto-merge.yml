@@ -1,0 +1,14 @@
+version: 2
+rules:
+  - match:
+      dependency_type: "all"
+      dependency_name: ["react", "react-dom", "next"]
+      dependency_group: "react-stack"
+      author: "dependabot[bot]"
+    merge:
+      method: "merge"
+      commit_message_template: |
+        Merge dependabot PR: {{ title }}
+        
+        Auto-merged by auto-merge bot after CI passed.
+      delete_branch_on_merge: true
