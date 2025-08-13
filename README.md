@@ -52,6 +52,17 @@ The root `build` script is a no-op for backend deployments. Use `build:frontend`
 
 > **Note**: Vercel builds from /frontend only. React deps live in /frontend; root does not declare React.
 
+## 📋 Development Requirements
+
+### React Version Alignment
+React must only exist in /frontend and be same major for react/react-dom. The root package.json uses overrides to ensure consistent versions across the monorepo.
+
+### Required Environment Variables
+Set these in Vercel → Project → Settings → Environment Variables:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Plus any others you use in your specific configuration
+
 
 ## ⚡ TX Permits - First Results in 5 Minutes
 

@@ -18,6 +18,9 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
+    groups:
+      react-stack:
+        patterns: ["react", "react-dom", "next"]
 
   # Root npm dependencies (workspace)
   - package-ecosystem: "npm"
