@@ -81,7 +81,7 @@ def mock_arlington_data():
             {
                 "attributes": {
                     "PermitNumber": "BLD-2024-0001",
-                    "IssueDate": 1705334400000,  # Unix timestamp in milliseconds
+                    "IssueDate": 1705334400000,  # Unix timestamp in milliseconds (2024-01-15 16:00:00 UTC)
                     "Address": "100 Center Street, Arlington, TX 76010",
                     "Description": "Multi-family apartment complex renovation",
                     "Status": "Issued",
