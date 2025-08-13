@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 255 255 255;
+  --fg: 17 24 39;
+  --muted: 107 114 128;
+}
+
+html, body, #__next { height: 100%; }
+body { background: rgb(var(--bg)); color: rgb(var(--fg)); }
