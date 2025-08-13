@@ -39,7 +39,7 @@ class PermitNormalizer:
     WORK_TYPE_PATTERNS = {
         'residential': [
             r'residential', r'single.?family', r'duplex', r'house', r'home',
-            r'addition', r'remodel', r'kitchen', r'bathroom',
+            r'addition', r'remodel', r'renovation', r'kitchen', r'bathroom',  # Added 'renovation' for residential
             r'garage', r'deck', r'porch', r'fence', r'pool', r'shed',
             r'single.?family.?dwelling', r'accessory.?dwelling', r'dwelling'
         ],
