@@ -214,7 +214,8 @@ def build_geometry(latitude: Optional[float], longitude: Optional[float]) -> Opt
         return None
     
     # Basic validation for Texas coordinates
-    if not (25.0 <= latitude <= 37.0 and -107.0 <= longitude <= -93.0):
+    if not (TEXAS_MIN_LATITUDE <= latitude <= TEXAS_MAX_LATITUDE and
+            TEXAS_MIN_LONGITUDE <= longitude <= TEXAS_MAX_LONGITUDE):
         logger.warning(f"Coordinates outside Texas bounds: {latitude}, {longitude}")
         return None
     
