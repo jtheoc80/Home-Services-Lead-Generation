@@ -271,7 +271,8 @@ class PermitNormalizer:
                     elif pattern in ['single.?family', 'dwelling', 'residential']:
                         score += matches * 2  # Residential patterns get medium weight
                     else:
-                        score += matches
+                    weight = self.PATTERN_WEIGHTS.get(pattern, 1)
+                    score += matches * weight
             scores[work_type] = score
         
         # Return the work type with the highest score
