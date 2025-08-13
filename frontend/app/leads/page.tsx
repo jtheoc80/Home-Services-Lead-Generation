@@ -2,7 +2,9 @@
 
 import LeadTable from "@/components/data/LeadTable";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
+import LeadTable from "../../components/data/LeadTable";
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
 
 // Mock data - replace with real data from API later
 const mockLeads = [
