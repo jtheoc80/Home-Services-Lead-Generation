@@ -19,7 +19,8 @@ from psycopg2.extras import RealDictCursor
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scoring.v0 import score_v0
-
+# Import scoring.v0.score_v0 using relative import
+from ..scoring.v0 import score_v0
 logger = logging.getLogger(__name__)
 
 
