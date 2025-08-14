@@ -88,6 +88,11 @@ const envSchema = z.object({
   INTERNAL_WEBHOOK_TOKEN: z.string().optional(),
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  
+  // ===== BACKEND PROXY CONFIGURATION =====
+  // External backend API for lead data
+  LEAD_API_BASE_URL: z.string().optional(),
+  LEAD_API_KEY: z.string().optional(),
 });
 
 /**
