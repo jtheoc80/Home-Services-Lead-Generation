@@ -107,7 +107,12 @@ export default function Dashboard() {
     setTimeout(() => {
       setLeads(mockEnhancedLeads);
       setLoading(false);
-    }, 1000);
+    (async () => {
+      // Simulate async data loading with a Promise-based delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLeads(mockEnhancedLeads);
+      setLoading(false);
+    })();
   }, []);
 
   const stats = useMemo(() => {
