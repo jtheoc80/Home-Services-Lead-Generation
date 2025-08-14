@@ -15,7 +15,7 @@ type Permit = {
 export default function PermitsPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Permit[]>([]);
-  const [recent, setRecent] = useState<string[]>(['123 Main St', '456 Oak Ave']);
+  const [recent, setRecent] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function searchPermits(e?: React.FormEvent) {
