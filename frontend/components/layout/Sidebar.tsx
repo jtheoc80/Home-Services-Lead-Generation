@@ -16,10 +16,12 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 border-r bg-white">
-      <div className="p-4">
-        <div className="font-semibold text-lg tracking-tight">
-          <span className="text-brand-600">Lead</span>Ledder
+    <aside className="w-64 shrink-0 border-r bg-white">
+      <div className="h-16 flex items-center gap-2 px-5 border-b">
+        <div className="size-8 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500" />
+        <div className="leading-tight">
+          <div className="font-semibold tracking-tight">Lead Ledger Pro</div>
+          <div className="text-xs text-slate-500">Contractor CRM</div>
         </div>
       </div>
       <nav className="px-2 space-y-1">
