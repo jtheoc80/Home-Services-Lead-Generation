@@ -62,7 +62,7 @@ export default function LeadsPage() {
           email: lead.email,
           phone: lead.phone,
           service: lead.source, // Map source to service for now
-          county: lead.city, // Map city to county for now
+          city: lead.city,
           status: lead.status,
           created_at: lead.created_at,
         }));
