@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 
 type ResultState = {
   error?: string;
@@ -19,12 +18,10 @@ export default function ClientInsertPage() {
     setResult(null);
 
     try {
-      // Create Supabase client directly in the browser
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
+      // Import the supabase client dynamically to avoid build-time issues
+      const { supabase } = await import('../../../lib/supabaseClient');
+      
+      // Use the exported supabase client from our library
       // Insert the specified data into public.leads
       const { data, error } = await supabase
         .from('leads')
@@ -49,7 +46,7 @@ export default function ClientInsertPage() {
       <h1>Client Insert Test</h1>
       <p>
         This page demonstrates inserting data directly into public.leads using 
-        createClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) in the browser.
+        the exported supabase client from our library (imported dynamically).
       </p>
       
       <div style={{ margin: '20px 0' }}>
