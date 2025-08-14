@@ -769,7 +769,11 @@ async def get_recent_permits():
         
         # Build query to get recent permits
         query = supabase.table("gold.permits").select(
-            "permit_id, jurisdiction, address_full, permit_type, status, issued_at"
+        permit_fields = [
+            "permit_id", "jurisdiction", "address_full", "permit_type", "status", "issued_at"
+        ]
+        query = supabase.table("gold.permits").select(
+            ", ".join(permit_fields)
         ).order("issued_at", desc=True).limit(50)
         
         # Execute query
