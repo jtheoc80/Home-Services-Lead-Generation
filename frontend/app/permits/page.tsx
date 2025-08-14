@@ -86,7 +86,7 @@ export default function PermitsPage() {
                   onClick={() => {
                     setQuery(q);
                     // run a search immediately when clicking a chip
-                    void searchPermits();
+                    void searchPermits(undefined, q);
                   }}
                   className="rounded-full border px-3 py-1 text-sm hover:bg-gray-50"
                 >
