@@ -175,7 +175,7 @@ export default function LeadsPage() {
         <button className="h-10 rounded-xl px-4 border hover:bg-slate-50" onClick={() => location.reload()}>
           Refresh
         </button>
-        <button className="h-10 rounded-xl px-4 bg-slate-900 text-white hover:bg-black/90" onClick={() => (location.href = "/permits")}>
+        <button className="h-10 rounded-xl px-4 bg-slate-900 text-white hover:bg-black/90" onClick={() => router.push("/permits")}>
           Go to Permits
         </button>
       </div>
