@@ -25,7 +25,7 @@ export default function PermitsPage() {
     try {
       // TODO: wire to your real backend/scraper
       const mock: Permit[] = [
-        { id: '1', address: query, trade: 'Roofing', status: 'Submitted', submitted_at: new Date().toISOString() },
+        { id: query, address: query, trade: 'Roofing', status: 'Submitted', submitted_at: new Date().toISOString() },
       ];
       setResults(mock);
       setRecent((prev) => [query, ...prev.filter((q) => q !== query)].slice(0, 5));
