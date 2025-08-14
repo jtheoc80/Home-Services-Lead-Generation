@@ -159,7 +159,7 @@ export default function LeadsPage() {
                 <div className="text-right">
                   <button
                     className="text-sm px-3 py-1.5 rounded-lg border hover:bg-slate-50"
-                    onClick={() => (location.href = `/leads/${l.id}`)}
+                    onClick={() => router.push(`/leads/${l.id}`)}
                   >
                     View
                   </button>
