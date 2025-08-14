@@ -8,7 +8,6 @@ import LeadScore from '@/components/ui/LeadScore';
 import TexasCountySelector from '@/components/ui/TexasCountySelector';
 import { 
   Search, 
-  Filter, 
   Download, 
   SortAsc,
   MapPin,
