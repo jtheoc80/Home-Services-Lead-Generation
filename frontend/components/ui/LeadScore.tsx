@@ -46,7 +46,7 @@ export default function LeadScore({
     )}>
       <div className="flex items-center justify-between">
         <span className="font-medium text-gray-700">Lead Score</span>
-        <Badge variant="score" size={size}>
+        <Badge variant="score">
           {Math.round(score)}/{maxScore}
         </Badge>
       </div>
