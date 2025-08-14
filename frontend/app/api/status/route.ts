@@ -16,7 +16,7 @@ export async function GET() {
         const data = await r.json();
         const arr = Array.isArray(data) ? data : data?.leads ?? [];
         backend.ok = true;
-        backend.count = arr.length ?? 0;
+        backend.count = arr.length;
       } else {
         backend.error = await r.text();
       }
