@@ -77,7 +77,28 @@ export default function PermitsPage() {
                 </div>
               </li>
             ))}
-          </ul>
+          <div>
+            <div className="grid grid-cols-5 gap-4 px-6 py-3 border-b bg-slate-50 text-sm font-semibold text-slate-700">
+              <div>Jurisdiction</div>
+              <div>Address</div>
+              <div>Trade</div>
+              <div>Status</div>
+              <div className="text-right">Actions</div>
+            </div>
+            <ul className="divide-y">
+              {permits.map((p) => (
+                <li key={p.id} className="grid grid-cols-5 gap-4 px-6 py-4">
+                  <div className="font-medium truncate">{p.jurisdiction ?? "—"}</div>
+                  <div className="truncate">{p.address ?? "—"}</div>
+                  <div className="truncate">{p.trade ?? "—"}</div>
+                  <div className="truncate">{p.status ?? "—"}</div>
+                  <div className="text-right">
+                    <button className="text-sm px-3 py-1.5 rounded-lg border hover:bg-slate-50">View</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>
