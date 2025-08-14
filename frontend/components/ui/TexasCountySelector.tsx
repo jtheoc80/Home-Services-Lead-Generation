@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { MapPin, Check } from "lucide-react";
 import Card from "./Card";
 import Badge from "./Badge";
