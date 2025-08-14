@@ -12,7 +12,6 @@ async function fetchFromBackend() {
       ...(process.env.LEAD_API_KEY ? { Authorization: `Bearer ${process.env.LEAD_API_KEY}` } : {}),
     },
     // In server routes this runs on Node; no need for cache
-    cache: "no-store",
   });
 
   if (!res.ok) throw new Error(`Backend responded ${res.status}`);
