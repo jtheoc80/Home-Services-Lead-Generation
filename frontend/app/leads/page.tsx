@@ -111,7 +111,7 @@ export default function LeadsPage() {
             </select>
             <button
               className="h-10 rounded-xl px-4 text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
-              onClick={() => (location.href = "/leads/new")}
+              onClick={() => router.push("/leads/new")}
             >
               Add Lead
             </button>
