@@ -754,6 +754,57 @@ async def get_demo_permits(city: Optional[str] = Query(None, description="Filter
             detail="Failed to fetch permits data"
         )
 
+@app.get("/api/permits/recent")
+async def get_recent_permits():
+    """
+    Get recent permits for the permits page.
+    
+    Returns recent permits from gold.permits table formatted for the permits UI.
+    
+    Returns:
+        Dict with permits array and metadata
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # Build query to get recent permits
+        query = supabase.table("gold.permits").select(
+        permit_fields = [
+            "permit_id", "jurisdiction", "address_full", "permit_type", "status", "issued_at"
+        ]
+        query = supabase.table("gold.permits").select(
+            ", ".join(permit_fields)
+        ).order("issued_at", desc=True).limit(50)
+        
+        # Execute query
+        response = query.execute()
+        
+        if response.data is None:
+            logger.warning("No permits data returned from database")
+            return {"permits": []}
+        
+        # Convert to response format expected by the UI
+        permits = []
+        for record in response.data:
+            permits.append({
+                "id": record.get("permit_id", ""),
+                "jurisdiction": record.get("jurisdiction"),
+                "address": record.get("address_full"),
+                "trade": record.get("permit_type"),
+                "status": record.get("status"),
+                "created_at": record.get("issued_at")
+            })
+        
+        logger.info(f"Returned {len(permits)} recent permits")
+        return {"permits": permits}
+        
+    except Exception as e:
+        logger.error(f"Error fetching recent permits: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch permits data"
+        )
+
 @app.get("/api/leads/scores")
 async def get_lead_scores(
     city: Optional[str] = Query(None, description="Filter by city"),
