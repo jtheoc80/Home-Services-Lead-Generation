@@ -66,7 +66,7 @@ const texasCounties = [
 ];
 
 export default function HomePage() {
-  const [selectedCounty, setSelectedCounty] = useState<string>("harris");
+
 
   return (
     <div className="min-h-screen">
