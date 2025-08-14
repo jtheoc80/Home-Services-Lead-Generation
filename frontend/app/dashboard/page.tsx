@@ -104,9 +104,6 @@ export default function Dashboard() {
       }
     ];
 
-    setTimeout(() => {
-      setLeads(mockEnhancedLeads);
-      setLoading(false);
     (async () => {
       // Simulate async data loading with a Promise-based delay
       await new Promise(resolve => setTimeout(resolve, 1000));
