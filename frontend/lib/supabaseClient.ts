@@ -2,6 +2,12 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabaseInstance: SupabaseClient | null = null;
 
+// "browser client" only – safe to use with anon key
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 /**
  * Get Supabase client instance with safe initialization
  * Returns null on server-side to prevent build-time crashes
