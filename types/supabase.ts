@@ -18,6 +18,8 @@ export interface Lead {
   state?: string | null;
   zip?: string | null;
   status?: string | null;
+  service?: string | null;
+  county?: string | null;
 }
 
 /**
@@ -34,6 +36,8 @@ export interface LeadInsert {
   state?: string | null;
   zip?: string | null;
   status?: string | null;
+  service?: string | null;
+  county?: string | null;
 }
 
 /**
@@ -50,6 +54,8 @@ export interface LeadUpdate {
   state?: string | null;
   zip?: string | null;
   status?: string | null;
+  service?: string | null;
+  county?: string | null;
 }
 
 /**
@@ -72,24 +78,6 @@ export interface IngestLog {
  */
 export interface IngestLogInsert {
   trace_id?: string | null;
-
- * Ingest log interface for tracking lead processing stages
- */
-export interface IngestLog {
-  id: number;
-  trace_id: string;
-  stage: string;
-  ok: boolean;
-  details?: any;
-  created_at: string;
-}
-
-/**
- * Ingest log insert payload interface
- */
-export interface IngestLogInsert {
-  trace_id: string;
-
   stage: string;
   ok: boolean;
   details?: any;
