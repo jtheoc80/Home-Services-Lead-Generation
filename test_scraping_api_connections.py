@@ -269,7 +269,7 @@ class ScrapingAPITester:
             # Create a test lead data structure
             test_lead = {
                 "jurisdiction": "harris_county_test",
-                "permit_id": f"TEST_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                "permit_id": f"TEST_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex}",
                 "address": "123 Test Street, Houston, TX",
                 "description": "Test permit for API connection verification",
                 "value": 50000.0,
