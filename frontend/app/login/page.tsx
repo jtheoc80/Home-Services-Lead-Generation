@@ -60,8 +60,8 @@ function LoginContent() {
               <span className="text-white font-bold text-xl">LL</span>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">LeadLedgerPro</h1>
-          <p className="text-gray-600">Lead Generation Platform</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Lead Generation</h1>
+          <p className="text-gray-600">Platform</p>
           {redirectedFrom && (
             <p className="mt-2 text-sm text-gray-600">
               Please sign in to access{' '}

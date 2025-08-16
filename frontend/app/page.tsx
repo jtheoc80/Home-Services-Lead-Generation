@@ -66,7 +66,7 @@ const texasCounties = [
 ];
 
 export default function HomePage() {
-
+  const [selectedCounty, setSelectedCounty] = useState<string>('');
 
   return (
     <div className="min-h-screen">
@@ -85,11 +85,8 @@ export default function HomePage() {
                 Texas #1 Lead Generation Platform
               </Badge>
               
-              <h1 className="text-6xl font-bold text-white">
-                LeadLedgerPro
-                <span className="block bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
-                  Lead Generation
-                </span>
+              <h1 className="text-6xl font-bold bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
+                Lead Generation
               </h1>
               
               <p className="mx-auto max-w-3xl text-xl text-white/90 leading-relaxed">
@@ -138,7 +135,6 @@ export default function HomePage() {
                 value={stat.value}
                 icon={stat.icon}
                 variant={stat.variant}
-                hover
               />
             ))}
           </div>
@@ -159,13 +155,16 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {texasCounties.map((county, index) => (
-              <Card 
-                key={index} 
-                variant="glass" 
-                hover 
-                className="p-6 text-center group cursor-pointer"
+              <div
+                key={index}
                 onClick={() => setSelectedCounty(county.name.toLowerCase().replace(' county', ''))}
+                className="cursor-pointer"
               >
+                <Card 
+                  variant="glass" 
+                  hover 
+                  className="p-6 text-center group"
+                >
                 <div className="space-y-4">
                   <div className="w-16 h-16 mx-auto bg-texas-100 rounded-2xl flex items-center justify-center group-hover:bg-texas-200 transition-colors">
                     <MapPin className="w-8 h-8 text-texas-600" />
@@ -181,6 +180,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </Card>
+              </div>
             ))}
           </div>
         </div>
