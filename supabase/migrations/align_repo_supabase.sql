@@ -461,7 +461,7 @@ BEGIN
     -- Use permit address information
     lead_address := NEW.address;
     lead_city := NEW.city;
-    lead_state := 'TX'; -- Default to Texas for this system
+    lead_state := COALESCE(NEW.state, 'TX'); -- Use state from permit, fallback to Texas
     lead_zip := NEW.zipcode;
     lead_county := NEW.county;
     
