@@ -23,7 +23,7 @@ def run_command(cmd, description, cwd=None):
             capture_output=True, 
             text=True,
             cwd=cwd,
-            timeout=30
+            timeout=DEFAULT_TIMEOUT_SECONDS
         )
         
         print("STDOUT:")
