@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useEnhancedLeads } from '@/hooks/useLeads';
 import Card from '@/components/ui/Card';
 import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
@@ -18,122 +19,12 @@ import {
   DollarSign,
   Phone,
   Mail,
-  ExternalLink
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 
-interface EnhancedLead {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  service: string;
-  county: string;
-  status: string;
-  created_at: string;
-  score: number;
-  scoreBreakdown: {
-    recency: number;
-    residential: number;
-    value: number;
-    workClass: number;
-  };
-  tradeType: string;
-  permitValue: number;
-  lastUpdated: string;
-  permitNumber?: string;
-}
-
-const mockLeads: EnhancedLead[] = [
-  {
-    id: 1,
-    name: "Johnson Residence Renovation",
-    email: "johnson@email.com",
-    phone: "(713) 555-0123",
-    address: "1234 Oak Street, Houston, TX 77001",
-    service: "HVAC Installation",
-    county: "Harris County",
-    status: "new",
-    created_at: "2024-01-15T10:30:00Z",
-    score: 87,
-    scoreBreakdown: { recency: 23, residential: 18, value: 22, workClass: 16 },
-    tradeType: "HVAC",
-    permitValue: 45000,
-    lastUpdated: "2 hours ago",
-    permitNumber: "H2024-001234"
-  },
-  {
-    id: 2,
-    name: "Smith Home Roofing",
-    email: "smith@email.com", 
-    phone: "(281) 555-0456",
-    address: "5678 Pine Avenue, Sugar Land, TX 77479",
-    service: "Roof Replacement",
-    county: "Fort Bend County",
-    status: "qualified",
-    created_at: "2024-01-15T08:15:00Z",
-    score: 73,
-    scoreBreakdown: { recency: 20, residential: 17, value: 19, workClass: 15 },
-    tradeType: "Roofing",
-    permitValue: 32000,
-    lastUpdated: "4 hours ago",
-    permitNumber: "FB2024-005678"
-  },
-  {
-    id: 3,
-    name: "Davis Electrical Upgrade",
-    email: "davis@email.com",
-    phone: "(832) 555-0789",
-    address: "9012 Elm Drive, Pearland, TX 77584",
-    service: "Electrical Panel Upgrade",
-    county: "Brazoria County",
-    status: "contacted",
-    created_at: "2024-01-14T14:20:00Z",
-    score: 65,
-    scoreBreakdown: { recency: 18, residential: 16, value: 15, workClass: 14 },
-    tradeType: "Electrical",
-    permitValue: 18000,
-    lastUpdated: "1 day ago",
-    permitNumber: "BR2024-009012"
-  },
-  {
-    id: 4,
-    name: "Wilson Pool Installation",
-    email: "wilson@email.com",
-    phone: "(409) 555-0321",
-    address: "3456 Beach Blvd, Galveston, TX 77550",
-    service: "Swimming Pool",
-    county: "Galveston County", 
-    status: "won",
-    created_at: "2024-01-13T16:45:00Z",
-    score: 92,
-    scoreBreakdown: { recency: 22, residential: 19, value: 25, workClass: 18 },
-    tradeType: "Pool",
-    permitValue: 75000,
-    lastUpdated: "2 days ago",
-    permitNumber: "GL2024-003456"
-  },
-  {
-    id: 5,
-    name: "Brown Kitchen Remodel",
-    email: "brown@email.com",
-    phone: "(713) 555-9876",
-    address: "7890 Maple Street, Houston, TX 77002",
-    service: "Kitchen Renovation",
-    county: "Harris County",
-    status: "new",
-    created_at: "2024-01-15T12:00:00Z",
-    score: 79,
-    scoreBreakdown: { recency: 24, residential: 17, value: 20, workClass: 16 },
-    tradeType: "Remodeling",
-    permitValue: 38000,
-    lastUpdated: "1 hour ago",
-    permitNumber: "H2024-007890"
-  }
-];
-
 export default function LeadsPage() {
-  const [leads] = useState<EnhancedLead[]>(mockLeads);
+  const { leads, error, loading } = useEnhancedLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'fortbend', 'brazoria', 'galveston']);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -141,28 +32,31 @@ export default function LeadsPage() {
   const [sortBy, setSortBy] = useState<string>('score');
   
   const filteredLeads = useMemo(() => {
+    if (!leads) return [];
+    
     return leads
       .filter(lead => {
         const matchesSearch = !searchTerm || 
-          lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          lead.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          lead.tradeType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          lead.address.toLowerCase().includes(searchTerm.toLowerCase());
+          lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          lead.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          lead.tradeType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          lead.address?.toLowerCase().includes(searchTerm.toLowerCase());
         
         const matchesCounty = selectedCounties.length === 0 || 
           selectedCounties.some(county => 
-            lead.county.toLowerCase().includes(county)
+            lead.county?.toLowerCase().includes(county) ||
+            lead.city?.toLowerCase().includes(county)
           );
         
-        const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-        const matchesTrade = tradeFilter === 'all' || lead.tradeType.toLowerCase() === tradeFilter;
+        const matchesStatus = statusFilter === 'all' || (lead.status?.toLowerCase() === statusFilter);
+        const matchesTrade = tradeFilter === 'all' || (lead.tradeType?.toLowerCase() === tradeFilter);
         
         return matchesSearch && matchesCounty && matchesStatus && matchesTrade;
       })
       .sort((a, b) => {
         switch (sortBy) {
-          case 'score': return b.score - a.score;
-          case 'value': return b.permitValue - a.permitValue;
+          case 'score': return (b.score || 0) - (a.score || 0);
+          case 'value': return (b.permitValue || 0) - (a.permitValue || 0);
           case 'date': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           default: return 0;
         }
@@ -171,22 +65,42 @@ export default function LeadsPage() {
 
   const stats = useMemo(() => {
     const total = filteredLeads.length;
-    const newCount = filteredLeads.filter(l => l.status === 'new').length;
-    const qualified = filteredLeads.filter(l => l.status === 'qualified').length;
-    const avgScore = filteredLeads.reduce((sum, l) => sum + l.score, 0) / total || 0;
-    const totalValue = filteredLeads.reduce((sum, l) => sum + l.permitValue, 0);
+    const newCount = filteredLeads.filter(l => l.status?.toLowerCase() === 'new').length;
+    const qualified = filteredLeads.filter(l => l.status?.toLowerCase() === 'qualified').length;
+    const avgScore = filteredLeads.reduce((sum, l) => sum + (l.score || 0), 0) / total || 0;
+    const totalValue = filteredLeads.reduce((sum, l) => sum + (l.permitValue || 0), 0);
     
     return { total, newCount, qualified, avgScore, totalValue };
   }, [filteredLeads]);
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
+  const getStatusBadgeVariant = (status: string | null | undefined) => {
+    switch (status?.toLowerCase()) {
       case 'won': return 'success';
       case 'qualified': return 'warning';
       case 'contacted': return 'texas';
       default: return 'default';
     }
   };
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+        <div className="mx-auto max-w-7xl p-6">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="p-8 max-w-md text-center">
+              <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Database Connection Error</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <p className="text-sm text-gray-500">
+                Please check your Supabase configuration in the .env.local file.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -207,9 +121,12 @@ export default function LeadsPage() {
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </button>
-            <button className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors">
+            <button 
+              className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+              onClick={() => router.push('/leads-test')}
+            >
               <Target className="w-4 h-4 mr-2" />
-              Add Lead
+              Add Test Lead
             </button>
           </div>
         </div>
@@ -218,29 +135,33 @@ export default function LeadsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             label="Total Filtered Leads"
-            value={stats.total}
+            value={loading ? "—" : stats.total}
             icon={<Users className="w-6 h-6" />}
             variant="default"
+            loading={loading}
           />
           <StatCard
             label="New Leads"
-            value={stats.newCount}
+            value={loading ? "—" : stats.newCount}
             change={12}
             changeLabel="from last week"
             icon={<TrendingUp className="w-6 h-6" />}
             variant="success"
+            loading={loading}
           />
           <StatCard
             label="Avg. Lead Score"
-            value={`${Math.round(stats.avgScore)}/100`}
+            value={loading ? "—" : `${Math.round(stats.avgScore)}/100`}
             icon={<Target className="w-6 h-6" />}
             variant="texas"
+            loading={loading}
           />
           <StatCard
             label="Total Pipeline Value"
-            value={`$${(stats.totalValue / 1000).toFixed(0)}K`}
+            value={loading ? "—" : `$${(stats.totalValue / 1000).toFixed(0)}K`}
             icon={<DollarSign className="w-6 h-6" />}
             variant="warning"
+            loading={loading}
           />
         </div>
 
@@ -285,6 +206,7 @@ export default function LeadsPage() {
                     <option value="electrical">Electrical</option>
                     <option value="pool">Pool</option>
                     <option value="remodeling">Remodeling</option>
+                    <option value="general">General</option>
                   </select>
                 </div>
                 
@@ -333,11 +255,33 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {filteredLeads.length === 0 ? (
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-32 bg-gray-100 rounded-lg"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredLeads.length === 0 ? (
                 <div className="text-center py-12">
                   <Target className="w-12 h-12 mx-auto text-gray-300 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No leads found</h3>
-                  <p className="text-gray-600">Try adjusting your filters or search terms.</p>
+                  <p className="text-gray-600 mb-4">
+                    {leads && leads.length === 0 
+                      ? "No leads in the database yet."
+                      : "Try adjusting your filters or search terms."
+                    }
+                  </p>
+                  {leads && leads.length === 0 && (
+                    <button 
+                      onClick={() => router.push('/leads-test')}
+                      className="inline-flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+                    >
+                      <Target className="w-4 h-4 mr-2" />
+                      Add Test Lead
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -347,13 +291,13 @@ export default function LeadsPage() {
                         <div className="flex-1 space-y-3">
                           <div className="flex flex-wrap items-center gap-3">
                             <h4 className="text-lg font-semibold text-gray-900">
-                              {lead.name}
+                              {lead.name || 'Unknown Lead'}
                             </h4>
                             <Badge variant="texas" size="sm">
-                              {lead.tradeType}
+                              {lead.tradeType || lead.service || 'General'}
                             </Badge>
                             <Badge variant={getStatusBadgeVariant(lead.status)} size="sm">
-                              {lead.status}
+                              {lead.status || 'new'}
                             </Badge>
                             {lead.permitNumber && (
                               <Badge variant="default" size="sm">
@@ -365,11 +309,11 @@ export default function LeadsPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600">
                             <div className="flex items-center space-x-2">
                               <MapPin className="w-4 h-4" />
-                              <span>{lead.address}</span>
+                              <span>{lead.address || `${lead.city || ''}, ${lead.state || 'TX'}`}</span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <DollarSign className="w-4 h-4" />
-                              <span>${lead.permitValue.toLocaleString()} permit value</span>
+                              <span>${(lead.permitValue || 0).toLocaleString()} permit value</span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Clock className="w-4 h-4" />
@@ -377,26 +321,30 @@ export default function LeadsPage() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Target className="w-4 h-4" />
-                              <span>{lead.county}</span>
+                              <span>{lead.county || lead.city || 'Unknown location'}</span>
                             </div>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-4">
-                            <a href={`tel:${lead.phone}`} className="inline-flex items-center text-sm text-brand-600 hover:text-brand-700">
-                              <Phone className="w-4 h-4 mr-1" />
-                              {lead.phone}
-                            </a>
-                            <a href={`mailto:${lead.email}`} className="inline-flex items-center text-sm text-brand-600 hover:text-brand-700">
-                              <Mail className="w-4 h-4 mr-1" />
-                              {lead.email}
-                            </a>
+                            {lead.phone && (
+                              <a href={`tel:${lead.phone}`} className="inline-flex items-center text-sm text-brand-600 hover:text-brand-700">
+                                <Phone className="w-4 h-4 mr-1" />
+                                {lead.phone}
+                              </a>
+                            )}
+                            {lead.email && (
+                              <a href={`mailto:${lead.email}`} className="inline-flex items-center text-sm text-brand-600 hover:text-brand-700">
+                                <Mail className="w-4 h-4 mr-1" />
+                                {lead.email}
+                              </a>
+                            )}
                           </div>
                         </div>
 
                         <div className="flex flex-col items-end space-y-4">
                           <div className="w-48">
                             <LeadScore
-                              score={lead.score}
+                              score={lead.score || 0}
                               breakdown={lead.scoreBreakdown}
                               showDetails={false}
                               size="sm"
