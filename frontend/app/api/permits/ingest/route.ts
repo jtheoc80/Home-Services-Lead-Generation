@@ -298,15 +298,10 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         source = body.source;
       } catch (error) {
-        // If no JSON body and no query param, return error
-        if (!source) {
-          return NextResponse.json(
-            { error: 'Source parameter required either as query parameter (?source=austin) or in JSON body' },
-            { status: 400 }
-          );
-        }
-      }
-        // Ignore JSON parse errors; will handle missing source below
+        return NextResponse.json(
+          { error: 'Invalid JSON body: unable to parse request body' },
+          { status: 400 }
+        );
       }
     }
     if (!source) {
