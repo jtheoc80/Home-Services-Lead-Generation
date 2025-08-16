@@ -53,3 +53,8 @@ export function createServiceClient() {
     }
   });
 }
+
+// Alias for createServerClient for backward compatibility
+// Note: For privileged operations like inserting leads without authentication,
+// consider using createServiceClient() instead
+export const createSupabaseServerClient = createServerClient;
