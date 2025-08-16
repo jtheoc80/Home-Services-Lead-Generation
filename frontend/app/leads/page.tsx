@@ -8,6 +8,7 @@ import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
 import LeadScore from '@/components/ui/LeadScore';
 import TexasCountySelector from '@/components/ui/TexasCountySelector';
+import DashboardHeader from '@/components/ui/DashboardHeader';
 import { 
   Search, 
   Download, 
@@ -113,31 +114,22 @@ export default function LeadsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       <div className="mx-auto max-w-7xl p-6 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-              Texas Leads Management
-            </h1>
-            <p className="text-lg text-gray-600 mt-2">
-              Advanced lead scoring and management across {selectedCounties.length} Texas counties
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </button>
-            <button 
-              className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
-              onClick={() => router.push('/leads-test')}
-            >
-              <Target className="w-4 h-4 mr-2" />
-              Add Test Lead
-            </button>
-          </div>
-        </div>
+        <DashboardHeader
+          title="Texas Leads Management"
+          subtitle={`Advanced lead scoring and management across ${selectedCounties.length} Texas counties`}
+        >
+          <button className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </button>
+          <button 
+            className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+            onClick={() => router.push('/leads-test')}
+          >
+            <Target className="w-4 h-4 mr-2" />
+            Add Test Lead
+          </button>
+        </DashboardHeader>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import LeadScore from "@/components/ui/LeadScore";
 import TexasCountySelector from "@/components/ui/TexasCountySelector";
+import DashboardHeader from "@/components/ui/DashboardHeader";
 import { 
   Users, 
   TrendingUp, 
@@ -92,15 +93,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       <div className="mx-auto max-w-7xl p-6 space-y-8">
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-            Texas Lead Dashboard
-          </h1>
-          <p className="text-lg text-gray-600">
-            Intelligent home services lead generation across the Lone Star State
-          </p>
-        </div>
+        <DashboardHeader
+          title="Texas Lead Dashboard"
+          subtitle="Intelligent home services lead generation across the Lone Star State"
+        />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
