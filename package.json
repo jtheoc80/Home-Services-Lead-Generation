@@ -22,6 +22,8 @@
     "test:leads:sql": "tsx scripts/test_leads_sql.ts",
     "test:leads:integration": "tsx scripts/test_leads_sql_integration.ts",
     "test:permits:view": "tsx scripts/test_permits_view.ts",
+    "test:permits:leads": "tsx scripts/test_permits_to_leads.ts",
+    "test:e2e:permits": "tsx scripts/test_e2e_permits_to_leads.ts",
     "demo:leads:setup": "tsx scripts/demo_leads_setup.ts",
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
@@ -49,6 +51,7 @@
     "frontend"
   ],
   "dependencies": {
+    "@supabase/supabase-js": "^2.55.0",
     "@types/pg": "^8.15.5",
     "axios": "^1.11.0",
     "commander": "^14.0.0",
