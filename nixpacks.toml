@@ -2,7 +2,7 @@
 PYTHON_VERSION = "3.11"
 
 [phases.setup]
-nixPkgs = ["python311", "poetry", "nodejs_20", "postgresql"]
+nixPkgs = ["python311", "poetry", "postgresql"]
 
 [phases.install]
 cmds = [
@@ -11,12 +11,8 @@ cmds = [
   "python --version",
   "python -m pip install poetry",
   "poetry config virtualenvs.create false",
-  "poetry install --without dev --no-interaction --no-ansi",
-  "npm ci"
+  "poetry install --without dev --no-interaction --no-ansi"
 ]
-
-[phases.build]
-cmds = ["npm run build"]
 
 [start]
 cmd = "SERVICE_TYPE=backend poetry run python backend/main.py"

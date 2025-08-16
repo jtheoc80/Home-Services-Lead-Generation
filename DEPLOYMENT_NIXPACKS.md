@@ -1,10 +1,41 @@
 # Deployment Configuration
 
-This project is configured to deploy the Next.js frontend as the primary application.
+This project uses a **backend-only Nixpacks configuration** for Railway deployment.
 
-## Environment Variables Required
+## Architecture
 
-Set the following environment variables in your deployment platform:
+- **Backend**: Deployed on Railway using Nixpacks (Python/FastAPI)
+- **Frontend**: Deployed separately on Vercel (Next.js)
+
+## Backend Deployment (Railway + Nixpacks)
+
+The `nixpacks.toml` configuration deploys the FastAPI backend with:
+
+### Build Process
+
+Nixpacks will:
+1. Install Python 3.11, Poetry, and PostgreSQL
+2. Set up Python symlinks for compatibility
+3. Install Poetry and configure it
+4. Install Python dependencies with `poetry install --without dev`
+5. Start the backend with `poetry run python backend/main.py`
+
+### Environment Variables Required
+
+Set the following environment variables in Railway:
+
+```
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+REDIS_URL=redis://username:password@host:port/database
+DATABASE_URL=postgresql://user:password@host:port/database
+SUPABASE_URL=your_actual_supabase_url
+SUPABASE_SERVICE_KEY=your_actual_supabase_service_key
+SUPABASE_JWT_SECRET=your_actual_jwt_secret
+```
+
+## Frontend Deployment
+
+The frontend (Next.js) is deployed separately on Vercel and requires these environment variables:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_actual_supabase_url
@@ -13,16 +44,3 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 NEXT_PUBLIC_API_BASE=https://your-backend-url.com
 NEXT_PUBLIC_DEFAULT_REGION=tx-houston
 ```
-
-## Build Process
-
-Nixpacks will:
-1. Install Node.js 18 and npm
-2. Navigate to the `frontend` directory
-3. Run `npm ci` to install dependencies
-4. Run `npm run build` to build the Next.js application
-5. Start the application with `npm start`
-
-## Backend
-
-The backend (FastAPI) should be deployed separately. See `backend/` directory for deployment instructions.
