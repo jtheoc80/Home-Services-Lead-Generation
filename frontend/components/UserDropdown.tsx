@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 export default function UserDropdown() {
   const { user, signOut } = useAuth();
