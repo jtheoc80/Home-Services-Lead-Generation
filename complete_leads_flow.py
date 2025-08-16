@@ -12,7 +12,6 @@ This script fulfills the requirement and shows the complete data flow:
 import os
 import sys
 import logging
-import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from pathlib import Path
