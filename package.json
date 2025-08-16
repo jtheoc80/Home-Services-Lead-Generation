@@ -24,6 +24,7 @@
     "test:smoke:headed": "npx playwright test tests/e2e/smoke.spec.ts --headed",
     "test:leads:sql": "tsx scripts/test_leads_sql.ts",
     "test:leads:integration": "tsx scripts/test_leads_sql_integration.ts",
+    "test:permits:view": "tsx scripts/test_permits_view.ts",
     "demo:leads:setup": "tsx scripts/demo_leads_setup.ts",
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
