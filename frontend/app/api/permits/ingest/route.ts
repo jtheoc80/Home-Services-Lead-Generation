@@ -35,15 +35,39 @@ interface HoustonPermitRecord {
 }
 
 interface DallasPermitRecord {
+  // Possible field variations from Dallas Socrata API
   permit_number?: string;
+  permit_no?: string;
+  record_id?: string;
+  
   issue_date?: string;
+  issued_date?: string;
+  issuance_date?: string;
+  
   work_description?: string;
+  description?: string;
+  project_description?: string;
+  
   project_address?: string;
+  address?: string;
+  full_address?: string;
+  
   applicant_name?: string;
+  applicant?: string;
+  
   contractor_name?: string;
-  estimated_cost?: string;
+  contractor?: string;
+  
+  estimated_cost?: string | number;
+  valuation?: string | number;
+  project_value?: string | number;
+  
   status?: string;
+  permit_status?: string;
+  current_status?: string;
+  
   permit_type?: string;
+  type?: string;
   [key: string]: unknown;
 }
 
@@ -111,20 +135,41 @@ function mapHoustonPermit(record: HoustonPermitRecord): NormalizedPermit {
 }
 
 function mapDallasPermit(record: DallasPermitRecord): NormalizedPermit {
+  // Helper function to get the first available field value
+  const getField = (...fieldNames: (keyof DallasPermitRecord)[]): string | number | undefined => {
+    for (const fieldName of fieldNames) {
+      const value = record[fieldName];
+      if (value !== undefined && value !== null && value !== '') {
+        return value as string | number;
+      }
+    }
+    return undefined;
+  };
+
+  // Helper function to parse numeric values safely
+  const parseNumeric = (value: string | number | undefined): number | undefined => {
+    if (value === undefined || value === null) return undefined;
+    const numValue = typeof value === 'number' ? value : parseFloat(value.toString());
+    return isNaN(numValue) ? undefined : numValue;
+  };
+
+  // Get permit identifier (try multiple field names)
+  const permitId = getField('permit_number', 'permit_no', 'record_id') as string | undefined;
+  
   return {
     source: 'dallas',
-    source_record_id: record.permit_number || `dallas_${Date.now()}_${Math.random()}`,
-    permit_number: record.permit_number,
-    issued_date: record.issue_date,
-    permit_type: record.permit_type,
-    work_description: record.work_description,
-    address: record.project_address,
+    source_record_id: permitId || `dallas_${Date.now()}_${Math.random()}`,
+    permit_number: permitId,
+    issued_date: getField('issued_date', 'issue_date', 'issuance_date') as string | undefined,
+    permit_type: getField('permit_type', 'type') as string | undefined,
+    work_description: getField('work_description', 'description', 'project_description') as string | undefined,
+    address: getField('project_address', 'address', 'full_address') as string | undefined,
     city: 'Dallas',
     county: 'Dallas',
-    applicant_name: record.applicant_name,
-    contractor_name: record.contractor_name,
-    valuation: record.estimated_cost ? parseFloat(record.estimated_cost.toString()) : undefined,
-    status: record.status,
+    applicant_name: getField('applicant_name', 'applicant') as string | undefined,
+    contractor_name: getField('contractor_name', 'contractor') as string | undefined,
+    valuation: parseNumeric(getField('estimated_cost', 'valuation', 'project_value')),
+    status: getField('status', 'permit_status', 'current_status') as string | undefined,
   };
 }
 
@@ -177,25 +222,31 @@ async function fetchHoustonPermits(): Promise<HoustonPermitRecord[]> {
 }
 
 async function fetchDallasPermits(): Promise<DallasPermitRecord[]> {
-  // TODO: Replace with actual Dallas CSV endpoint
-  const url = 'https://www.dallasopendata.com/api/views/permits/rows.csv?accessType=DOWNLOAD';
+  // Dallas OpenData API (Socrata) - Dataset ID: e7gq-4sah
+  const baseUrl = 'https://www.dallasopendata.com/resource/e7gq-4sah.json';
+  const limit = 1000; // Fetch up to 1000 records per request
   
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'text/csv',
-        'User-Agent': 'LeadLedgerPro/1.0',
-      },
-    });
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'LeadLedgerPro/1.0',
+    };
+    
+    // Add app token if available for higher rate limits
+    const dallasAppToken = process.env.DALLAS_APP_TOKEN;
+    if (dallasAppToken) {
+      headers['X-App-Token'] = dallasAppToken;
+    }
+    
+    const response = await fetch(url, { headers });
     
     if (!response.ok) {
       throw new Error(`Dallas API error: ${response.status} ${response.statusText}`);
     }
     
-    const csvText = await response.text();
-    // TODO: Parse CSV data (would need to add CSV parsing logic or use library)
-    console.log('Dallas CSV data length:', csvText.length);
-    return []; // Return empty array for now until CSV parsing is implemented
+    const data = await response.json() as DallasPermitRecord[];
+    console.log(`Dallas permits fetched: ${data.length} records`);
+    return data;
   } catch (error) {
     console.error('Error fetching Dallas permits:', error);
     return [];
@@ -218,17 +269,17 @@ export async function POST(request: NextRequest) {
     switch (source) {
       case 'austin':
         sourceData = await fetchAustinPermits();
-        permits = sourceData.map(mapAustinPermit);
+        permits = sourceData.map(record => mapAustinPermit(record as AustinPermitRecord));
         break;
         
       case 'houston':
         sourceData = await fetchHoustonPermits();
-        permits = sourceData.map(mapHoustonPermit);
+        permits = sourceData.map(record => mapHoustonPermit(record as HoustonPermitRecord));
         break;
         
       case 'dallas':
         sourceData = await fetchDallasPermits();
-        permits = sourceData.map(mapDallasPermit);
+        permits = sourceData.map(record => mapDallasPermit(record as DallasPermitRecord));
         break;
         
       case 'all':
@@ -240,9 +291,9 @@ export async function POST(request: NextRequest) {
         ]);
         
         permits = [
-          ...austinData.map(mapAustinPermit),
-          ...houstonData.map(mapHoustonPermit),
-          ...dallasData.map(mapDallasPermit)
+          ...austinData.map(record => mapAustinPermit(record as AustinPermitRecord)),
+          ...houstonData.map(record => mapHoustonPermit(record as HoustonPermitRecord)),
+          ...dallasData.map(record => mapDallasPermit(record as DallasPermitRecord))
         ];
         break;
         
