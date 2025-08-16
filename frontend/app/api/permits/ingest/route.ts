@@ -285,7 +285,13 @@ export async function POST(request: NextRequest) {
     const cronSecret = request.headers.get('x-cron-secret');
     const expectedCronSecret = process.env.CRON_SECRET;
     
-    if (cronSecret && expectedCronSecret) {
+    if (cronSecret) {
+      if (!expectedCronSecret) {
+        return NextResponse.json(
+          { error: 'Server misconfiguration: CRON_SECRET environment variable not set' },
+          { status: 500 }
+        );
+      }
       if (cronSecret !== expectedCronSecret) {
         return NextResponse.json(
           { error: 'Invalid cron secret' },
