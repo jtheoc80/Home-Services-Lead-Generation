@@ -1046,7 +1046,7 @@ async def debug_sb(request: Request, x_debug_key: str = Header(None, alias="X-De
     if not x_debug_key or x_debug_key != debug_api_key:
         logger.warning({
             "path": path,
-            "provided_key": x_debug_key if x_debug_key else "none",
+            "provided_key": hashlib.sha256(x_debug_key.encode()).hexdigest() if x_debug_key else "none",
             "status": 401
         })
         raise HTTPException(
