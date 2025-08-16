@@ -4,6 +4,22 @@ import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Lead } from '../../types/supabase';
 
+/**
+ * Convert a string to a deterministic number within a given range
+ * Used for generating consistent mock data based on lead IDs
+ */
+function hashStringToNumber(str: string, min: number, max: number): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Convert to positive number and scale to range
+  const normalized = Math.abs(hash) / Math.pow(2, 31);
+  return Math.floor(normalized * (max - min + 1)) + min;
+}
+
 // Extended Lead interface with computed fields for UI
 export interface EnhancedLead extends Lead {
   score?: number;
@@ -131,13 +147,10 @@ export function useEnhancedLeads(): {
   const { leads, error, loading } = useLeads();
   
   const enhancedLeads = leads?.map((lead): EnhancedLead => {
-    // Generate mock enhanced data for demo purposes
-    // In a real app, this would come from additional database queries or computations
-    const score = Math.floor(Math.random() * 40) + 60; // Random score 60-100
     // Generate deterministic mock enhanced data for demo purposes
     // In a real app, this would come from additional database queries or computations
-    const score = (hashStringToNumber(String(lead.id), 60, 100));
-    const permitValue = (hashStringToNumber(String(lead.id) + '-permit', 20000, 100000));
+    const score = hashStringToNumber(String(lead.id), 60, 100);
+    const permitValue = hashStringToNumber(String(lead.id) + '-permit', 20000, 100000);
     
     return {
       ...lead,
