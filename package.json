@@ -25,6 +25,7 @@
     "test:permits:leads": "tsx scripts/test_permits_to_leads.ts",
     "test:e2e:permits": "tsx scripts/test_e2e_permits_to_leads.ts",
     "test:schema:alignment": "tsx scripts/test_schema_alignment.ts",
+    "validate:migration": "tsx scripts/validate_migration.ts",
     "demo:leads:setup": "tsx scripts/demo_leads_setup.ts",
     "redis:smoke": "python scripts/redis_smoketest.py",
     "redis:chaos": "python scripts/redis_chaos_smoketest.py",
