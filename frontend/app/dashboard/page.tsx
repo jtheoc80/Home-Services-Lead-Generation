@@ -23,7 +23,8 @@ import {
   ChevronRight,
   AlertCircle,
   LogOut,
-  User
+  User,
+  Plus
 } from "lucide-react";
 
 function DashboardContent() {
@@ -106,7 +107,15 @@ function DashboardContent() {
         <DashboardHeader
           title="Texas Lead Dashboard"
           subtitle="Intelligent home services lead generation across the Lone Star State"
-        />
+        >
+          <button
+            onClick={() => router.push('/leads/new')}
+            className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Lead
+          </button>
+        </DashboardHeader>
 
         {/* Stats Grid */}
         <MetricsCards

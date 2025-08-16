@@ -128,10 +128,10 @@ function LeadsPageContent() {
           </button>
           <button 
             className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
-            onClick={() => router.push('/leads-test')}
+            onClick={() => router.push('/leads/new')}
           >
             <Target className="w-4 h-4 mr-2" />
-            Add Test Lead
+            Create New Lead
           </button>
         </DashboardHeader>
 
@@ -279,11 +279,11 @@ function LeadsPageContent() {
                   </p>
                   {leads && leads.length === 0 && (
                     <button 
-                      onClick={() => router.push('/leads-test')}
+                      onClick={() => router.push('/leads/new')}
                       className="inline-flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
                     >
                       <Target className="w-4 h-4 mr-2" />
-                      Add Test Lead
+                      Create New Lead
                     </button>
                   )}
                 </div>
