@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "../../../lib/supabaseServer";
 
 // 1) Try your Python backend first (via proxy)
 async function fetchFromBackend() {
@@ -22,19 +22,21 @@ async function fetchFromBackend() {
 
 // 2) Fallback to Supabase if backend isn't set/ready
 async function fetchFromSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return [];
+  try {
+    // Use service role to bypass RLS and fetch all leads without user filtering
+    const supabase = getSupabaseClient({ useServiceRole: true });
+    const { data, error } = await supabase
+      .from("leads")
+      .select("id,name,email,phone,service,county,status,created_at,source,address,city,state,zip,metadata")
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-  const supabase = createClient(url, anon, { auth: { persistSession: false } });
-  const { data, error } = await supabase
-    .from("leads")
-    .select("id,name,email,phone,service,county,status,created_at,source,address,city,state,zip,metadata")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) throw error;
-  return data ?? [];
+    if (error) throw error;
+    return data ?? [];
+  } catch (error) {
+    console.error('Supabase fetch error:', error);
+    return [];
+  }
 }
 
 export async function GET() {
