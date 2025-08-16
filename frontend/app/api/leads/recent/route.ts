@@ -41,7 +41,7 @@ export async function GET() {
   try {
     const fromBackend = await fetchFromBackend();
     const leads = fromBackend ?? (await fetchFromSupabase());
-    return NextResponse.json({ data: leads }, { status: 200 });
+    return NextResponse.json({ leads, data: leads }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Server error" }, { status: 500 });
   }
