@@ -24,7 +24,7 @@ import logging
 import argparse
 import asyncio
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
