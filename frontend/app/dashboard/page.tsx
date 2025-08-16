@@ -7,6 +7,8 @@ import StatCard from "@/components/ui/StatCard";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import LeadScore from "@/components/ui/LeadScore";
+import MetricsCards from "@/components/MetricsCards";
+import LeadCard from "@/components/LeadCard";
 import TexasCountySelector from "@/components/ui/TexasCountySelector";
 import { 
   Users, 
@@ -31,6 +33,7 @@ export default function Dashboard() {
     if (!leads) return { total: 0, newCount: 0, qualified: 0, won: 0, avgScore: 0, totalValue: 0 };
     
     const filteredLeads = leads.filter(lead => 
+      selectedCounties.length === 0 ||
       selectedCounties.some(county => 
         lead.county?.toLowerCase().includes(county)
       )
@@ -40,8 +43,12 @@ export default function Dashboard() {
     const newCount = filteredLeads.filter((l) => (l.status ?? "").toLowerCase() === "new").length;
     const qualified = filteredLeads.filter((l) => (l.status ?? "").toLowerCase() === "qualified").length;
     const won = filteredLeads.filter((l) => (l.status ?? "").toLowerCase() === "won").length;
-    const avgScore = filteredLeads.reduce((sum, l) => sum + (l.score || 0), 0) / total || 0;
-    const totalValue = filteredLeads.reduce((sum, l) => sum + (l.permitValue || 0), 0);
+    
+    // Use the new lead_score field from database, with fallback to computed score
+    const avgScore = filteredLeads.reduce((sum, l) => sum + (l.lead_score || l.score || 0), 0) / total || 0;
+    
+    // Use the new value field from database, with fallback to computed permitValue
+    const totalValue = filteredLeads.reduce((sum, l) => sum + (l.value || l.permitValue || 0), 0);
     
     return { total, newCount, qualified, won, avgScore, totalValue };
   }, [leads, selectedCounties]);
@@ -103,44 +110,13 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            label="Total Leads"
-            value={loading ? "—" : stats.total}
-            change={12}
-            changeLabel="from last week"
-            icon={<Users className="w-6 h-6" />}
-            variant="default"
-            loading={loading}
-          />
-          <StatCard
-            label="New Leads"
-            value={loading ? "—" : stats.newCount}
-            change={8}
-            changeLabel="today"
-            icon={<TrendingUp className="w-6 h-6" />}
-            variant="success"
-            loading={loading}
-          />
-          <StatCard
-            label="Avg. Lead Score"
-            value={loading ? "—" : `${Math.round(stats.avgScore)}/100`}
-            change={5}
-            changeLabel="improvement"
-            icon={<Target className="w-6 h-6" />}
-            variant="texas"
-            loading={loading}
-          />
-          <StatCard
-            label="Total Value"
-            value={loading ? "—" : `$${(stats.totalValue / 1000).toFixed(0)}K`}
-            change={15}
-            changeLabel="this month"
-            icon={<Trophy className="w-6 h-6" />}
-            variant="warning"
-            loading={loading}
-          />
-        </div>
+        <MetricsCards
+          totalLeads={stats.total}
+          totalValue={stats.totalValue}
+          averageScore={stats.avgScore}
+          newLeads={stats.newCount}
+          loading={loading}
+        />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -200,54 +176,13 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredLeads.slice(0, 6).map((lead) => (
-                    <div
+                  {filteredLeads.slice(0, 5).map((lead) => (
+                    <LeadCard
                       key={lead.id}
-                      className="p-4 border border-gray-200 rounded-xl hover:shadow-soft-lg transition-all duration-300 group cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex items-center space-x-3">
-                            <h4 className="font-semibold text-gray-900 truncate">
-                              {lead.name || 'Unknown Lead'}
-                            </h4>
-                            <Badge variant="texas" size="sm">
-                              {lead.tradeType || lead.service || 'General'}
-                            </Badge>
-                            <Badge 
-                              variant={
-                                lead.status === 'won' ? 'success' :
-                                lead.status === 'qualified' ? 'warning' :
-                                lead.status === 'contacted' ? 'texas' : 'default'
-                              }
-                              size="sm"
-                            >
-                              {lead.status || 'new'}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
-                            <span className="flex items-center space-x-1">
-                              <MapPin className="w-4 h-4" />
-                              <span>{lead.county || lead.city || 'Unknown location'}</span>
-                            </span>
-                            <span>${(lead.permitValue || 0).toLocaleString()}</span>
-                            <span>{lead.lastUpdated}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-4">
-                          <div className="w-32">
-                            <LeadScore
-                              score={lead.score || 0}
-                              size="sm"
-                              showDetails={false}
-                            />
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-brand-600 transition-colors" />
-                        </div>
-                      </div>
-                    </div>
+                      lead={lead}
+                      compact={true}
+                      showFeedback={false}
+                    />
                   ))}
 
                   <div className="mt-6 text-center">
