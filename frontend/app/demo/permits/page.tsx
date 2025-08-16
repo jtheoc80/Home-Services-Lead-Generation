@@ -230,7 +230,7 @@ export default function PermitsDemo() {
         <div className="mt-8 bg-gray-100 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Technical Details</h3>
           <div className="text-sm text-gray-600 space-y-2">
-            <p><strong>Query:</strong> <code>supabase.from('permits').select('id, jurisdiction, county, permit_type, value, status, issued_date, address')</code></p>
+            <p><strong>Query:</strong> <code>supabase.from(&apos;permits&apos;).select(&apos;id, jurisdiction, county, permit_type, value, status, issued_date, address&apos;)</code></p>
             <p><strong>Expected Schema:</strong> The permits view should map to the gold.permits table with proper column aliases</p>
             <p><strong>Dependencies:</strong> Requires 2025-setup.sql and create_permits_view.sql to be applied</p>
           </div>

@@ -13,7 +13,7 @@ export interface Permit {
   address: string;
 }
 
-export async function getPermits(): Promise<{ data: Permit[] | null; error: any }> {
+export async function getPermits(): Promise<{ data: Permit[] | null; error: string | null }> {
   try {
     // This is the exact query from the problem statement
     const supabase = createSupabaseServerClient();
@@ -23,7 +23,7 @@ export async function getPermits(): Promise<{ data: Permit[] | null; error: any 
       .order('issued_date', { ascending: false })
       .limit(50);
 
-    return { data: permits, error };
+    return { data: permits, error: error?.message || null };
   } catch (err) {
     console.error('Error fetching permits:', err);
     return { 
