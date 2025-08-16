@@ -134,7 +134,16 @@ def write_supabase_output(permits: List[PermitRecord], jurisdiction: str = None)
 
 
 def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, Path]) -> Tuple[List[PermitRecord], Dict[str, List[PermitRecord]]]:
-    """Run region-aware scraper using registry configuration."""
+def run_region_aware_scraper(
+    args: argparse.Namespace,
+    output_paths: Dict[str, Path],
+    return_jurisdiction_map: bool = False
+) -> Union[List[PermitRecord], Tuple[List[PermitRecord], Dict[str, List[PermitRecord]]]]:
+    """Run region-aware scraper using registry configuration.
+
+    If return_jurisdiction_map is False (default), returns List[PermitRecord].
+    If True, returns (List[PermitRecord], Dict[str, List[PermitRecord]]).
+    """
     try:
         adapter = RegionAwareAdapter()
         since = dt.datetime.now() - dt.timedelta(days=args.days)
