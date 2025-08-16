@@ -33,6 +33,22 @@ This document describes the new environment variables that control export permis
     TWILIO_FROM=+1234567890
     ```
 
+### GitHub Actions Ingest Agents
+- **`INGEST_URL`**: Vercel endpoint for permit data ingestion
+  - Format: `https://your-app.vercel.app/api/permits/ingest`
+  - Used by the ingest-agents workflow for Austin/Dallas data ingestion
+  - Example: `INGEST_URL=https://leads-app.vercel.app/api/permits/ingest`
+
+- **`DEBUG_URL`**: Vercel endpoint for database status checking  
+  - Format: `https://your-app.vercel.app/api/_debug/sb`
+  - Returns Supabase leads and permits counts for verification
+  - Example: `DEBUG_URL=https://leads-app.vercel.app/api/_debug/sb`
+
+- **`CRON_SECRET`**: Authentication secret for secured Vercel endpoints
+  - Used in x-cron-secret header to protect ingest/debug endpoints
+  - Should match the secret configured in Vercel for API route protection
+  - Example: `CRON_SECRET=your_secure_random_string_here`
+
 ## Configuration Files
 
 Add these variables to your environment configuration files:
@@ -52,6 +68,17 @@ SENDGRID_API_KEY=your_sendgrid_api_key_here
 TWILIO_SID=your_twilio_account_sid_here
 TWILIO_TOKEN=your_twilio_auth_token_here
 TWILIO_FROM=+1xxxxxxxxxx
+```
+
+### GitHub Actions Secrets
+
+Configure these secrets in **GitHub → Settings → Secrets and variables → Actions**:
+
+```bash
+# Ingest Agents Workflow
+INGEST_URL=https://your-app.vercel.app/api/permits/ingest
+DEBUG_URL=https://your-app.vercel.app/api/_debug/sb  
+CRON_SECRET=your_secure_random_string_here
 ```
 
 ### Backend `.env`
