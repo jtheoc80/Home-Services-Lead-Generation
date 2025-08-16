@@ -1,6 +1,9 @@
 [variables]
 PYTHON_VERSION = "3.11"
 
+# Explicitly configure providers to disable auto-detection
+[providers.python]
+
 [phases.setup]
 nixPkgs = ["python311", "poetry", "postgresql"]
 
@@ -14,5 +17,9 @@ cmds = [
   "poetry install --without dev --no-interaction --no-ansi"
 ]
 
+[phases.build]
+# Explicitly set build to do nothing - no npm build needed for backend
+cmds = ["echo 'Backend build complete - no additional build steps needed'"]
+
 [start]
-cmd = "SERVICE_TYPE=backend poetry run python backend/main.py"
+cmd = "cd /app/backend && PYTHONPATH=/app SERVICE_TYPE=backend poetry run python main.py"
