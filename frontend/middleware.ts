@@ -4,8 +4,19 @@ import type { NextRequest } from 'next/server'
 // Protected routes that require authentication
 const protectedRoutes = ['/dashboard', '/leads']
 
+// Routes that are allowed in test mode without authentication
+const testModeAllowedRoutes = ['/leads/new', '/leads-test']
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Check if we're in test mode
+  const isTestMode = process.env.LEADS_TEST_MODE === 'true'
+  
+  // If in test mode, allow certain routes without authentication
+  if (isTestMode && testModeAllowedRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
 
   // Check if the current path is a protected route
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
