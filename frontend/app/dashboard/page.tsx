@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Lead } from "@/types/supabase";
+import { useMemo, useState } from "react";
+import { useEnhancedLeads, EnhancedLead } from "@/hooks/useLeads";
 import StatCard from "@/components/ui/StatCard";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -16,103 +16,18 @@ import {
   MapPin,
   Filter,
   Search,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from "lucide-react";
 
-interface EnhancedLead extends Lead {
-  score?: number;
-  scoreBreakdown?: {
-    recency: number;
-    residential: number;
-    value: number;
-    workClass: number;
-  };
-  tradeType?: string;
-  permitValue?: number;
-  lastUpdated?: string;
-}
-
 export default function Dashboard() {
-  const [leads, setLeads] = useState<EnhancedLead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+  const { leads, error, loading } = useEnhancedLeads();
   const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'fortbend']);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Mock enhanced lead data for demo
-  useEffect(() => {
-    const mockEnhancedLeads: EnhancedLead[] = [
-      {
-        id: 1,
-        name: "Johnson Residence Renovation",
-        email: "johnson@email.com",
-        phone: "(713) 555-0123",
-        service: "HVAC Installation",
-        county: "Harris County",
-        status: "new",
-        created_at: "2024-01-15T10:30:00Z",
-        score: 87,
-        scoreBreakdown: { recency: 23, residential: 18, value: 22, workClass: 16 },
-        tradeType: "HVAC",
-        permitValue: 45000,
-        lastUpdated: "2 hours ago"
-      },
-      {
-        id: 2,
-        name: "Smith Home Roofing",
-        email: "smith@email.com", 
-        phone: "(281) 555-0456",
-        service: "Roof Replacement",
-        county: "Fort Bend County",
-        status: "qualified",
-        created_at: "2024-01-15T08:15:00Z",
-        score: 73,
-        scoreBreakdown: { recency: 20, residential: 17, value: 19, workClass: 15 },
-        tradeType: "Roofing",
-        permitValue: 32000,
-        lastUpdated: "4 hours ago"
-      },
-      {
-        id: 3,
-        name: "Davis Electrical Upgrade",
-        email: "davis@email.com",
-        phone: "(832) 555-0789",
-        service: "Electrical Panel Upgrade",
-        county: "Brazoria County",
-        status: "contacted",
-        created_at: "2024-01-14T14:20:00Z",
-        score: 65,
-        scoreBreakdown: { recency: 18, residential: 16, value: 15, workClass: 14 },
-        tradeType: "Electrical",
-        permitValue: 18000,
-        lastUpdated: "1 day ago"
-      },
-      {
-        id: 4,
-        name: "Wilson Pool Installation",
-        email: "wilson@email.com",
-        phone: "(409) 555-0321",
-        service: "Swimming Pool",
-        county: "Galveston County", 
-        status: "won",
-        created_at: "2024-01-13T16:45:00Z",
-        score: 92,
-        scoreBreakdown: { recency: 22, residential: 19, value: 25, workClass: 18 },
-        tradeType: "Pool",
-        permitValue: 75000,
-        lastUpdated: "2 days ago"
-      }
-    ];
-
-    (async () => {
-      // Simulate async data loading with a Promise-based delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setLeads(mockEnhancedLeads);
-      setLoading(false);
-    })();
-  }, []);
-
   const stats = useMemo(() => {
+    if (!leads) return { total: 0, newCount: 0, qualified: 0, won: 0, avgScore: 0, totalValue: 0 };
+    
     const filteredLeads = leads.filter(lead => 
       selectedCounties.some(county => 
         lead.county?.toLowerCase().includes(county)
@@ -130,10 +45,13 @@ export default function Dashboard() {
   }, [leads, selectedCounties]);
 
   const filteredLeads = useMemo(() => {
+    if (!leads) return [];
+    
     return leads.filter(lead => {
-      const matchesCounty = selectedCounties.some(county => 
-        lead.county?.toLowerCase().includes(county)
-      );
+      const matchesCounty = selectedCounties.length === 0 || 
+        selectedCounties.some(county => 
+          lead.county?.toLowerCase().includes(county)
+        );
       const matchesSearch = !searchTerm || 
         lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,6 +60,26 @@ export default function Dashboard() {
       return matchesCounty && matchesSearch;
     });
   }, [leads, selectedCounties, searchTerm]);
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+        <div className="mx-auto max-w-7xl p-6">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="p-8 max-w-md text-center">
+              <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Database Connection Error</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <p className="text-sm text-gray-500">
+                Please check your Supabase configuration in the .env.local file.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -233,11 +171,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {err ? (
-                <div className="p-6 text-center text-danger-600 bg-danger-50 rounded-lg">
-                  Error: {err}
-                </div>
-              ) : loading ? (
+              {loading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="animate-pulse">
@@ -249,7 +183,12 @@ export default function Dashboard() {
                 <div className="p-10 text-center text-gray-500">
                   <MapPin className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                   <h3 className="text-lg font-medium mb-2">No leads found</h3>
-                  <p>Try adjusting your county selection or search terms.</p>
+                  <p>
+                    {leads && leads.length === 0 
+                      ? "No leads in the database yet. Try adding some test data."
+                      : "Try adjusting your county selection or search terms."
+                    }
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -262,10 +201,10 @@ export default function Dashboard() {
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-center space-x-3">
                             <h4 className="font-semibold text-gray-900 truncate">
-                              {lead.name}
+                              {lead.name || 'Unknown Lead'}
                             </h4>
                             <Badge variant="texas" size="sm">
-                              {lead.tradeType}
+                              {lead.tradeType || lead.service || 'General'}
                             </Badge>
                             <Badge 
                               variant={
@@ -275,14 +214,14 @@ export default function Dashboard() {
                               }
                               size="sm"
                             >
-                              {lead.status}
+                              {lead.status || 'new'}
                             </Badge>
                           </div>
                           
                           <div className="flex items-center space-x-4 text-sm text-gray-600">
                             <span className="flex items-center space-x-1">
                               <MapPin className="w-4 h-4" />
-                              <span>{lead.county}</span>
+                              <span>{lead.county || lead.city || 'Unknown location'}</span>
                             </span>
                             <span>${(lead.permitValue || 0).toLocaleString()}</span>
                             <span>{lead.lastUpdated}</span>
@@ -305,7 +244,7 @@ export default function Dashboard() {
 
                   <div className="mt-6 text-center">
                     <button
-                      onClick={() => (location.href = "/leads")}
+                      onClick={() => (window.location.href = "/leads")}
                       className="inline-flex items-center px-6 py-3 bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 transition-colors duration-200 shadow-soft"
                     >
                       View All Leads
