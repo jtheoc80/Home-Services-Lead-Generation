@@ -8,13 +8,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Hide the sidebar and topbar for login page
-    document.body.style.overflow = 'hidden';
-    const appLayout = document.querySelector('.flex.min-h-screen');
-    if (appLayout) {
-      (appLayout as HTMLElement).style.display = 'none';
-    }
-
     // Check if Supabase is configured
     if (!isSupabaseConfigured()) {
       setIsLoading(false);
@@ -38,19 +31,11 @@ export default function LoginPage() {
     };
 
     checkAuth();
-
-    return () => {
-      document.body.style.overflow = '';
-      const appLayout = document.querySelector('.flex.min-h-screen');
-      if (appLayout) {
-        (appLayout as HTMLElement).style.display = 'flex';
-      }
-    };
   }, []);
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center z-50">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
@@ -60,7 +45,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center z-50">
+    <div className="min-h-[600px] flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 -mx-6 -my-6">
       <div className="w-full max-w-md p-4">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
