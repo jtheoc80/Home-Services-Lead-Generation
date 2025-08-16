@@ -230,7 +230,7 @@ BEGIN
   -- Derive canonical permit_id from payload
   canonical_permit_id := COALESCE(
       NULLIF(trim(p->>'permit_id'), ''),
-      NULLIF(trim(p->>'permit_no'), ''),
+      NULLIF(trim(p->>'permit_number'), ''),
       NULLIF(trim(p->>'source_record_id'), '')
   );
   
