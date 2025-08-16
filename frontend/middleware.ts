@@ -66,15 +66,5 @@ export async function middleware(request: NextRequest) {
 
 // Configure which paths the middleware should run on
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - login (login page itself)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|login).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)']
 }
