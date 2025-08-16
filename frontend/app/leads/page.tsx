@@ -123,7 +123,7 @@ export default function LeadsPage() {
             </button>
             <button 
               className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
-              onClick={() => window.location.href = '/leads-test'}
+              onClick={() => router.push('/leads-test')}
             >
               <Target className="w-4 h-4 mr-2" />
               Add Test Lead
