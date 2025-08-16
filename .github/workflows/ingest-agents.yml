@@ -95,6 +95,52 @@ jobs:
       - name: Summarize
         run: echo "✅ Verification complete"
 
+  # Add GitHub Agent invocation after successful ingestion
+  gh-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: verify
+    if: success()
+    steps:
+      - name: Invoke GitHub Agent
+        id: agent
+        run: |
+          # Only invoke if GitHub Agent secrets are configured
+          if [ -n "$SUPABASE_FUNCTION_URL" ] && [ -n "$AGENT_SECRET" ]; then
+            echo "🤖 Invoking GitHub Agent to process DB events..."
+            
+            RESP=$(curl -sS -X POST "$SUPABASE_FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -H "x-agent-secret: $AGENT_SECRET" \
+              -w "\nHTTP_STATUS:%{http_code}" || echo "CURL_FAILED")
+            
+            if [ "$RESP" = "CURL_FAILED" ]; then
+              echo "⚠️ GitHub Agent invocation failed (network error)"
+              echo "This is non-critical - events will be processed on next run"
+              exit 0
+            fi
+            
+            # Extract HTTP status and response body
+            HTTP_STATUS=$(echo "$RESP" | grep "HTTP_STATUS:" | cut -d: -f2 2>/dev/null || echo "000")
+            BODY=$(echo "$RESP" | sed '/HTTP_STATUS:/d')
+            
+            echo "Response: $BODY"
+            
+            if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 207 ]; then
+              PROCESSED=$(echo "$BODY" | jq -r '.processed // 0' 2>/dev/null || echo "0")
+              echo "✅ GitHub Agent processed $PROCESSED events"
+            else
+              echo "⚠️ GitHub Agent returned HTTP $HTTP_STATUS (non-critical)"
+            fi
+          else
+            echo "ℹ️ GitHub Agent not configured (SUPABASE_FUNCTION_URL/AGENT_SECRET missing)"
+            echo "This is optional - skipping GitHub Agent invocation"
+          fi
+        env:
+          SUPABASE_FUNCTION_URL: ${{ secrets.SUPABASE_FUNCTION_URL }}
+          AGENT_SECRET: ${{ secrets.AGENT_SECRET }}
+        continue-on-error: true
+
       - name: Workflow Summary
         if: always()
         run: |
