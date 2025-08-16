@@ -59,7 +59,6 @@ END $$;
 -- Backfill permit_id from existing data
 UPDATE public.permits 
 SET permit_id = COALESCE(
-    NULLIF(trim(source_record_id), ''),
     NULLIF(trim(permit_number), ''),
     id::text
 )
