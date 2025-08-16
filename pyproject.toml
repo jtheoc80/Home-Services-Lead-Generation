@@ -15,7 +15,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<4.0"
 
 # Web framework dependencies
 fastapi = "^0.104.0"
@@ -25,7 +25,7 @@ gunicorn = "^21.2.0"
 # Data processing
 pandas = ">=2.2,<3.0"
 numpy = ">=1.26,<2.0"
-scikit-learn = "^1.1.0"
+scikit-learn = ">=1.5.0,<2.0.0"
 
 # Database and ORM
 psycopg2-binary = "^2.9.0"
