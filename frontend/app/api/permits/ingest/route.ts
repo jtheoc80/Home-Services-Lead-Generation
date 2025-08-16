@@ -257,6 +257,12 @@ async function fetchDallasPermits(): Promise<DallasPermitRecord[]> {
 
 // Main API route handler
 export async function POST(request: NextRequest) {
+  // Check for x-cron-secret header first
+  const secret = request.headers.get('x-cron-secret')
+  if (secret !== process.env.CRON_SECRET) {
+    return new Response('Forbidden', { status: 403 })
+  }
+
   try {
     // Get Supabase client with service role key
     const supabase = getSupabaseClient({ useServiceRole: true });

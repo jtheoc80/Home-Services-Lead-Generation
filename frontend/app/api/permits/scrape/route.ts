@@ -141,6 +141,12 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function POST(req: Request) {
+  // Check for x-cron-secret header first
+  const secret = req.headers.get('x-cron-secret')
+  if (secret !== process.env.CRON_SECRET) {
+    return new Response('Forbidden', { status: 403 })
+  }
+
   try {
     const { searchParams } = new URL(req.url)
     const key = searchParams.get('source') || 'austin'
