@@ -9,7 +9,6 @@ what works with the current setup in the repository.
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 def run_command(cmd, description, cwd=None):
     """Run a command and capture its output"""
