@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useEnhancedLeads } from "@/hooks/useLeads";
 import StatCard from "@/components/ui/StatCard";
 import Card from "@/components/ui/Card";
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
+  const router = useRouter();
   const { leads, error, loading } = useEnhancedLeads();
   const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'fortbend']);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,13 +69,19 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
         <div className="mx-auto max-w-7xl p-6">
           <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="p-8 max-w-md text-center">
+            <Card className="p-8 max-w-lg text-center">
               <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Database Connection Error</h2>
               <p className="text-gray-600 mb-4">{error}</p>
-              <p className="text-sm text-gray-500">
-                Please check your Supabase configuration in the .env.local file.
-              </p>
+              <div className="text-sm text-gray-500 space-y-2">
+                <p>To connect to your Supabase database:</p>
+                <ol className="list-decimal list-inside text-left space-y-1">
+                  <li>Copy your Supabase project URL and anon key</li>
+                  <li>Update .env.local with your credentials</li>
+                  <li>Ensure your Supabase database has the 'leads' table</li>
+                  <li>Restart the development server</li>
+                </ol>
+              </div>
             </Card>
           </div>
         </div>

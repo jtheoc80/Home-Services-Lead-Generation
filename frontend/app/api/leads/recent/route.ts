@@ -29,7 +29,7 @@ async function fetchFromSupabase() {
   const supabase = createClient(url, anon, { auth: { persistSession: false } });
   const { data, error } = await supabase
     .from("leads")
-    .select("id,name,email,phone,service:trade,county,status,created_at")
+    .select("id,name,email,phone,service,county,status,created_at,source,address,city,state,zip,metadata")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -41,7 +41,7 @@ export async function GET() {
   try {
     const fromBackend = await fetchFromBackend();
     const leads = fromBackend ?? (await fetchFromSupabase());
-    return NextResponse.json({ leads }, { status: 200 });
+    return NextResponse.json({ data: leads }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Server error" }, { status: 500 });
   }
