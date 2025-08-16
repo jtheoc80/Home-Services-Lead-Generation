@@ -16,7 +16,7 @@ jobs:
           echo "$RESP"
           echo "resp=$RESP" >> $GITHUB_OUTPUT
           OK=$(jq -r '.ok' <<< "$RESP")
-          PERMITS=$(jq -r '.permits // 0' <<< "$RESP")
+          PERMITS=$(jq -r '.permits | tonumber // 0' <<< "$RESP")
           if [ "$OK" != "true" ] || [ "$PERMITS" -eq 0 ]; then
             echo "status=bad" >> $GITHUB_OUTPUT
           else
