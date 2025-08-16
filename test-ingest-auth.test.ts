@@ -2,12 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 
 // Mock NextRequest and NextResponse for testing
 const mockHeaders = new Map();
-const mockRequest = {
-  headers: {
-    get: (key: string) => mockHeaders.get(key)
-  },
-  json: () => Promise.resolve({ source: 'austin' })
-} as any;
+
 
 // Mock environment variables
 const originalEnv = process.env;
