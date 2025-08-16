@@ -1065,7 +1065,8 @@ async def debug_sb(request: Request, x_debug_key: str = Header(None, alias="X-De
         
         # Check database connectivity
         try:
-            result = supabase.table('meta.sources').select('id').limit(1).execute()
+            # Use a fundamental table for health check, e.g., 'permits'
+            result = supabase.table('permits').select('id').limit(1).execute()
             if not result.data:
                 ok = False
         except Exception as e:
