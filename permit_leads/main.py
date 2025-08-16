@@ -4,7 +4,7 @@ import os
 import json
 import hashlib
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import datetime as dt
 
 from .adapters.storage import Storage
@@ -133,7 +133,6 @@ def write_supabase_output(permits: List[PermitRecord], jurisdiction: str = None)
         # Don't raise - allow other outputs to succeed
 
 
-def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, Path]) -> Tuple[List[PermitRecord], Dict[str, List[PermitRecord]]]:
 def run_region_aware_scraper(
     args: argparse.Namespace,
     output_paths: Dict[str, Path],
@@ -317,12 +316,9 @@ def handle_scrape(args: argparse.Namespace):
     
     if use_region_aware:
         # Use new region-aware system
-    
-    if use_region_aware:
-        # Use new region-aware system
         logger.info("Using region-aware scraping system")
         # Initialize for legacy compatibility
-        permits, jurisdiction_results = run_region_aware_scraper(args, output_paths)
+        permits, jurisdiction_results = run_region_aware_scraper(args, output_paths, return_jurisdiction_map=True)
         all_permits.extend(permits)
         sources_processed = ["region-aware"]
     else:
