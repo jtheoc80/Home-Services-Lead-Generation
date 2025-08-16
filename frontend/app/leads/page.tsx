@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEnhancedLeads } from '@/hooks/useLeads';
+import { AuthGuard, useAuth } from '@/components/AuthGuard';
 import Card from '@/components/ui/Card';
 import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
@@ -21,11 +22,14 @@ import {
   Phone,
   Mail,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  LogOut,
+  User
 } from 'lucide-react';
 
-export default function LeadsPage() {
+function LeadsPageContent() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const { leads, error, loading } = useEnhancedLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'fortbend', 'brazoria', 'galveston']);
@@ -371,8 +375,42 @@ export default function LeadsPage() {
               )}
             </Card>
           </div>
+          
+          {/* User Info Panel */}
+          {user && (
+            <div className="mt-8">
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <User className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Signed in as</p>
+                      <p className="text-sm text-gray-600">{user.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={signOut}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </button>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LeadsPage() {
+  return (
+    <AuthGuard>
+      <LeadsPageContent />
+    </AuthGuard>
   );
 }
