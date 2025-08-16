@@ -54,7 +54,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Redirect on sign in
         if (event === 'SIGNED_IN' && session) {
-          window.location.href = '/dashboard';
+          // Check for redirectedFrom in the current URL
+          const searchParams = new URLSearchParams(window.location.search);
+          const redirectedFrom = searchParams.get('redirectedFrom');
+          // Only allow safe internal redirects
+          let redirectTo = '/dashboard';
+          if (
+            redirectedFrom &&
+            redirectedFrom.startsWith('/') &&
+            !redirectedFrom.startsWith('//') &&
+            !redirectedFrom.includes('://')
+          ) {
+            redirectTo = redirectedFrom;
+          }
+          window.location.href = redirectTo;
         }
       }
     );

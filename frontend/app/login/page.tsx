@@ -1,12 +1,16 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import AuthForm from '@/components/AuthForm';
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectedFrom = searchParams?.get('redirectedFrom');
   
   useEffect(() => {
     // Check if Supabase is configured
@@ -21,7 +25,9 @@ export default function LoginPage() {
         const supabase = getSupabaseClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          window.location.href = '/dashboard';
+          // User is already logged in, redirect to intended page or dashboard
+          const redirectTo = redirectedFrom || '/dashboard';
+          router.push(redirectTo);
         } else {
           setIsLoading(false);
         }
@@ -32,7 +38,7 @@ export default function LoginPage() {
     };
 
     checkAuth();
-  }, []);
+  }, [router, redirectedFrom]);
 
   if (isLoading) {
     return (
@@ -56,6 +62,12 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">LeadLedger Pro</h1>
           <p className="text-gray-600">Texas Home Services Lead Generation</p>
+          {redirectedFrom && (
+            <p className="mt-2 text-sm text-gray-600">
+              Please sign in to access{' '}
+              <span className="font-medium text-blue-600">{redirectedFrom}</span>
+            </p>
+          )}
         </div>
 
         {isSupabaseConfigured() ? (
@@ -97,4 +109,21 @@ export default function LoginPage() {
       </div>
     </div>
   );
+
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+
 }
