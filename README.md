@@ -1615,6 +1615,97 @@ SUPABASE_SERVICE_ROLE=your_service_role_key_here
 
 ---
 
+## Testing Permit→Lead Trigger Robustness
+
+This section documents how to test the robust permit→lead trigger that handles missing permit_type values.
+
+### Testing the Fixed Trigger
+
+After applying the migration `20250817000000_fix_permit_lead_trigger_robust.sql`, you can test the improved trigger:
+
+#### 1. Test with Missing permit_type
+
+```sql
+-- Test: Insert a permit with no permit_type or permit_class
+SELECT public.upsert_permit(jsonb_build_object(
+  'source', 'test',
+  'source_record_id', 'test-missing-permit-type-001',
+  'permit_number', 'TEST-001',
+  'work_description', 'Test work with no permit type',
+  'address', '123 Test St',
+  'city', 'Test City',
+  'county', 'Test County',
+  'valuation', 25000,
+  'applicant_name', 'Test Applicant'
+));
+```
+
+#### 2. Verify Lead Creation
+
+```sql
+-- Verify a lead was created with trade = 'General'
+SELECT 
+  name, 
+  trade, 
+  county, 
+  value, 
+  permit_id
+FROM public.leads 
+WHERE name LIKE '%Test work with no permit type%';
+```
+
+**Expected Result**: The lead should be created with `trade = 'General'` (not NULL).
+
+#### 3. Test with permit_type Present
+
+```sql
+-- Test: Insert a permit with permit_type
+SELECT public.upsert_permit(jsonb_build_object(
+  'source', 'test',
+  'source_record_id', 'test-with-permit-type-002',
+  'permit_type', 'Electrical',
+  'permit_number', 'TEST-002',
+  'work_description', 'Electrical panel upgrade',
+  'address', '456 Test Ave',
+  'city', 'Test City',
+  'county', 'Test County',
+  'valuation', 15000,
+  'applicant_name', 'Test Electrician'
+));
+```
+
+#### 4. Verify Specific Trade
+
+```sql
+-- Verify the lead uses the specific permit_type as trade
+SELECT 
+  name, 
+  trade, 
+  county, 
+  value
+FROM public.leads 
+WHERE name LIKE '%Electrical panel upgrade%';
+```
+
+**Expected Result**: The lead should be created with `trade = 'Electrical'`.
+
+#### 5. Clean Up Test Data
+
+```sql
+-- Clean up test permits and leads
+DELETE FROM public.leads WHERE name LIKE '%Test work%' OR name LIKE '%Electrical panel upgrade%';
+DELETE FROM public.permits WHERE source = 'test' AND source_record_id LIKE 'test-%';
+```
+
+### Verification Summary
+
+✅ **No NULL trades**: All leads should have a valid trade value  
+✅ **Fallback works**: Missing permit_type defaults to 'General'  
+✅ **Priority respected**: permit_type > permit_class > 'General'  
+✅ **Existing data fixed**: Any existing NULL trades are backfilled to 'General'
+
+---
+
 ## Supabase Debugging
 
 When troubleshooting issues with your Supabase integration, check these specific locations for detailed error information:
