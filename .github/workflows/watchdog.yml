@@ -1,0 +1,61 @@
+name: Watchdog (open issue on failure)
+on:
+  schedule:
+    - cron: "30 6 * * *"  # daily after the ingest agents
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe /api/_debug/sb
+        id: probe
+        run: |
+          set -e
+          RESP=$(curl -sS -H "X-Debug-Key: $DEBUG_API_KEY" "$DEBUG_URL")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          OK=$(jq -r '.ok' <<< "$RESP")
+          PERMITS=$(jq -r '.permits | tonumber // 0' <<< "$RESP")
+          if [ "$OK" != "true" ] || [ "$PERMITS" -eq 0 ]; then
+            echo "status=bad" >> $GITHUB_OUTPUT
+          else
+            echo "status=good" >> $GITHUB_OUTPUT
+          fi
+        env:
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
+          DEBUG_API_KEY: ${{ secrets.DEBUG_API_KEY }}
+
+  file_issue:
+    needs: probe
+    if: needs.probe.outputs.status == 'bad'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `Automated watchdog detected an ingest issue.
+
+            Last debug:
+            \`\`\`json
+            ${process.env.RESP || 'n/a'}
+            \`\`\`
+
+            - Check Vercel envs (URL/keys/CRON_SECRET)
+            - Hit /api/permits/ingest?source=austin&dry=1
+            - Inspect function logs in Vercel
+
+            `;
+            const { owner, repo } = context.repo;
+            const title = "🚨 Ingest watchdog: data not flowing";
+            const issues = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue in:title "${title}" state:open`
+            });
+            if (issues.data.total_count === 0) {
+              await github.rest.issues.create({ owner, repo, title, body, labels: ["ingest","watchdog"] });
+            } else {
+              const number = issues.data.items[0].number;
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+            }
+        env:
+          RESP: ${{ needs.probe.outputs.resp }}
