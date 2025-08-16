@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import Card from '@/components/ui/Card';
