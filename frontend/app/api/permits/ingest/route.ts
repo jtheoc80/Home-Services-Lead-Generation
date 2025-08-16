@@ -298,7 +298,10 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         source = body.source;
       } catch (error) {
-        // Ignore JSON parse errors; will handle missing source below
+        return NextResponse.json(
+          { error: 'Invalid JSON body: unable to parse request body' },
+          { status: 400 }
+        );
       }
     }
     if (!source) {
