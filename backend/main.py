@@ -899,11 +899,10 @@ async def permits_selftest():
             }
             
     except Exception as e:
-        logger.error(f"Error in permits selftest: {str(e)}")
+        logger.error("Error in permits selftest", exc_info=True)
         return {
             "success": False,
-            "error": str(e),
-            "message": "Selftest failed with error"
+            "message": "Selftest failed due to an internal error"
         }
 
 @app.get("/api/leads/scores")
