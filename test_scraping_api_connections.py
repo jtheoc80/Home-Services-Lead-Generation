@@ -441,7 +441,7 @@ class ScrapingAPITester:
             self.test_api_endpoints(),
         ]
         
-        results = await asyncio.gather(*tests, return_exceptions=True)
+        await asyncio.gather(*tests, return_exceptions=True)
         
         # Calculate summary
         total_tests = len(self.results)
