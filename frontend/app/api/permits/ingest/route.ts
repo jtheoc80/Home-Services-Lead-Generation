@@ -7,12 +7,16 @@ import { getSupabaseClient } from '@/lib/supabaseServer';
 // Types for permit data sources
 interface AustinPermitRecord {
   permit_num?: string;
+  permit_number?: string;
   issued_date?: string;
+  issue_date?: string;
   description?: string;
   project_address?: string;
+  original_address1?: string;
   applicant_name?: string;
   contractor_name?: string;
   declared_value?: string;
+  total_valuation?: string;
   status_current?: string;
   permit_type?: string;
   [key: string]: unknown;
@@ -74,17 +78,18 @@ interface NormalizedPermit {
 function mapAustinPermit(record: AustinPermitRecord): NormalizedPermit {
   return {
     source: 'austin',
-    source_record_id: record.permit_num || `austin_${Date.now()}_${Math.random()}`,
-    permit_number: record.permit_num,
-    issued_date: record.issued_date,
+    source_record_id: record.permit_num || record.permit_number || `austin_${Date.now()}_${Math.random()}`,
+    permit_number: record.permit_num || record.permit_number,
+    issued_date: record.issued_date || record.issue_date,
     permit_type: record.permit_type,
     work_description: record.description,
-    address: record.project_address,
+    address: record.original_address1 || record.project_address,
     city: 'Austin',
     county: 'Travis',
     applicant_name: record.applicant_name,
     contractor_name: record.contractor_name,
-    valuation: record.declared_value ? parseFloat(record.declared_value.toString()) : undefined,
+    valuation: record.total_valuation ? parseFloat(record.total_valuation.toString()) : 
+               record.declared_value ? parseFloat(record.declared_value.toString()) : undefined,
     status: record.status_current,
   };
 }
@@ -130,16 +135,27 @@ function mapDallasPermit(record: DallasPermitRecord): NormalizedPermit {
 
 // Fetcher functions for each data source
 async function fetchAustinPermits(): Promise<AustinPermitRecord[]> {
-  // TODO: Replace with actual Austin Socrata API endpoint
-  const url = 'https://data.austintexas.gov/resource/3syk-w9eu.json?$limit=100';
+  // Austin Socrata API with ordering by issue_date and optional app token
+  const params = new URLSearchParams({
+    '$limit': '1000',
+    '$order': 'issue_date DESC'
+  });
+  
+  const url = `https://data.austintexas.gov/resource/3syk-w9eu.json?${params}`;
+  
+  const headers: HeadersInit = {
+    'Accept': 'application/json',
+    'User-Agent': 'LeadLedgerPro/1.0',
+  };
+  
+  // Add Austin app token if available for higher rate limits
+  const austinAppToken = process.env.AUSTIN_APP_TOKEN;
+  if (austinAppToken) {
+    headers['X-App-Token'] = austinAppToken;
+  }
   
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'LeadLedgerPro/1.0',
-      },
-    });
+    const response = await fetch(url, { headers });
     
     if (!response.ok) {
       throw new Error(`Austin API error: ${response.status} ${response.statusText}`);
@@ -218,17 +234,17 @@ export async function POST(request: NextRequest) {
     switch (source) {
       case 'austin':
         sourceData = await fetchAustinPermits();
-        permits = sourceData.map(mapAustinPermit);
+        permits = (sourceData as AustinPermitRecord[]).map(mapAustinPermit);
         break;
         
       case 'houston':
         sourceData = await fetchHoustonPermits();
-        permits = sourceData.map(mapHoustonPermit);
+        permits = (sourceData as HoustonPermitRecord[]).map(mapHoustonPermit);
         break;
         
       case 'dallas':
         sourceData = await fetchDallasPermits();
-        permits = sourceData.map(mapDallasPermit);
+        permits = (sourceData as DallasPermitRecord[]).map(mapDallasPermit);
         break;
         
       case 'all':
@@ -240,9 +256,9 @@ export async function POST(request: NextRequest) {
         ]);
         
         permits = [
-          ...austinData.map(mapAustinPermit),
-          ...houstonData.map(mapHoustonPermit),
-          ...dallasData.map(mapDallasPermit)
+          ...(austinData as AustinPermitRecord[]).map(mapAustinPermit),
+          ...(houstonData as HoustonPermitRecord[]).map(mapHoustonPermit),
+          ...(dallasData as DallasPermitRecord[]).map(mapDallasPermit)
         ];
         break;
         
