@@ -1,21 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'          // important when using service role
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-// Create the Supabase admin client inside the request handler to avoid build-time errors
-function createSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing required Supabase environment variables');
-  }
-  
-  return createClient(supabaseUrl, serviceRoleKey);
-}
 
 // map the external key to the internal "source" string you store
 const SOURCE_KEY: Record<string, string> = {
@@ -204,6 +192,12 @@ async function fetchDallas(): Promise<Normalized[]> {
 const FETCHERS = { austin: fetchAustin, dallas: fetchDallas }
 
 export async function POST(req: Request) {
+  // Check for x-cron-secret header first
+  const secret = req.headers.get('x-cron-secret')
+  if (secret !== process.env.CRON_SECRET) {
+    return new Response('Forbidden', { status: 403 })
+  }
+
   const url = new URL(req.url)
   const key = url.searchParams.get('source') || 'austin'
   const dry = url.searchParams.get('dry') === '1'
@@ -214,8 +208,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Create Supabase admin client
-    const supabaseAdmin = createSupabaseAdmin()
+    // Create Supabase service role client
+    const supabaseAdmin = createServiceClient()
     
     // 1) fetch from city source
     const rows = await fetcher()
