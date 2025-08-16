@@ -244,7 +244,7 @@ export default function Dashboard() {
 
                   <div className="mt-6 text-center">
                     <button
-                      onClick={() => (window.location.href = "/leads")}
+                      onClick={() => router.push("/leads")}
                       className="inline-flex items-center px-6 py-3 bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 transition-colors duration-200 shadow-soft"
                     >
                       View All Leads
