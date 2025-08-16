@@ -1011,7 +1011,135 @@ async def persist_lead_score(lead_id: str, version: str, score: int, reasons: Li
         raise
 
 
-# ===== DEBUG TRACE API ROUTE =====
+# ===== DEBUG ENDPOINTS =====
+
+@app.get("/api/_debug/sb")
+async def debug_sb(request: Request, x_debug_key: str = Header(None, alias="X-Debug-Key")):
+    """
+    Watchdog debug endpoint for Supabase data flow monitoring.
+    
+    Checks recent permit ingestion and system health for automated monitoring.
+    Protected with X-Debug-Key header authentication.
+    
+    Args:
+        x_debug_key: Debug API key provided in X-Debug-Key header
+        
+    Returns:
+        Dict with ok (boolean) and permits (count) fields for watchdog monitoring
+    """
+    start_time = time.time()
+    path = request.url.path
+    
+    # Validate debug API key
+    debug_api_key = os.getenv("DEBUG_API_KEY")
+    if not debug_api_key:
+        logger.error({
+            "path": path,
+            "error": "DEBUG_API_KEY not configured",
+            "status": 503
+        })
+        raise HTTPException(
+            status_code=503, 
+            detail="Debug endpoint not configured"
+        )
+    
+    if not x_debug_key or x_debug_key != debug_api_key:
+        logger.warning({
+            "path": path,
+            "provided_key": hashlib.sha256(x_debug_key.encode()).hexdigest() if x_debug_key else "none",
+            "status": 401
+        })
+        raise HTTPException(
+            status_code=401, 
+            detail="Unauthorized. X-Debug-Key header required."
+        )
+    
+    logger.info({"path": path, "method": "GET"})
+    
+    try:
+        supabase = get_supabase_client()
+        
+        # Check overall system health
+        ok = True
+        permits_count = 0
+        
+        # Check database connectivity
+        try:
+            # Use a fundamental table for health check, e.g., 'permits'
+            result = supabase.table('permits').select('id').limit(1).execute()
+            if not result.data:
+                ok = False
+        except Exception as e:
+            logger.error(f"Database connectivity check failed: {str(e)}")
+            ok = False
+        
+        # Check recent permit ingestion (last 24 hours)
+        try:
+            from datetime import datetime, timezone, timedelta
+            yesterday = datetime.now(timezone.utc) - timedelta(hours=24)
+            
+            permits_result = supabase.table("gold.permits").select(
+                "permit_id"
+            ).gte("issued_at", yesterday.isoformat()).execute()
+            
+            if permits_result.data:
+                permits_count = len(permits_result.data)
+            
+            # If no recent permits, check if ingestion is stale
+            if permits_count == 0:
+                # Check ingestion state
+                ingest_result = supabase.table('meta.ingest_state').select(
+                    'last_run, last_status'
+                ).order('last_run', desc=True).limit(1).execute()
+                
+                if ingest_result.data:
+                    last_run = datetime.fromisoformat(
+                        ingest_result.data[0]['last_run'].replace('Z', '+00:00')
+                    )
+                    age_hours = (datetime.now(timezone.utc) - last_run).total_seconds() / 3600
+                    
+                    # If ingestion is stale (>25 hours) or failed, mark as not ok
+                    if age_hours > 25 or ingest_result.data[0]['last_status'] != 'success':
+                        ok = False
+                else:
+                    # No ingestion state found
+                    ok = False
+        except Exception as e:
+            logger.error(f"Permits check failed: {str(e)}")
+            ok = False
+            permits_count = 0
+        
+        response_time = round((time.time() - start_time) * 1000, 2)
+        
+        result = {
+            "ok": ok,
+            "permits": permits_count,
+            "response_time_ms": response_time,
+            "ts": int(time.time())
+        }
+        
+        logger.info({
+            "path": path,
+            "ok": ok,
+            "permits": permits_count,
+            "response_time_ms": response_time,
+            "status": 200
+        })
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error({
+            "path": path,
+            "error": str(e),
+            "status": 500
+        })
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.get("/api/leads/trace/{trace_id}")
 async def get_trace_debug(

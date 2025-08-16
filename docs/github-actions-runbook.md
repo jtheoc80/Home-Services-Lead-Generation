@@ -8,9 +8,10 @@ The repository includes several automated workflows:
 
 1. **`permit_scrape.yml`** - Main scraping workflow with manual and scheduled triggers
 2. **`nightly-scrape.yml`** - Legacy nightly scraping workflow  
-3. **`merge-conflict-resolver.yml`** - Automated merge conflict resolution for PRs
-4. **`ci.yml`** - Continuous integration with linting, testing, and quality checks
-5. **`quality-gate.yml`** - PR quality gate with auto-formatting
+3. **`ingest-agents.yml`** - Parallel ingest agents for austin/dallas with verification
+4. **`merge-conflict-resolver.yml`** - Automated merge conflict resolution for PRs
+5. **`ci.yml`** - Continuous integration with linting, testing, and quality checks
+6. **`quality-gate.yml`** - PR quality gate with auto-formatting
 
 ## Workflows
 
@@ -50,7 +51,33 @@ The repository includes several automated workflows:
 3. Runs scraper for last 7 days
 4. Uploads CSV and SQLite artifacts
 
-### 3. Merge Conflict Resolver (`merge-conflict-resolver.yml`)
+### 3. Ingest Agents (`ingest-agents.yml`)
+
+**Purpose**: Parallel data ingestion for Austin and Dallas sources with verification.
+
+**Triggers**:
+- **Schedule**: Every 6 hours (0, 6, 12, 18 UTC)
+- **Manual**: Via workflow_dispatch
+
+**What it does**:
+1. **Parallel Ingest**: Runs Austin and Dallas sources simultaneously using matrix strategy
+2. **Two-Phase Execution**: Each source performs dry run first, then real ingestion
+3. **API Integration**: Calls secured Vercel endpoints with authentication
+4. **Verification**: Checks Supabase counts via debug endpoint after ingestion
+5. **Error Handling**: Comprehensive logging and GitHub Actions integration
+
+**Required Secrets**:
+- `INGEST_URL`: Vercel ingest endpoint (e.g., `https://app.vercel.app/api/permits/ingest`)
+- `DEBUG_URL`: Vercel debug endpoint (e.g., `https://app.vercel.app/api/_debug/sb`)
+- `CRON_SECRET`: Authentication secret for secured endpoints
+
+**Features**:
+- Matrix strategy allows both sources to run even if one fails
+- Dry run validation before actual data ingestion
+- Real-time verification of database changes
+- Detailed workflow summaries and metrics logging
+
+### 4. Merge Conflict Resolver (`merge-conflict-resolver.yml`)
 
 **Purpose**: Automated merge conflict resolution for pull requests with different strategies.
 

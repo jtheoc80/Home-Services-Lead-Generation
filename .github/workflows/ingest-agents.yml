@@ -1,3 +1,4 @@
+
 name: Agents Ingest Matrix
 
 on:
@@ -18,9 +19,16 @@ env:
   VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
   CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
+name: Ingest Agents (Austin/Dallas)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
+
     timeout-minutes: 30
     
     strategy:
@@ -118,3 +126,152 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "🔗 [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [austin, dallas]
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "$INGEST_URL" ]; then
+            echo "::error::INGEST_URL secret not configured"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret not configured"
+            exit 1
+          fi
+          echo "✅ Environment validated for ${{ matrix.source }}"
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Dry run ${{ matrix.source }}
+        id: dry
+        run: |
+          set -e
+          RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}&dry=1" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          FETCHED=$(jq -r '.fetched // 0' <<< "$RESP")
+          if [ "$FETCHED" -eq 0 ]; then
+            echo "::warning::Fetched=0 for ${{ matrix.source }} (check dataset/token)"
+          fi
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Real ingest ${{ matrix.source }}
+        id: real
+        run: |
+          set -e
+          RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          UPSERTS=$(jq -r '.upserts // 0' <<< "$RESP")
+          if [ "$UPSERTS" -eq 0 ]; then
+            echo "::warning::Upserts=0 for ${{ matrix.source }} (maybe all deduped?)"
+          fi
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: ingest
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "$DEBUG_URL" ]; then
+            echo "::error::DEBUG_URL secret not configured"
+            exit 1
+          fi
+          echo "✅ Environment validated for verification"
+        env:
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
+
+      - name: Check Supabase counts
+        id: check
+        run: |
+          set -e
+          RESP=$(curl -sS "$DEBUG_URL")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          OK=$(jq -r '.ok' <<< "$RESP")
+          LEADS=$(jq -r '.leads // 0' <<< "$RESP")
+          PERMITS=$(jq -r '.permits // 0' <<< "$RESP")
+          if [ "$OK" != "true" ]; then
+            echo "::error::Debug endpoint failed"; exit 1
+          fi
+          echo "Leads=$LEADS, Permits=$PERMITS"
+        env:
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
+
+      - name: Summarize
+        run: echo "✅ Verification complete"
+
+  # Add GitHub Agent invocation after successful ingestion
+  gh-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: verify
+    if: success()
+    steps:
+      - name: Invoke GitHub Agent
+        id: agent
+        run: |
+          # Only invoke if GitHub Agent secrets are configured
+          if [ -n "$SUPABASE_FUNCTION_URL" ] && [ -n "$AGENT_SECRET" ]; then
+            echo "🤖 Invoking GitHub Agent to process DB events..."
+            
+            RESP=$(curl -sS -X POST "$SUPABASE_FUNCTION_URL" \
+              -H "Content-Type: application/json" \
+              -H "x-agent-secret: $AGENT_SECRET" \
+              -w "\nHTTP_STATUS:%{http_code}" || echo "CURL_FAILED")
+            
+            if [ "$RESP" = "CURL_FAILED" ]; then
+              echo "⚠️ GitHub Agent invocation failed (network error)"
+              echo "This is non-critical - events will be processed on next run"
+              exit 0
+            fi
+            
+            # Extract HTTP status and response body
+            HTTP_STATUS=$(echo "$RESP" | grep "HTTP_STATUS:" | cut -d: -f2 2>/dev/null || echo "000")
+            BODY=$(echo "$RESP" | sed '/HTTP_STATUS:/d')
+            
+            echo "Response: $BODY"
+            
+            if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 207 ]; then
+              PROCESSED=$(echo "$BODY" | jq -r '.processed // 0' 2>/dev/null || echo "0")
+              echo "✅ GitHub Agent processed $PROCESSED events"
+            else
+              echo "⚠️ GitHub Agent returned HTTP $HTTP_STATUS (non-critical)"
+            fi
+          else
+            echo "ℹ️ GitHub Agent not configured (SUPABASE_FUNCTION_URL/AGENT_SECRET missing)"
+            echo "This is optional - skipping GitHub Agent invocation"
+          fi
+        env:
+          SUPABASE_FUNCTION_URL: ${{ secrets.SUPABASE_FUNCTION_URL }}
+          AGENT_SECRET: ${{ secrets.AGENT_SECRET }}
+        continue-on-error: true
+
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "## Ingest Agents Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sources:** austin, dallas (parallel execution)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Schedule:** Every 6 hours" >> $GITHUB_STEP_SUMMARY
+          echo "- **Verification:** ${{ steps.check.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
