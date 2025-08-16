@@ -4,7 +4,7 @@ import os
 import json
 import hashlib
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Tuple
 import datetime as dt
 
 from .adapters.storage import Storage
