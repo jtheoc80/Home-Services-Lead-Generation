@@ -57,7 +57,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Check for redirectedFrom in the current URL
           const searchParams = new URLSearchParams(window.location.search);
           const redirectedFrom = searchParams.get('redirectedFrom');
-          const redirectTo = redirectedFrom || '/dashboard';
+          // Only allow safe internal redirects
+          let redirectTo = '/dashboard';
+          if (
+            redirectedFrom &&
+            redirectedFrom.startsWith('/') &&
+            !redirectedFrom.startsWith('//') &&
+            !redirectedFrom.includes('://')
+          ) {
+            redirectTo = redirectedFrom;
+          }
           window.location.href = redirectTo;
         }
       }
