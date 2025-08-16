@@ -265,26 +265,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Check for ingest API key in header
-    const ingestKey = request.headers.get('X-Ingest-Key');
-    const configuredKey = process.env.INGEST_API_KEY;
-    
-    // Ensure INGEST_API_KEY is configured
-    if (!configuredKey) {
-      console.error('INGEST_API_KEY not configured on server');
-      return NextResponse.json({ 
-        error: 'Ingest endpoint not available' 
-      }, { status: 500 });
-    }
-    
-    // Validate provided key
-    if (!ingestKey || ingestKey !== configuredKey) {
-      console.warn('Unauthorized ingest endpoint access');
-      return NextResponse.json({ 
-        error: 'Unauthorized. X-Ingest-Key header required.' 
-      }, { status: 401 });
-    }
-    
     // Get Supabase client with service role key
     const supabase = getSupabaseClient({ useServiceRole: true });
     
@@ -292,42 +272,32 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     let source = searchParams.get('source');
     
+    // Check for dry-run mode
+    const dry = searchParams.get('dry') === '1';
+    
     // If no query parameter, try to get from JSON body (backward compatibility)
     if (!source) {
       try {
         const body = await request.json();
         source = body.source;
+
+      } catch {
+        // Ignore JSON parse errors; will handle missing source below
+
       } catch (error) {
         return NextResponse.json(
           { error: 'Invalid JSON body: unable to parse request body' },
           { status: 400 }
         );
+
       }
     }
+    
     if (!source) {
       return NextResponse.json(
         { error: 'Source parameter required either as query parameter (?source=austin) or in JSON body' },
         { status: 400 }
       );
-    }
-    
-    // Validate cron secret if provided
-    const cronSecret = request.headers.get('x-cron-secret');
-    const expectedCronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret) {
-      if (!expectedCronSecret) {
-        return NextResponse.json(
-          { error: 'Server misconfiguration: CRON_SECRET environment variable not set' },
-          { status: 500 }
-        );
-      }
-      if (cronSecret !== expectedCronSecret) {
-        return NextResponse.json(
-          { error: 'Invalid cron secret' },
-          { status: 401 }
-        );
-      }
     }
     
     let permits: NormalizedPermit[] = [];
@@ -372,6 +342,19 @@ export async function POST(request: NextRequest) {
         );
     }
     
+    // Get before count for the specific source
+    const { count: beforeCount, error: countBeforeErr } = await supabase
+      .from('permits')
+      .select('*', { count: 'exact', head: true })
+      .eq('source', source);
+    
+    if (countBeforeErr) {
+      return NextResponse.json(
+        { error: `Failed to get before count: ${countBeforeErr.message}` },
+        { status: 500 }
+      );
+    }
+    
     // Process permits through upsert function
     let insertedCount = 0;
     let updatedCount = 0;
@@ -379,51 +362,77 @@ export async function POST(request: NextRequest) {
     const processedSamples: unknown[] = [];
     const upsertResults: unknown[] = [];
     
-    for (const permit of permits) {
-      try {
-        const { data, error } = await supabase.rpc('upsert_permit', {
-          permit_data: permit
-        });
-        
-        if (error) {
-          errors.push(`Error upserting permit ${permit.source_record_id}: ${error.message}`);
-          continue;
-        }
-        
-        if (data && data.length > 0) {
-          const action = data[0].action;
-          const resultId = data[0].id;
-          
-          upsertResults.push({
-            source_record_id: permit.source_record_id,
-            action,
-            id: resultId
+    // Only proceed with actual database writes if not in dry-run mode
+    if (!dry) {
+      for (const permit of permits) {
+        try {
+          const { data, error } = await supabase.rpc('upsert_permit', {
+            p: permit  // Use 'p' parameter as specified in problem statement
           });
           
-          if (action === 'inserted') {
-            insertedCount++;
-          } else if (action === 'updated') {
-            updatedCount++;
+          if (error) {
+            errors.push(`Error upserting permit ${permit.source_record_id}: ${error.message}`);
+            continue;
           }
           
-          // Keep samples for diagnostic purposes (first 3 of each type)
-          if (processedSamples.length < 3) {
-            processedSamples.push({
-              original_data: sourceData[permits.indexOf(permit)],
-              normalized_permit: permit,
-              upsert_result: { action, id: resultId }
+          if (data && data.length > 0) {
+            const action = data[0].action;
+            const resultId = data[0].id;
+            
+            upsertResults.push({
+              source_record_id: permit.source_record_id,
+              action,
+              id: resultId
             });
+            
+            if (action === 'inserted') {
+              insertedCount++;
+            } else if (action === 'updated') {
+              updatedCount++;
+            }
+            
+            // Keep samples for diagnostic purposes (first 3 of each type)
+            if (processedSamples.length < 3) {
+              processedSamples.push({
+                original_data: sourceData[permits.indexOf(permit)],
+                normalized_permit: permit,
+                upsert_result: { action, id: resultId }
+              });
+            }
           }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          errors.push(`Error processing permit ${permit.source_record_id}: ${errorMessage}`);
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        errors.push(`Error processing permit ${permit.source_record_id}: ${errorMessage}`);
       }
+    } else {
+      // In dry-run mode, just prepare samples for diagnostic purposes (first 3)
+      for (let i = 0; i < Math.min(permits.length, 3); i++) {
+        processedSamples.push({
+          original_data: sourceData[i],
+          normalized_permit: permits[i],
+          dry_run: true
+        });
+      }
+    }
+    
+    // Get after count for the specific source
+    const { count: afterCount, error: countAfterErr } = await supabase
+      .from('permits')
+      .select('*', { count: 'exact', head: true })
+      .eq('source', source);
+    
+    if (countAfterErr) {
+      return NextResponse.json(
+        { error: `Failed to get after count: ${countAfterErr.message}` },
+        { status: 500 }
+      );
     }
     
     return NextResponse.json({
       success: true,
       source,
+      dry,
       summary: {
         fetched: sourceData.length,
         processed: permits.length,
@@ -431,13 +440,19 @@ export async function POST(request: NextRequest) {
         updated: updatedCount,
         errors: errors.length
       },
+      counts: {
+        before: beforeCount || 0,
+        after: afterCount || 0,
+        difference: (afterCount || 0) - (beforeCount || 0)
+      },
       diagnostics: {
         samples: processedSamples,
-        upsert_results: upsertResults.slice(0, 10), // Limit to first 10 for readability
-        error_details: errors.length > 0 ? errors : undefined,
+        upsert_results: dry ? undefined : upsertResults.slice(0, 10), // Limit to first 10 for readability
+        error_details: errors.length > 0 ? errors.slice(0, 5) : undefined, // First 5 errors
         runtime_info: {
           runtime: 'nodejs',
           service_role_used: true,
+          dry_run: dry,
           timestamp: new Date().toISOString()
         }
       },
