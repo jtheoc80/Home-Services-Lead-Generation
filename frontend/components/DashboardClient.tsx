@@ -11,10 +11,6 @@ import LeadCard from "@/components/LeadCard";
 import TexasCountySelector from "@/components/ui/TexasCountySelector";
 import DashboardHeader from "@/components/ui/DashboardHeader";
 import { 
-  Users, 
-  TrendingUp, 
-  Target, 
-  Trophy, 
   Clock, 
   MapPin,
   Filter,
