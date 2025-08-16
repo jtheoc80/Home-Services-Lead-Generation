@@ -86,7 +86,7 @@ def test_poetry_lock_consistency():
     
     try:
         result = subprocess.run(
-            ["poetry", "check"],
+            ["poetry", "check", "--lock"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent
