@@ -155,7 +155,7 @@ def main():
     logger.info("")
     
     # Execute the main task
-    success = get_10_live_leads()
+    get_10_live_leads()
     
     # Final summary
     logger.info("")
