@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEnhancedLeads } from "@/hooks/useLeads";
-import { AuthGuard, useAuth } from "@/components/AuthGuard";
+import { useAuth } from "@/components/AuthGuard";
 import StatCard from "@/components/ui/StatCard";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -231,9 +231,5 @@ function DashboardContent() {
 }
 
 export default function Dashboard() {
-  return (
-    <AuthGuard>
-      <DashboardContent />
-    </AuthGuard>
-  );
+  return <DashboardContent />;
 }
