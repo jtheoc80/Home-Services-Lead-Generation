@@ -1,0 +1,92 @@
+# Docker ignore file for backend-only Nixpacks deployment
+# This helps reduce build context size and prevents unnecessary files
+
+# Node.js files that could trigger unwanted auto-detection
+node_modules/
+.npm/
+
+# Frontend directory - not needed for backend deployment
+frontend/
+
+# Development and testing files
+.git/
+.github/
+tests/
+test_*.py
+test-*.py
+*_test.py
+*-test.py
+
+# Documentation and images
+*.md
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
+# Environment and IDE files
+.env*
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary and cache files
+.cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# Data and output directories
+data/permits/
+data/leads/
+models/
+*.pkl
+*.joblib
+out/
+screenshots/
+test-results/
+playwright-report/
+stack-health.json
+visual-regression-results.json
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# OS files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tools and scripts not needed for runtime
+tools/
+scripts/railway-*.js
+scripts/visual-*.js
+scripts/schema-*.ts
+scripts/e2e*.ts
+scripts/test_*.ts
+deploy-railway.sh
+setup.sh
+Makefile

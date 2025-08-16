@@ -14,11 +14,19 @@ The `nixpacks.toml` configuration deploys the FastAPI backend with:
 ### Build Process
 
 Nixpacks will:
-1. Install Python 3.11, Poetry, and PostgreSQL
+1. Install Python 3.11, Poetry, and PostgreSQL (only - no Node.js)
 2. Set up Python symlinks for compatibility
 3. Install Poetry and configure it
 4. Install Python dependencies with `poetry install --without dev`
-5. Start the backend with `poetry run python backend/main.py`
+5. Skip npm/Node.js build steps (explicitly disabled)
+6. Start the backend with `poetry run python backend/main.py`
+
+### Key Configuration Features
+
+- **Provider control**: Explicitly configures only Python provider to prevent Node.js auto-detection
+- **Streamlined build**: No npm dependencies or build steps that can cause conflicts
+- **Faster deployment**: Reduced package downloads and build time
+- **Python-only focus**: Optimized for backend-only deployment scenario
 
 ### Environment Variables Required
 
