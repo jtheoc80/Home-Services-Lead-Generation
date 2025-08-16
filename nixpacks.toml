@@ -6,14 +6,16 @@ nixPkgs = ["python311", "poetry", "nodejs_20", "postgresql"]
 
 [phases.install]
 cmds = [
-  "python3.11 -m pip install poetry",
+  "ln -sf /nix/var/nix/profiles/default/bin/python3.11 /usr/local/bin/python3",
+  "ln -sf /nix/var/nix/profiles/default/bin/python3.11 /usr/local/bin/python",
+  "python --version",
+  "python -m pip install poetry",
   "poetry config virtualenvs.create false",
   "poetry install --without dev --no-interaction --no-ansi",
   "npm ci"
 ]
 
 [phases.build]
-# keep your no-op backend build; frontend builds on Vercel
 cmds = ["npm run build"]
 
 [start]
