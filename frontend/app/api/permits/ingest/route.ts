@@ -1,5 +1,6 @@
-// Force dynamic rendering - no caching for permit ingestion API
+// Force dynamic rendering and Node runtime for permit ingestion API
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabaseServer';
@@ -225,6 +226,7 @@ async function fetchDallasPermits(): Promise<DallasPermitRecord[]> {
   // Dallas OpenData API (Socrata) - Dataset ID: e7gq-4sah
   const baseUrl = 'https://www.dallasopendata.com/resource/e7gq-4sah.json';
   const limit = 1000; // Fetch up to 1000 records per request
+  const url = `${baseUrl}?$limit=${limit}`;
   
   try {
     const headers: Record<string, string> = {
@@ -245,7 +247,7 @@ async function fetchDallasPermits(): Promise<DallasPermitRecord[]> {
     }
     
     const data = await response.json() as DallasPermitRecord[];
-    console.log(`Dallas permits fetched: ${data.length} records`);
+    console.log(`Dallas permits fetched: ${data.length} records from ${url}`);
     return data;
   } catch (error) {
     console.error('Error fetching Dallas permits:', error);
@@ -308,6 +310,8 @@ export async function POST(request: NextRequest) {
     let insertedCount = 0;
     let updatedCount = 0;
     const errors: string[] = [];
+    const processedSamples: any[] = [];
+    const upsertResults: any[] = [];
     
     for (const permit of permits) {
       try {
@@ -322,10 +326,27 @@ export async function POST(request: NextRequest) {
         
         if (data && data.length > 0) {
           const action = data[0].action;
+          const resultId = data[0].id;
+          
+          upsertResults.push({
+            source_record_id: permit.source_record_id,
+            action,
+            id: resultId
+          });
+          
           if (action === 'inserted') {
             insertedCount++;
           } else if (action === 'updated') {
             updatedCount++;
+          }
+          
+          // Keep samples for diagnostic purposes (first 3 of each type)
+          if (processedSamples.length < 3) {
+            processedSamples.push({
+              original_data: sourceData[permits.indexOf(permit)],
+              normalized_permit: permit,
+              upsert_result: { action, id: resultId }
+            });
           }
         }
       } catch (error) {
@@ -337,11 +358,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       source,
-      fetched: sourceData.length,
-      processed: permits.length,
-      inserted: insertedCount,
-      updated: updatedCount,
-      errors: errors.length > 0 ? errors : undefined,
+      summary: {
+        fetched: sourceData.length,
+        processed: permits.length,
+        inserted: insertedCount,
+        updated: updatedCount,
+        errors: errors.length
+      },
+      diagnostics: {
+        samples: processedSamples,
+        upsert_results: upsertResults.slice(0, 10), // Limit to first 10 for readability
+        error_details: errors.length > 0 ? errors : undefined,
+        runtime_info: {
+          runtime: 'nodejs',
+          service_role_used: true,
+          timestamp: new Date().toISOString()
+        }
+      },
       timestamp: new Date().toISOString()
     });
     
@@ -374,6 +407,15 @@ export async function GET() {
           source: 'austin | houston | dallas | all'
         }
       }
-    }
+    },
+    features: [
+      'Service role authentication',
+      'Normalized upserts via upsert_permit RPC',
+      'Detailed diagnostics with samples',
+      'Before/after processing counts',
+      'Error tracking and reporting'
+    ],
+    runtime: 'nodejs',
+    caching: 'force-dynamic'
   });
 }
