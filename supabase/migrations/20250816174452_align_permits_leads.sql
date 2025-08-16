@@ -1,39 +1,11 @@
 -- ====== PERMITS DEDUPE ======
--- First, add missing columns if they don't exist
+-- First, add missing columns if they don't exist (only add what's absolutely needed)
 ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS permit_id TEXT;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS permit_no TEXT;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS jurisdiction TEXT;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS category TEXT;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS value NUMERIC;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS state TEXT;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS applied_date TIMESTAMPTZ;
-ALTER TABLE public.permits ADD COLUMN IF NOT EXISTS scraped_at TIMESTAMPTZ;
 
--- Backfill permit_id from existing permit_number or id
+-- Backfill permit_id from existing permit_number or id if it's missing
 UPDATE public.permits 
 SET permit_id = COALESCE(permit_number, id::text)
 WHERE permit_id IS NULL;
-
--- Backfill permit_no from permit_number  
-UPDATE public.permits 
-SET permit_no = permit_number
-WHERE permit_no IS NULL AND permit_number IS NOT NULL;
-
--- Backfill description from work_description
-UPDATE public.permits 
-SET description = work_description
-WHERE description IS NULL AND work_description IS NOT NULL;
-
--- Backfill value from valuation
-UPDATE public.permits 
-SET value = valuation
-WHERE value IS NULL AND valuation IS NOT NULL;
-
--- Backfill applied_date from application_date
-UPDATE public.permits 
-SET applied_date = application_date
-WHERE applied_date IS NULL AND application_date IS NOT NULL;
 
 create unique index if not exists uq_permits_source_permit_id
   on public.permits (source, permit_id)
@@ -80,48 +52,46 @@ declare
   rid uuid;
   v_permit_id text := coalesce(p->>'permit_id', p->>'permit_no', p->>'permit_number', p->>'source_record_id');
 begin
+  -- Try to insert/update based on existing table structure
   insert into public.permits (
-    source, source_record_id, permit_id, jurisdiction, county, permit_no, permit_number,
-    permit_type, permit_class, category, status, description, work_description, value, valuation,
-    address, city, state, zipcode, latitude, longitude,
-    applied_date, application_date, issued_date, scraped_at, raw_data, created_at, updated_at
+    source, source_record_id, permit_id, permit_number, issued_date, application_date,
+    permit_type, permit_class, work_description, address, city, county, zipcode, 
+    latitude, longitude, valuation, applicant_name, contractor_name, owner_name,
+    status, raw_data, created_at, updated_at
   )
   values (
-    p->>'source', p->>'source_record_id', v_permit_id, p->>'jurisdiction', p->>'county', 
-    coalesce(p->>'permit_no', p->>'permit_number'), p->>'permit_number',
-    p->>'permit_type', p->>'permit_class', p->>'category', p->>'status', 
-    coalesce(p->>'description', p->>'work_description'), p->>'work_description',
-    nullif(p->>'value','')::numeric, nullif(p->>'valuation','')::numeric,
-    p->>'address', p->>'city', coalesce(p->>'state','TX'), p->>'zipcode',
-    nullif(p->>'latitude','')::double precision, nullif(p->>'longitude','')::double precision,
-    nullif(p->>'applied_date','')::timestamptz, nullif(p->>'application_date','')::timestamptz,
+    p->>'source', p->>'source_record_id', v_permit_id, 
+    coalesce(p->>'permit_number', p->>'permit_no'), 
     nullif(p->>'issued_date','')::timestamptz,
-    coalesce(nullif(p->>'scraped_at','')::timestamptz, now()), p, now(), now()
+    nullif(p->>'application_date','')::timestamptz,
+    p->>'permit_type', p->>'permit_class', 
+    coalesce(p->>'work_description', p->>'description'),
+    p->>'address', p->>'city', p->>'county', p->>'zipcode',
+    nullif(p->>'latitude','')::double precision, 
+    nullif(p->>'longitude','')::double precision,
+    nullif(p->>'valuation','')::numeric,
+    p->>'applicant_name', p->>'contractor_name', p->>'owner_name',
+    p->>'status', p, now(), now()
   )
   on conflict (source, source_record_id) do update set
     permit_id   = coalesce(excluded.permit_id, public.permits.permit_id),
-    jurisdiction= excluded.jurisdiction,
-    county      = excluded.county,
-    permit_no   = excluded.permit_no,
     permit_number = excluded.permit_number,
+    issued_date = excluded.issued_date,
+    application_date = excluded.application_date,
     permit_type = excluded.permit_type,
     permit_class = excluded.permit_class,
-    category    = excluded.category,
-    status      = excluded.status,
-    description = excluded.description,
     work_description = excluded.work_description,
-    value       = excluded.value,
-    valuation   = excluded.valuation,
     address     = excluded.address,
     city        = excluded.city,
-    state       = excluded.state,
+    county      = excluded.county,
     zipcode     = excluded.zipcode,
     latitude    = excluded.latitude,
     longitude   = excluded.longitude,
-    applied_date= excluded.applied_date,
-    application_date = excluded.application_date,
-    issued_date = excluded.issued_date,
-    scraped_at  = excluded.scraped_at,
+    valuation   = excluded.valuation,
+    applicant_name = excluded.applicant_name,
+    contractor_name = excluded.contractor_name,
+    owner_name  = excluded.owner_name,
+    status      = excluded.status,
     raw_data    = excluded.raw_data,
     updated_at  = now()
   returning id into rid;
@@ -148,17 +118,19 @@ declare
   v_name text;
   v_trade text;
 begin
-  v_name  := coalesce(
-    nullif(new.description,''), 
+  -- Build name from available fields
+  v_name := coalesce(
     nullif(new.work_description,''),
-    'Permit ' || coalesce(new.permit_no, new.permit_number, new.permit_id, '(no #)')
+    'Permit ' || coalesce(new.permit_number, new.permit_id, new.id::text, '(no #)')
   );
-  v_trade := coalesce(nullif(new.permit_type,''), nullif(new.category,''), nullif(new.permit_class,''));
+  
+  -- Build trade from available fields  
+  v_trade := coalesce(nullif(new.permit_type,''), nullif(new.permit_class,''));
 
   insert into public.leads (permit_id, name, trade, county, status, value, lead_score, created_at)
   values (
     new.id, v_name, v_trade, nullif(new.county,''), coalesce(nullif(new.status,''),'New'),
-    coalesce(new.value, new.valuation), 75, coalesce(new.issued_date, now())
+    new.valuation, 75, coalesce(new.issued_date, now())
   )
   on conflict (permit_id) do nothing;
 
@@ -175,14 +147,13 @@ for each row execute function public.create_lead_from_permit();
 insert into public.leads (permit_id, name, trade, county, status, value, lead_score, created_at)
 select p.id,
        coalesce(
-         nullif(p.description,''), 
          nullif(p.work_description,''),
-         'Permit ' || coalesce(p.permit_no, p.permit_number, p.permit_id, '(no #)')
+         'Permit ' || coalesce(p.permit_number, p.permit_id, p.id::text, '(no #)')
        ) as name,
-       coalesce(nullif(p.permit_type,''), nullif(p.category,''), nullif(p.permit_class,'')) as trade,
+       coalesce(nullif(p.permit_type,''), nullif(p.permit_class,'')) as trade,
        nullif(p.county,'') as county,
        coalesce(nullif(p.status,''),'New') as status,
-       coalesce(p.value, p.valuation),
+       p.valuation,
        75,
        coalesce(p.issued_date, p.created_at, now())
 from public.permits p
