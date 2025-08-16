@@ -4,37 +4,6 @@ import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Lead } from '../../types/supabase';
 
-// Extended Lead interface with computed fields for UI
-export interface EnhancedLead extends Lead {
-  score?: number;
-  scoreBreakdown?: {
-    recency: number;
-    residential: number;
-    value: number;
-    workClass: number;
-  };
-  tradeType?: string;
-  permitValue?: number;
-  lastUpdated?: string;
-  permitNumber?: string;
-}
-
-function applyChange(
-  payload: { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; new?: Lead; old?: Lead },
-  current: Lead[]
-): Lead[] {
-  switch (payload.eventType) {
-    case 'INSERT':
-      return [payload.new as Lead, ...current];
-    case 'UPDATE':
-      return current.map((r) => (r.id === payload.new!.id ? (payload.new as Lead) : r));
-    case 'DELETE':
-      return current.filter((r) => r.id !== payload.old!.id);
-    default:
-      return current;
-  }
-}
-
 /**
  * Custom hook to fetch and manage leads from Supabase
  * Provides real-time updates via Supabase subscriptions
@@ -122,7 +91,7 @@ export function useLeads() {
 
 /**
  * Enhanced hook that adds computed fields to leads for richer UI display
- * Note: This now pulls real data from the database instead of generating mock data
+ * This provides backward compatibility with the existing dashboard
  */
 export function useEnhancedLeads(): { 
   leads: EnhancedLead[] | null; 
@@ -132,32 +101,59 @@ export function useEnhancedLeads(): {
   const { leads, error, loading } = useLeads();
   
   const enhancedLeads = leads?.map((lead): EnhancedLead => {
-    // Extract real data from the lead metadata or compute from available fields
-    // If metadata contains enhanced fields, use them; otherwise provide defaults
-    const metadata = lead.metadata || {};
-    
     return {
       ...lead,
-      // Use real score from metadata or database, fallback to basic calculation
-      score: metadata.score || 75, // Default score when no real score available
-      scoreBreakdown: metadata.scoreBreakdown || {
+      // Use real score from database or provide a default
+      score: lead.lead_score || 75,
+      scoreBreakdown: {
         recency: 20,
         residential: 15,
         value: 25,
         workClass: 15,
       },
-      // Use service field as tradeType or extract from metadata
-      tradeType: lead.service || metadata.tradeType || 'General',
-      // Use permit value from metadata or provide a default
-      permitValue: metadata.permitValue || 50000,
+      // Use service field as tradeType
+      tradeType: lead.service || 'General',
+      // Use actual value from database
+      permitValue: lead.value || 50000,
       // Format relative time from created_at
       lastUpdated: formatRelativeTime(lead.created_at),
       // Generate permit number from real data
-      permitNumber: metadata.permitNumber || `TX${new Date(lead.created_at).getFullYear()}-${lead.id.slice(-6)}`
+      permitNumber: lead.permit_id || `TX${new Date(lead.created_at).getFullYear()}-${lead.id.slice(-6)}`
     };
   }) || null;
   
   return { leads: enhancedLeads, error, loading };
+}
+
+// Extended Lead interface with computed fields for UI
+export interface EnhancedLead extends Lead {
+  score?: number;
+  scoreBreakdown?: {
+    recency: number;
+    residential: number;
+    value: number;
+    workClass: number;
+  };
+  tradeType?: string;
+  permitValue?: number;
+  lastUpdated?: string;
+  permitNumber?: string;
+}
+
+function applyChange(
+  payload: { eventType: 'INSERT' | 'UPDATE' | 'DELETE'; new?: Lead; old?: Lead },
+  current: Lead[]
+): Lead[] {
+  switch (payload.eventType) {
+    case 'INSERT':
+      return [payload.new as Lead, ...current];
+    case 'UPDATE':
+      return current.map((r) => (r.id === payload.new!.id ? (payload.new as Lead) : r));
+    case 'DELETE':
+      return current.filter((r) => r.id !== payload.old!.id);
+    default:
+      return current;
+  }
 }
 
 /**
@@ -166,14 +162,16 @@ export function useEnhancedLeads(): {
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  
-  if (diffMins < 60) return `${diffMins} minutes ago`;
-  if (diffHours < 24) return `${diffHours} hours ago`;
-  if (diffDays < 7) return `${diffDays} days ago`;
-  
-  return date.toLocaleDateString();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  if (diffInDays < 7) return `${diffInDays}d ago`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}w ago`;
+  if (diffInDays < 365) return `${Math.floor(diffInDays / 30)}mo ago`;
+  return `${Math.floor(diffInDays / 365)}y ago`;
 }

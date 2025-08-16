@@ -4,11 +4,12 @@
 
 /**
  * Lead interface matching the public.leads table columns
- * Based on the database schema from create_leads_table.sql (UUID version)
+ * Based on the enhanced database schema with all required fields
  */
 export interface Lead {
   id: string; // UUID
   created_at: string;
+  updated_at?: string;
   source?: string | null;
   name?: string | null;
   phone?: string | null;
@@ -21,6 +22,13 @@ export interface Lead {
   service?: string | null;
   county?: string | null;
   metadata?: any; // JSONB field
+  // Enhanced fields for dashboard
+  lead_score?: number | null;
+  score_label?: string | null;
+  value?: number | null;
+  permit_id?: string | null;
+  county_population?: number | null;
+  user_id?: string | null;
 }
 
 /**
@@ -39,6 +47,13 @@ export interface LeadInsert {
   status?: string | null;
   service?: string | null;
   county?: string | null;
+  lead_score?: number | null;
+  score_label?: string | null;
+  value?: number | null;
+  permit_id?: string | null;
+  county_population?: number | null;
+  user_id?: string | null;
+  metadata?: any;
 }
 
 /**
@@ -57,6 +72,13 @@ export interface LeadUpdate {
   status?: string | null;
   service?: string | null;
   county?: string | null;
+  lead_score?: number | null;
+  score_label?: string | null;
+  value?: number | null;
+  permit_id?: string | null;
+  county_population?: number | null;
+  user_id?: string | null;
+  metadata?: any;
 }
 
 /**

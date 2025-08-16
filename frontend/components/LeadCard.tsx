@@ -1,41 +1,29 @@
-
-import React from 'react'
-import LeadFeedbackButtons from './LeadFeedbackButtons'
-
-interface Lead {
-  id: number
-  jurisdiction: string
-  permit_id: string
-  address: string
-  description: string
-  work_class: string
-  category: string
-  status: string
-  issue_date: string
-  applicant: string
-  owner: string
-  value: number
-  is_residential: boolean
-  trade_tags: string[]
-  budget_band: string
-  lead_score: number
-  created_at: string
-  initialVote?: 'up' | 'down'
-}
+import React from 'react';
+import { MapPin, Building, Phone, Mail } from 'lucide-react';
+import { Lead } from '../../types/supabase';
 
 interface FeedbackData {
-  rating: 'thumbs_up' | 'thumbs_down' | null
-  submitted: boolean
+  rating: 'thumbs_up' | 'thumbs_down' | null;
+  submitted: boolean;
 }
 
 interface LeadCardProps {
-  lead: Lead
-  feedback?: FeedbackData
-  onFeedback?: (rating: 'thumbs_up' | 'thumbs_down') => void
+  lead: Lead;
+  feedback?: FeedbackData;
+  onFeedback?: (rating: 'thumbs_up' | 'thumbs_down') => void;
+  showFeedback?: boolean;
+  compact?: boolean;
 }
 
-export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) {
-  const formatCurrency = (value: number) => {
+export default function LeadCard({ 
+  lead, 
+  feedback, 
+  onFeedback, 
+  showFeedback = false,
+  compact = false 
+}: LeadCardProps) {
+  const formatCurrency = (value?: number | null) => {
+    if (!value) return '$0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -44,7 +32,8 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -53,25 +42,86 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
     });
   };
 
-  const getScoreColor = (score?: number) => {
-    if (!score) return 'text-gray-500';
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+  const formatRelativeTime = (dateString?: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return formatDate(dateString);
   };
 
-  const getStatusColor = (status: string) => {
+  const getScoreColor = (score?: number | null) => {
+    if (!score) return 'text-gray-700 bg-gray-100';
+    if (score >= 80) return 'text-green-700 bg-green-100';
+    if (score >= 60) return 'text-yellow-700 bg-yellow-100';
+    return 'text-red-700 bg-red-100';
+  };
+
+  const getStatusColor = (status?: string | null) => {
+    if (!status) return 'text-gray-700 bg-gray-100';
     switch (status.toLowerCase()) {
-      case 'issued':
-        return 'text-green-700 bg-green-100'
-      case 'under review':
-        return 'text-yellow-700 bg-yellow-100'
-      case 'rejected':
-        return 'text-red-700 bg-red-100'
+      case 'new':
+        return 'text-blue-700 bg-blue-100';
+      case 'qualified':
+        return 'text-green-700 bg-green-100';
+      case 'contacted':
+        return 'text-yellow-700 bg-yellow-100';
+      case 'won':
+        return 'text-green-700 bg-green-100';
+      case 'lost':
+        return 'text-red-700 bg-red-100';
       default:
-        return 'text-gray-700 bg-gray-100'
+        return 'text-gray-700 bg-gray-100';
     }
   };
+
+  if (compact) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">
+              {lead.address || lead.name || 'Unnamed Lead'}
+            </h3>
+            <div className="flex items-center space-x-4 text-xs text-gray-600 mb-2">
+              {lead.city && lead.state && (
+                <div className="flex items-center space-x-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>{lead.city}, {lead.state}</span>
+                </div>
+              )}
+              {lead.service && (
+                <span>{lead.service}</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-900">
+                {formatCurrency(lead.value)}
+              </span>
+              <span className="text-xs text-gray-500">
+                {formatRelativeTime(lead.created_at)}
+              </span>
+            </div>
+          </div>
+          <div className="ml-3 flex flex-col items-end space-y-1">
+            {lead.lead_score && (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(lead.lead_score)}`}>
+                {lead.lead_score}
+              </span>
+            )}
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
+              {lead.status || 'new'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
@@ -79,17 +129,22 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
         <div className="flex-1">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-gray-900">
-              {lead.address}
+              {lead.address || lead.name || 'Unnamed Lead'}
             </h3>
             <div className="flex items-center space-x-3">
               {/* Lead Score */}
-              <span className={`px-2 py-1 rounded-full text-sm font-medium ${getScoreColor(lead.lead_score)}`}>
-                Score: {lead.lead_score}
-              </span>
+              {lead.lead_score && (
+                <span className={`px-2 py-1 rounded-full text-sm font-medium ${getScoreColor(lead.lead_score)}`}>
+                  Score: {lead.lead_score}
+                </span>
+              )}
               
-              {/* Lead Feedback Buttons */}
-              <LeadFeedbackButtons leadId={lead.id} initialVote={lead.initialVote} />
-
+              {/* Lead Score Label */}
+              {lead.score_label && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                  {lead.score_label}
+                </span>
+              )}
             </div>
           </div>
           
@@ -103,15 +158,42 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
             </div>
           )}
           
-          <p className="text-gray-600 mb-3">{lead.description}</p>
+          <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+            {lead.city && lead.state && (
+              <div className="flex items-center space-x-1">
+                <MapPin className="w-4 h-4" />
+                <span>{lead.city}, {lead.state}</span>
+              </div>
+            )}
+            {lead.service && (
+              <div className="flex items-center space-x-1">
+                <Building className="w-4 h-4" />
+                <span>{lead.service}</span>
+              </div>
+            )}
+            {lead.phone && (
+              <div className="flex items-center space-x-1">
+                <Phone className="w-4 h-4" />
+                <span>{lead.phone}</span>
+              </div>
+            )}
+            {lead.email && (
+              <div className="flex items-center space-x-1">
+                <Mail className="w-4 h-4" />
+                <span>{lead.email}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <div>
-          <span className="font-medium text-gray-500">Permit ID:</span>
-          <p className="text-gray-900">{lead.permit_id}</p>
-        </div>
+        {lead.permit_id && (
+          <div>
+            <span className="font-medium text-gray-500">Permit ID:</span>
+            <p className="text-gray-900">{lead.permit_id}</p>
+          </div>
+        )}
         
         <div>
           <span className="font-medium text-gray-500">Value:</span>
@@ -119,54 +201,45 @@ export default function LeadCard({ lead, feedback, onFeedback }: LeadCardProps) 
         </div>
         
         <div>
-          <span className="font-medium text-gray-500">Issue Date:</span>
-          <p className="text-gray-900">{formatDate(lead.issue_date)}</p>
+          <span className="font-medium text-gray-500">Created:</span>
+          <p className="text-gray-900">{formatDate(lead.created_at)}</p>
         </div>
         
         <div>
           <span className="font-medium text-gray-500">Status:</span>
           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
-            {lead.status}
+            {lead.status || 'new'}
           </span>
         </div>
         
-        <div>
-          <span className="font-medium text-gray-500">Owner:</span>
-          <p className="text-gray-900">{lead.owner}</p>
-        </div>
-        
-        <div>
-          <span className="font-medium text-gray-500">Budget:</span>
-          <p className="text-gray-900">{lead.budget_band}</p>
-        </div>
-        
-        <div>
-          <span className="font-medium text-gray-500">Category:</span>
-          <p className="text-gray-900">{lead.category}</p>
-        </div>
-        
-        <div>
-          <span className="font-medium text-gray-500">Jurisdiction:</span>
-          <p className="text-gray-900">{lead.jurisdiction}</p>
-        </div>
-      </div>
-      
-      {lead.trade_tags && lead.trade_tags.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <span className="font-medium text-gray-500 text-sm">Trade Tags:</span>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {lead.trade_tags.map((tag, index) => (
-              <span
-                key={index}
-                className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full"
-              >
-                {tag}
-              </span>
-            ))}
+        {lead.county && (
+          <div>
+            <span className="font-medium text-gray-500">County:</span>
+            <p className="text-gray-900">{lead.county}</p>
           </div>
-        </div>
-      )}
-    </div>
-  )
+        )}
+        
+        {lead.source && (
+          <div>
+            <span className="font-medium text-gray-500">Source:</span>
+            <p className="text-gray-900">{lead.source}</p>
+          </div>
+        )}
 
+        {lead.county_population && (
+          <div>
+            <span className="font-medium text-gray-500">County Pop:</span>
+            <p className="text-gray-900">{lead.county_population.toLocaleString()}</p>
+          </div>
+        )}
+
+        {lead.updated_at && (
+          <div>
+            <span className="font-medium text-gray-500">Updated:</span>
+            <p className="text-gray-900">{formatDate(lead.updated_at)}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
