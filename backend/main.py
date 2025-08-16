@@ -759,7 +759,8 @@ async def get_recent_permits():
     """
     Get recent permits for the permits page.
     
-    Returns recent permits from gold.permits table formatted for the permits UI.
+    Returns recent permits from public.permits table formatted for the permits UI.
+    Prefers permit_id over UUID for identification.
     
     Returns:
         Dict with permits array and metadata
@@ -767,13 +768,15 @@ async def get_recent_permits():
     try:
         supabase = get_supabase_client()
         
-        # Build query to get recent permits
+        # Build query to get recent permits from public.permits table
+        # Prefer permit_id over UUID (id) for identification
         permit_fields = [
-            "permit_id", "jurisdiction", "address_full", "permit_type", "status", "issued_at"
+            "permit_id", "id", "source", "permit_number", "city", "address", 
+            "permit_type", "status", "issued_date", "created_at"
         ]
-        query = supabase.table("gold.permits").select(
+        query = supabase.table("permits").select(
             ", ".join(permit_fields)
-        ).order("issued_at", desc=True).limit(50)
+        ).order("created_at", desc=True).limit(50)
         
         # Execute query
         response = query.execute()
@@ -785,16 +788,20 @@ async def get_recent_permits():
         # Convert to response format expected by the UI
         permits = []
         for record in response.data:
+            # Prefer permit_id over UUID for the id field
+            display_id = record.get("permit_id") or record.get("id", "")
             permits.append({
-                "id": record.get("permit_id", ""),
-                "jurisdiction": record.get("jurisdiction"),
-                "address": record.get("address_full"),
-                "trade": record.get("permit_type"),
-                "status": record.get("status"),
-                "created_at": record.get("issued_at")
+                "id": display_id,
+                "source": record.get("source", ""),
+                "permit_number": record.get("permit_number", ""),
+                "jurisdiction": record.get("city", ""),
+                "address": record.get("address", ""),
+                "trade": record.get("permit_type", ""),
+                "status": record.get("status", ""),
+                "created_at": record.get("issued_date") or record.get("created_at")
             })
         
-        logger.info(f"Returned {len(permits)} recent permits")
+        logger.info(f"Returned {len(permits)} recent permits from public.permits")
         return {"permits": permits}
         
     except Exception as e:
@@ -803,6 +810,101 @@ async def get_recent_permits():
             status_code=500,
             detail="Failed to fetch permits data"
         )
+
+@app.get("/api/permits/selftest")
+async def permits_selftest():
+    """
+    Selftest endpoint for permit_id functionality.
+    
+    Creates a test permit with permit_id using the upsert_permit function
+    and returns the result for verification.
+    
+    Returns:
+        Dict with test results and permit data
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # Create test permit payload with permit_id
+        test_permit = {
+            "source": "selftest",
+            "source_record_id": "test-selftest-001",
+            "permit_id": "SELFTEST-001",
+            "permit_number": "SELFTEST-001", 
+            "jurisdiction": "Austin",
+            "county": "Travis",
+            "status": "Issued",
+            "permit_type": "Building",
+            "work_description": "Test permit for permit_id functionality",
+            "address": "100 Test St",
+            "city": "Austin",
+            "state": "TX",
+            "zipcode": "78701",
+            "valuation": 50000,
+            "contractor_name": "Test Contractor LLC",
+            "applicant": "Test Applicant",
+            "owner": "Test Owner",
+            "issued_date": datetime.now().isoformat(),
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Call upsert_permit function
+        logger.info("Creating selftest permit with permit_id: SELFTEST-001")
+        result = supabase.rpc("upsert_permit", {"p": test_permit}).execute()
+        
+        if result.data:
+            upsert_result = result.data[0] if isinstance(result.data, list) else result.data
+            permit_uuid = upsert_result.get("id")
+            action = upsert_result.get("action", "unknown")
+            
+            logger.info(f"Upsert completed: {action}, permit UUID: {permit_uuid}")
+            
+            # Verify the permit was created with correct permit_id
+            verification_query = supabase.table("permits").select(
+                "source, permit_id, permit_number, jurisdiction, status, created_at"
+            ).eq("source", "selftest").eq("permit_id", "SELFTEST-001")
+            
+            verification_result = verification_query.execute()
+            
+            if verification_result.data:
+                permit_data = verification_result.data[0]
+                
+                return {
+                    "success": True,
+                    "message": "Selftest permit created successfully",
+                    "upsert_action": action,
+                    "permit_uuid": str(permit_uuid),
+                    "verification": {
+                        "source": permit_data.get("source"),
+                        "permit_id": permit_data.get("permit_id"), 
+                        "permit_number": permit_data.get("permit_number"),
+                        "jurisdiction": permit_data.get("jurisdiction"),
+                        "status": permit_data.get("status"),
+                        "created_at": permit_data.get("created_at")
+                    },
+                    "test_query": "SELECT source, permit_id, permit_number FROM public.permits WHERE source='selftest'"
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Permit was created but verification failed",
+                    "upsert_action": action,
+                    "permit_uuid": str(permit_uuid)
+                }
+        else:
+            return {
+                "success": False,
+                "message": "upsert_permit function returned no data",
+                "result": result.data
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in permits selftest: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Selftest failed with error"
+        }
 
 @app.get("/api/leads/scores")
 async def get_lead_scores(
