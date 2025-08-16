@@ -275,7 +275,7 @@ export default function LeadsPage() {
                   </p>
                   {leads && leads.length === 0 && (
                     <button 
-                      onClick={() => window.location.href = '/leads-test'}
+                      onClick={() => router.push('/leads-test')}
                       className="inline-flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
                     >
                       <Target className="w-4 h-4 mr-2" />
