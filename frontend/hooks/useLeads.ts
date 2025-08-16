@@ -134,7 +134,10 @@ export function useEnhancedLeads(): {
     // Generate mock enhanced data for demo purposes
     // In a real app, this would come from additional database queries or computations
     const score = Math.floor(Math.random() * 40) + 60; // Random score 60-100
-    const permitValue = Math.floor(Math.random() * 80000) + 20000; // Random value $20k-$100k
+    // Generate deterministic mock enhanced data for demo purposes
+    // In a real app, this would come from additional database queries or computations
+    const score = (hashStringToNumber(String(lead.id), 60, 100));
+    const permitValue = (hashStringToNumber(String(lead.id) + '-permit', 20000, 100000));
     
     return {
       ...lead,
