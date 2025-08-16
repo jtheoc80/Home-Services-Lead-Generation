@@ -282,6 +282,11 @@ export async function POST(request: NextRequest) {
         source = body.source;
 
 
+      } catch (error) {
+
+
+
+
       } catch {
 
         // Ignore JSON parse errors; will handle missing source below
