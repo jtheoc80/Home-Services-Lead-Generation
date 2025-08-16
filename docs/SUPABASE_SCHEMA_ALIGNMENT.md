@@ -28,7 +28,7 @@ Stored in leads.external_permit_id when that column exists.
 
 ## Name Extraction Priority
 
-applicant → owner → contractor_name → 'Unknown'
+applicant > owner > contractor_name > 'Unknown'
 
 ## Service / Trade Classification
 
