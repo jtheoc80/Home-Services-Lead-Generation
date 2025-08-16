@@ -149,11 +149,6 @@ class SupabaseSink:
         # Log final summary
         logger.info(f"Upsert complete: {total_success} success, {total_failed} failed")
         
-        # Raise exception if any failures occurred
-        # Raise exception if any failures occurred, if configured
-        if raise_on_failure and total_failed > 0:
-            raise Exception(f"Upsert operation had {total_failed} failures out of {len(records)} total records")
-        
         return {"success": total_success, "failed": total_failed}
     
     def _serialize_records(self, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
