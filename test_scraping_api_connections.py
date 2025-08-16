@@ -101,7 +101,19 @@ class ScrapingAPITester:
         
         for var in required_vars:
             if not os.getenv(var) and not os.getenv(var.replace('_KEY', '')):
-                missing_vars.append(var)
+        # Use unified fallback logic for required environment variables
+        required_vars = [
+            ('SUPABASE_URL', None),
+            ('SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE')
+        ]
+        missing_vars = []
+        
+        for primary, fallback in required_vars:
+            if get_env_with_fallback(primary, fallback) is None:
+                if fallback:
+                    missing_vars.append(f"{primary} (or fallback {fallback})")
+                else:
+                    missing_vars.append(primary)
                 
         if missing_vars:
             self.add_result(
