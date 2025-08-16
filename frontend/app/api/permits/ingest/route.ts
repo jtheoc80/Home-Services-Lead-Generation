@@ -279,6 +279,14 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+        // Ignore JSON parse errors; will handle missing source below
+      }
+    }
+    if (!source) {
+      return NextResponse.json(
+        { error: 'Source parameter required either as query parameter (?source=austin) or in JSON body' },
+        { status: 400 }
+      );
     }
     
     // Validate cron secret if provided
