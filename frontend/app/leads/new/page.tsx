@@ -8,8 +8,6 @@ import {
   RefreshCw, 
   ArrowLeft,
   User,
-  Mail,
-  Phone,
   MapPin,
   Briefcase,
   AlertCircle,
