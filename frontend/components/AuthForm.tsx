@@ -123,7 +123,7 @@ export default function AuthForm({ onSuccess, redirectTo = '/dashboard' }: AuthF
         {/* Header */}
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-          <p className="text-gray-600">Sign in to your LeadLedger Pro account</p>
+          <p className="text-gray-600">Sign in to your LeadLedgerPro account</p>
         </div>
 
         {/* Mode Toggle */}
