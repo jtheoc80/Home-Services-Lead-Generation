@@ -235,8 +235,8 @@ export async function POST(req: Request) {
     // 3) optional write
     if (!dry) {
       for (const row of rows) {
-        // Try with 'permit_data' parameter first (public.permits table)
-        const { error } = await supabaseAdmin.rpc('upsert_permit', { permit_data: row as any })
+        // Use 'p' parameter as specified in the problem statement
+        const { error } = await supabaseAdmin.rpc('upsert_permit', { p: row as any })
         if (error) errors.push(error.message)
         else upserts++
       }
