@@ -9,6 +9,8 @@ export const revalidate = 0
 const SOURCE_KEY: Record<string, string> = {
   austin: 'austin_socrata',
   dallas: 'dallas_socrata',
+  houston: 'houston_csv',
+  san_antonio: 'san_antonio_socrata',
 }
 
 // Types for normalized permit data
@@ -72,6 +74,44 @@ interface DallasPermitRecord {
   status?: string;
   permit_status?: string;
   current_status?: string;
+  permit_type?: string;
+  type?: string;
+  [key: string]: unknown;
+}
+
+interface HoustonPermitRecord {
+  permit_number?: string;
+  permit_no?: string;
+  issue_date?: string;
+  issued_date?: string;
+  description?: string;
+  work_description?: string;
+  address?: string;
+  project_address?: string;
+  applicant_name?: string;
+  contractor_name?: string;
+  valuation?: string | number;
+  estimated_cost?: string | number;
+  status?: string;
+  permit_type?: string;
+  type?: string;
+  [key: string]: unknown;
+}
+
+interface SanAntonioPermitRecord {
+  permit_number?: string;
+  permit_no?: string;
+  issue_date?: string;
+  issued_date?: string;
+  description?: string;
+  work_description?: string;
+  address?: string;
+  project_address?: string;
+  applicant_name?: string;
+  contractor_name?: string;
+  valuation?: string | number;
+  estimated_cost?: string | number;
+  status?: string;
   permit_type?: string;
   type?: string;
   [key: string]: unknown;
@@ -189,7 +229,164 @@ async function fetchDallas(): Promise<Normalized[]> {
   }
 }
 
-const FETCHERS = { austin: fetchAustin, dallas: fetchDallas }
+async function fetchHouston(): Promise<Normalized[]> {
+  // Houston CSV endpoint
+  const url = 'https://www.houstontx.gov/planning/DevelopReview/permits_issued.csv';
+  
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'text/csv',
+        'User-Agent': 'LeadLedgerPro/1.0',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Houston API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const csvText = await response.text();
+    
+    // Parse CSV data (basic CSV parsing)
+    const lines = csvText.split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    
+    const rawData: HoustonPermitRecord[] = [];
+    for (let i = 1; i < lines.length && i < 101; i++) { // Limit to 100 records
+      if (lines[i].trim()) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const record: HoustonPermitRecord = {};
+        headers.forEach((header, index) => {
+          record[header as keyof HoustonPermitRecord] = values[index] || undefined;
+        });
+        rawData.push(record);
+      }
+    }
+    
+    console.log(`Houston permits fetched: ${rawData.length} records`);
+    
+    // Normalize the data
+    return rawData.map(record => {
+      // Helper function to get the first available field value
+      const getField = (...fieldNames: (keyof HoustonPermitRecord)[]): string | number | undefined => {
+        for (const fieldName of fieldNames) {
+          const value = record[fieldName];
+          if (value !== undefined && value !== null && value !== '') {
+            return value as string | number;
+          }
+        }
+        return undefined;
+      };
+
+      // Helper function to parse numeric values safely
+      const parseNumeric = (value: string | number | undefined): number | undefined => {
+        if (value === undefined || value === null) return undefined;
+        const numValue = typeof value === 'number' ? value : parseFloat(value.toString());
+        return isNaN(numValue) ? undefined : numValue;
+      };
+
+      // Get permit identifier
+      const permitId = getField('permit_number', 'permit_no') as string | undefined;
+      
+      return {
+        source: 'houston_csv',
+        source_record_id: permitId || `houston_${Date.now()}_${Math.random()}`,
+        permit_number: permitId,
+        issued_date: getField('issued_date', 'issue_date') as string | undefined,
+        permit_type: getField('permit_type', 'type') as string | undefined,
+        work_description: getField('work_description', 'description') as string | undefined,
+        address: getField('project_address', 'address') as string | undefined,
+        city: 'Houston',
+        county: 'Harris',
+        applicant_name: getField('applicant_name') as string | undefined,
+        contractor_name: getField('contractor_name') as string | undefined,
+        valuation: parseNumeric(getField('estimated_cost', 'valuation')),
+        status: getField('status') as string | undefined,
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching Houston permits:', error);
+    return [];
+  }
+}
+
+async function fetchSanAntonio(): Promise<Normalized[]> {
+  // San Antonio Socrata API endpoint
+  const baseUrl = 'https://data.sanantonio.gov/resource/city-permits.json';
+  const url = `${baseUrl}?$limit=100`;
+  
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'LeadLedgerPro/1.0',
+    };
+    
+    // Add app token if available for higher rate limits
+    const sanAntonioAppToken = process.env.SAN_ANTONIO_APP_TOKEN;
+    if (sanAntonioAppToken) {
+      headers['X-App-Token'] = sanAntonioAppToken;
+    }
+    
+    const response = await fetch(url, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`San Antonio API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const rawData = await response.json() as SanAntonioPermitRecord[];
+    console.log(`San Antonio permits fetched: ${rawData.length} records`);
+    
+    // Normalize the data
+    return rawData.map(record => {
+      // Helper function to get the first available field value
+      const getField = (...fieldNames: (keyof SanAntonioPermitRecord)[]): string | number | undefined => {
+        for (const fieldName of fieldNames) {
+          const value = record[fieldName];
+          if (value !== undefined && value !== null && value !== '') {
+            return value as string | number;
+          }
+        }
+        return undefined;
+      };
+
+      // Helper function to parse numeric values safely
+      const parseNumeric = (value: string | number | undefined): number | undefined => {
+        if (value === undefined || value === null) return undefined;
+        const numValue = typeof value === 'number' ? value : parseFloat(value.toString());
+        return isNaN(numValue) ? undefined : numValue;
+      };
+
+      // Get permit identifier
+      const permitId = getField('permit_number', 'permit_no') as string | undefined;
+      
+      return {
+        source: 'san_antonio_socrata',
+        source_record_id: permitId || `san_antonio_${Date.now()}_${Math.random()}`,
+        permit_number: permitId,
+        issued_date: getField('issued_date', 'issue_date') as string | undefined,
+        permit_type: getField('permit_type', 'type') as string | undefined,
+        work_description: getField('work_description', 'description') as string | undefined,
+        address: getField('project_address', 'address') as string | undefined,
+        city: 'San Antonio',
+        county: 'Bexar',
+        applicant_name: getField('applicant_name') as string | undefined,
+        contractor_name: getField('contractor_name') as string | undefined,
+        valuation: parseNumeric(getField('estimated_cost', 'valuation')),
+        status: getField('status') as string | undefined,
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching San Antonio permits:', error);
+    return [];
+  }
+}
+
+const FETCHERS = { 
+  austin: fetchAustin, 
+  dallas: fetchDallas, 
+  houston: fetchHouston, 
+  san_antonio: fetchSanAntonio 
+}
 
 export async function POST(req: Request) {
   // Check for x-cron-secret header first
