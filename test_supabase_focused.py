@@ -223,7 +223,7 @@ class SupabaseFocusedTester:
             from supabase import create_client
             
             # Just test client creation, not actual connection
-            client = create_client(supabase_url, supabase_key)
+            _ = create_client(supabase_url, supabase_key)
             
             self.add_result(
                 "Supabase Client Creation",
