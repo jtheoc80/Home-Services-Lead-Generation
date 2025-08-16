@@ -225,7 +225,6 @@ async function fetchDallasPermits(): Promise<DallasPermitRecord[]> {
   // Dallas OpenData API (Socrata) - Dataset ID: e7gq-4sah
   const baseUrl = 'https://www.dallasopendata.com/resource/e7gq-4sah.json';
   const limit = 1000; // Fetch up to 1000 records per request
-  const url = `${baseUrl}?$limit=${limit}`;
   
   try {
     const headers: Record<string, string> = {
