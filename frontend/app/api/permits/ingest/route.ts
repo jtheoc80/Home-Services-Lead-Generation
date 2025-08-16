@@ -148,7 +148,7 @@ function mapDallasPermit(record: DallasPermitRecord): NormalizedPermit {
 
   // Helper function to parse numeric values safely
   const parseNumeric = (value: string | number | undefined): number | undefined => {
-    if (value === undefined || value === null || value === '') return undefined;
+    if (value === undefined || value === null) return undefined;
     const numValue = typeof value === 'number' ? value : parseFloat(value.toString());
     return isNaN(numValue) ? undefined : numValue;
   };
