@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useEnhancedLeads, EnhancedLead } from '@/hooks/useLeads';
+import { useEnhancedLeads } from '@/hooks/useLeads';
 import Card from '@/components/ui/Card';
 import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
