@@ -310,8 +310,8 @@ export async function POST(request: NextRequest) {
     let insertedCount = 0;
     let updatedCount = 0;
     const errors: string[] = [];
-    const processedSamples: any[] = [];
-    const upsertResults: any[] = [];
+    const processedSamples: unknown[] = [];
+    const upsertResults: unknown[] = [];
     
     for (const permit of permits) {
       try {
