@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Calendar, DollarSign, User, Building, Phone, Mail } from 'lucide-react';
+import { MapPin, Building, Phone, Mail } from 'lucide-react';
 import { Lead } from '../../types/supabase';
 
 interface FeedbackData {
