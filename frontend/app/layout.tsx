@@ -6,7 +6,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 
 export const metadata = {
-  title: "LeadLedder Pro",
+  title: "LeadLedgerPro",
   description: "Leads & permits for contractors"
 };
 

@@ -60,8 +60,8 @@ function LoginContent() {
               <span className="text-white font-bold text-xl">LL</span>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">LeadLedger Pro</h1>
-          <p className="text-gray-600">Texas Home Services Lead Generation</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">LeadLedgerPro</h1>
+          <p className="text-gray-600">Lead Generation Platform</p>
           {redirectedFrom && (
             <p className="mt-2 text-sm text-gray-600">
               Please sign in to access{' '}
@@ -97,7 +97,7 @@ function LoginContent() {
 
         <div className="text-center mt-6">
           <p className="text-sm text-gray-600">
-            New to LeadLedger Pro?{' '}
+            New to LeadLedgerPro?{' '}
             <button
               onClick={() => window.location.href = '/'}
               className="text-blue-600 hover:text-blue-700 font-medium"

@@ -25,7 +25,7 @@ export default function Sidebar() {
         </div>
         <div className="leading-tight">
           <div className="font-bold tracking-tight bg-gradient-to-r from-brand-700 to-texas-600 bg-clip-text text-transparent">
-            Lead Ledger Pro
+            LeadLedgerPro
           </div>
           <div className="text-xs text-gray-500 font-medium">Texas Edition</div>
         </div>

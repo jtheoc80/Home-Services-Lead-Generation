@@ -86,7 +86,7 @@ export default function HomePage() {
               </Badge>
               
               <h1 className="text-6xl font-bold text-white">
-                Texas Home Services
+                LeadLedgerPro
                 <span className="block bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
                   Lead Generation
                 </span>
