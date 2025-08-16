@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseClient } from "../../../lib/supabaseServer";
+import { getSupabaseClient } from "../../../../lib/supabaseServer";
 
 // 1) Try your Python backend first (via proxy)
 async function fetchFromBackend() {
