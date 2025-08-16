@@ -114,7 +114,8 @@ class ScrapingAPITester:
                     missing_vars.append(f"{primary} (or fallback {fallback})")
                 else:
                     missing_vars.append(primary)
-                
+        missing_vars = validate_required_env_vars(required_vars)
+        
         if missing_vars:
             self.add_result(
                 "Environment Setup",
