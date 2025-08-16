@@ -99,7 +99,11 @@ END $$;
 DROP INDEX IF EXISTS uq_permits_source_permit_id;
 CREATE UNIQUE INDEX uq_permits_source_permit_id 
 ON public.permits(source, permit_id) 
-WHERE permit_id IS NOT NULL;
+-- Create the unique index concurrently if it does not already exist
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_permits_source_permit_id
+    ON public.permits(source, permit_id)
+    WHERE permit_id IS NOT NULL;
+-- Optionally, drop the old index after verifying the new one is in place
 
 -- Add helpful indexes for the new fields
 CREATE INDEX IF NOT EXISTS idx_permits_permit_id ON public.permits(permit_id);
