@@ -4,22 +4,6 @@ import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase-browser';
 import { Lead } from '../../types/supabase';
 
-/**
- * Convert a string to a deterministic number within a given range
- * Used for generating consistent mock data based on lead IDs
- */
-function hashStringToNumber(str: string, min: number, max: number): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  // Convert to positive number and scale to range
-  const normalized = Math.abs(hash) / 2147483647;
-  return Math.floor(normalized * (max - min + 1)) + min;
-}
-
 // Extended Lead interface with computed fields for UI
 export interface EnhancedLead extends Lead {
   score?: number;
@@ -138,6 +122,7 @@ export function useLeads() {
 
 /**
  * Enhanced hook that adds computed fields to leads for richer UI display
+ * Note: This now pulls real data from the database instead of generating mock data
  */
 export function useEnhancedLeads(): { 
   leads: EnhancedLead[] | null; 
@@ -147,24 +132,28 @@ export function useEnhancedLeads(): {
   const { leads, error, loading } = useLeads();
   
   const enhancedLeads = leads?.map((lead): EnhancedLead => {
-    // Generate deterministic mock enhanced data for demo purposes
-    // In a real app, this would come from additional database queries or computations
-    const score = hashStringToNumber(String(lead.id), 60, 100);
-    const permitValue = hashStringToNumber(String(lead.id) + '-permit', 20000, 100000);
+    // Extract real data from the lead metadata or compute from available fields
+    // If metadata contains enhanced fields, use them; otherwise provide defaults
+    const metadata = lead.metadata || {};
     
     return {
       ...lead,
-      score,
-      scoreBreakdown: {
-        recency: Math.floor(score * 0.25),
-        residential: Math.floor(score * 0.20),
-        value: Math.floor(score * 0.30),
-        workClass: Math.floor(score * 0.25),
+      // Use real score from metadata or database, fallback to basic calculation
+      score: metadata.score || 75, // Default score when no real score available
+      scoreBreakdown: metadata.scoreBreakdown || {
+        recency: 20,
+        residential: 15,
+        value: 25,
+        workClass: 15,
       },
-      tradeType: lead.service || 'General',
-      permitValue,
+      // Use service field as tradeType or extract from metadata
+      tradeType: lead.service || metadata.tradeType || 'General',
+      // Use permit value from metadata or provide a default
+      permitValue: metadata.permitValue || 50000,
+      // Format relative time from created_at
       lastUpdated: formatRelativeTime(lead.created_at),
-      permitNumber: `TX${new Date(lead.created_at).getFullYear()}-${String(lead.id).padStart(6, '0')}`
+      // Generate permit number from real data
+      permitNumber: metadata.permitNumber || `TX${new Date(lead.created_at).getFullYear()}-${lead.id.slice(-6)}`
     };
   }) || null;
   

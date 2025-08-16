@@ -115,14 +115,8 @@ export default function LeadsTestPage() {
       
       if (response.ok && result.data) {
         const leads = Array.isArray(result.data) ? result.data : [result.data];
-        // Add mock enhancement data for demo
-        const enhancedLeads = leads.map((lead, index) => ({
-          ...lead,
-          score: Math.floor(Math.random() * 40) + 60, // Random score 60-100
-          county: formData.county,
-          trade: ['HVAC', 'Roofing', 'Electrical', 'Plumbing'][index % 4]
-        }));
-        setRecentLeads(enhancedLeads);
+        // Use leads data as-is without adding mock data
+        setRecentLeads(leads);
       } else {
         console.error('Error fetching recent leads:', result.error);
         setRecentLeads([]);

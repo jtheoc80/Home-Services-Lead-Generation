@@ -4,10 +4,10 @@
 
 /**
  * Lead interface matching the public.leads table columns
- * Based on the database schema from docs/supabase/0001_init.sql
+ * Based on the database schema from create_leads_table.sql (UUID version)
  */
 export interface Lead {
-  id: number;
+  id: string; // UUID
   created_at: string;
   source?: string | null;
   name?: string | null;
@@ -20,6 +20,7 @@ export interface Lead {
   status?: string | null;
   service?: string | null;
   county?: string | null;
+  metadata?: any; // JSONB field
 }
 
 /**
