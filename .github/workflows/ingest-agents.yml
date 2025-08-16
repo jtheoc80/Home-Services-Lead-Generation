@@ -1,3 +1,24 @@
+
+name: Agents Ingest Matrix
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (no actual data insertion)'
+        required: false
+        default: 'false'
+        type: boolean
+  
+  # Scheduled trigger (daily at 5 AM UTC = 11 PM CST)
+  schedule:
+    - cron: '0 5 * * *'
+
+env:
+  VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
 name: Ingest Agents (Austin/Dallas)
 on:
   workflow_dispatch:
@@ -7,6 +28,105 @@ on:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [austin, dallas, houston, san_antonio]
+    
+    steps:
+    - name: Validate environment
+      run: |
+        if [ -z "${{ env.CRON_SECRET }}" ]; then
+          echo "❌ CRON_SECRET secret not configured"
+          exit 1
+        fi
+        if [ -z "${{ env.VERCEL_DOMAIN }}" ]; then
+          echo "❌ VERCEL_DOMAIN secret not configured"
+          exit 1
+        fi
+        echo "✅ Environment validated for source: ${{ matrix.source }}"
+        
+    - name: Trigger permit ingestion for ${{ matrix.source }}
+      id: ingest
+      run: |
+        SOURCE="${{ matrix.source }}"
+        DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+        
+        echo "🚀 Triggering permit ingestion for source: $SOURCE"
+        echo "🧪 Dry run mode: $DRY_RUN"
+        echo "📡 Target: https://${{ env.VERCEL_DOMAIN }}/api/permits/permits/ingest"
+        
+        # Prepare URL with query parameters
+        URL="https://${{ env.VERCEL_DOMAIN }}/api/permits/permits/ingest?source=$SOURCE"
+        if [ "$DRY_RUN" == "true" ]; then
+          URL="$URL&dry=1"
+        fi
+        
+        echo "📞 Making request to: $URL"
+        
+        # Make the API call to the permits ingest endpoint
+        RESPONSE=$(curl -s -w "\n%{http_code}" \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -H "x-cron-secret: ${{ env.CRON_SECRET }}" \
+          "$URL")
+        
+        # Extract status code from response
+        HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+        RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+        
+        echo "📊 HTTP Status: $HTTP_STATUS"
+        echo "📋 Response:"
+        echo "$RESPONSE_BODY" | jq '.' 2>/dev/null || echo "$RESPONSE_BODY"
+        
+        # Check if successful
+        if [ "$HTTP_STATUS" -eq 200 ]; then
+          echo "✅ Permit ingestion completed successfully for $SOURCE"
+          
+          # Extract summary information if available
+          FETCHED=$(echo "$RESPONSE_BODY" | jq -r '.fetched // "N/A"' 2>/dev/null)
+          UPSERTS=$(echo "$RESPONSE_BODY" | jq -r '.upserts // "N/A"' 2>/dev/null)
+          BEFORE_COUNT=$(echo "$RESPONSE_BODY" | jq -r '.beforeCount // "N/A"' 2>/dev/null)
+          AFTER_COUNT=$(echo "$RESPONSE_BODY" | jq -r '.afterCount // "N/A"' 2>/dev/null)
+          ERRORS=$(echo "$RESPONSE_BODY" | jq -r '.errors | length // 0' 2>/dev/null)
+          
+          echo "summary_fetched=$FETCHED" >> $GITHUB_OUTPUT
+          echo "summary_upserts=$UPSERTS" >> $GITHUB_OUTPUT
+          echo "summary_before_count=$BEFORE_COUNT" >> $GITHUB_OUTPUT
+          echo "summary_after_count=$AFTER_COUNT" >> $GITHUB_OUTPUT
+          echo "summary_errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Permit ingestion failed for $SOURCE with status: $HTTP_STATUS"
+          echo "success=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+      
+    - name: Step Summary for ${{ matrix.source }}
+      if: always()
+      run: |
+        echo "## Ingest Summary: ${{ matrix.source }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Source**: ${{ matrix.source }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Dry Run**: ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ steps.ingest.outputs.success == 'true' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.ingest.outputs.success }}" == "true" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fetched**: ${{ steps.ingest.outputs.summary_fetched }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upserts**: ${{ steps.ingest.outputs.summary_upserts }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Before Count**: ${{ steps.ingest.outputs.summary_before_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **After Count**: ${{ steps.ingest.outputs.summary_after_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors**: ${{ steps.ingest.outputs.summary_errors }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -154,3 +274,4 @@ jobs:
           echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
