@@ -281,7 +281,9 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         source = body.source;
 
+
       } catch {
+
         // Ignore JSON parse errors; will handle missing source below
 
       } catch (error) {
