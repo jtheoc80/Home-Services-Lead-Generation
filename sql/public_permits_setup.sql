@@ -78,7 +78,6 @@ BEGIN
   IF NEW.latitude IS NOT NULL AND NEW.longitude IS NOT NULL THEN
     NEW.geom := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
   END IF;
-  NEW.updated_at := NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -88,6 +87,24 @@ CREATE OR REPLACE TRIGGER trigger_permits_update_geom
   BEFORE INSERT OR UPDATE ON public.permits
   FOR EACH ROW
   EXECUTE FUNCTION update_permits_geom_from_coordinates();
+
+-- Reusable function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically update the updated_at timestamp
+CREATE OR REPLACE TRIGGER set_updated_at
+  BEFORE UPDATE ON public.permits
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Composite index for sorting by issued_date then created_at as fallback
+CREATE INDEX IF NOT EXISTS idx_permits_issued_date_created_at ON public.permits(issued_date DESC, created_at DESC);
 
 -- Create RPC function for upsert_permit
 CREATE OR REPLACE FUNCTION public.upsert_permit(permit_data JSONB)
