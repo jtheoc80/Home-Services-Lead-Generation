@@ -89,7 +89,11 @@ function mapAustinPermit(record: AustinPermitRecord): NormalizedPermit {
     applicant_name: record.applicant_name,
     contractor_name: record.contractor_name,
     valuation: record.total_valuation ? parseFloat(record.total_valuation.toString()) : 
-               record.declared_value ? parseFloat(record.declared_value.toString()) : undefined,
+    valuation: record.total_valuation !== undefined && record.total_valuation !== null
+      ? parseFloat(record.total_valuation.toString())
+      : (record.declared_value !== undefined && record.declared_value !== null
+          ? parseFloat(record.declared_value.toString())
+          : undefined),
     status: record.status_current,
   };
 }
