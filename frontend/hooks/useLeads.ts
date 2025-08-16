@@ -16,7 +16,7 @@ function hashStringToNumber(str: string, min: number, max: number): number {
     hash = hash & hash; // Convert to 32bit integer
   }
   // Convert to positive number and scale to range
-  const normalized = Math.abs(hash) / Math.pow(2, 31);
+  const normalized = Math.abs(hash) / 2147483647;
   return Math.floor(normalized * (max - min + 1)) + min;
 }
 
