@@ -1,8 +1,12 @@
+[variables]
+PYTHON_VERSION = "3.11"
+
 [phases.setup]
 nixPkgs = ["python311", "poetry", "nodejs_20", "postgresql"]
 
 [phases.install]
 cmds = [
+  "python3.11 -m pip install poetry",
   "poetry config virtualenvs.create false",
   "poetry install --without dev --no-interaction --no-ansi",
   "npm ci"
@@ -11,3 +15,6 @@ cmds = [
 [phases.build]
 # keep your no-op backend build; frontend builds on Vercel
 cmds = ["npm run build"]
+
+[start]
+cmd = "SERVICE_TYPE=backend poetry run python backend/main.py"
