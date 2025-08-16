@@ -1,0 +1,121 @@
+name: GitHub Agent (DB Events to GitHub)
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run even if no events pending'
+        required: false
+        default: 'false'
+        type: boolean
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+
+jobs:
+  gh-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "$SUPABASE_FUNCTION_URL" ]; then
+            echo "::error::SUPABASE_FUNCTION_URL secret not configured"
+            exit 1
+          fi
+          if [ -z "$AGENT_SECRET" ]; then
+            echo "::error::AGENT_SECRET secret not configured"
+            exit 1
+          fi
+          echo "✅ Environment validated for GitHub Agent"
+        env:
+          SUPABASE_FUNCTION_URL: ${{ secrets.SUPABASE_FUNCTION_URL }}
+          AGENT_SECRET: ${{ secrets.AGENT_SECRET }}
+
+      - name: Invoke GitHub Agent
+        id: agent
+        run: |
+          set -e
+          
+          echo "🤖 Invoking GitHub Agent..."
+          
+          RESP=$(curl -sS -X POST "$SUPABASE_FUNCTION_URL" \
+            -H "Content-Type: application/json" \
+            -H "x-agent-secret: $AGENT_SECRET" \
+            -w "\nHTTP_STATUS:%{http_code}")
+          
+          # Extract HTTP status and response body
+          HTTP_STATUS=$(echo "$RESP" | grep "HTTP_STATUS:" | cut -d: -f2)
+          BODY=$(echo "$RESP" | sed '/HTTP_STATUS:/d')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+          echo "response=$BODY" >> $GITHUB_OUTPUT
+          echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          
+          # Check if request was successful (200 or 207)
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 207 ]; then
+            PROCESSED=$(echo "$BODY" | jq -r '.processed // 0')
+            ERRORS=$(echo "$BODY" | jq -r '.errors // 0')
+            TOTAL=$(echo "$BODY" | jq -r '.total_events // 0')
+            
+            echo "✅ GitHub Agent completed successfully"
+            echo "📊 Events: $PROCESSED processed, $ERRORS errors, $TOTAL total"
+            
+            if [ "$ERRORS" -gt 0 ]; then
+              echo "⚠️ Some events failed to process"
+              ERROR_DETAILS=$(echo "$BODY" | jq -r '.error_details[]? // empty')
+              if [ -n "$ERROR_DETAILS" ]; then
+                echo "Error details:"
+                echo "$ERROR_DETAILS"
+              fi
+            fi
+            
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "ℹ️ No pending events found"
+            fi
+          else
+            echo "❌ GitHub Agent failed with HTTP $HTTP_STATUS"
+            ERROR_MSG=$(echo "$BODY" | jq -r '.error // "Unknown error"')
+            echo "Error: $ERROR_MSG"
+            exit 1
+          fi
+        env:
+          SUPABASE_FUNCTION_URL: ${{ secrets.SUPABASE_FUNCTION_URL }}
+          AGENT_SECRET: ${{ secrets.AGENT_SECRET }}
+
+      - name: Handle errors
+        if: failure()
+        run: |
+          echo "❌ GitHub Agent workflow failed"
+          echo "Check the logs above for error details"
+          echo "This may indicate:"
+          echo "- Supabase function deployment issues"
+          echo "- GitHub API authentication problems"
+          echo "- Database connectivity issues"
+          echo "- Agent secret misconfiguration"
+
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "## GitHub Agent Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Schedule:** Every 15 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ steps.agent.outcome == 'success' && '✅ Completed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.agent.outcome }}" = "success" ]; then
+            RESPONSE="${{ steps.agent.outputs.response }}"
+            if [ -n "$RESPONSE" ]; then
+              PROCESSED=$(echo "$RESPONSE" | jq -r '.processed // 0')
+              ERRORS=$(echo "$RESPONSE" | jq -r '.errors // 0')
+              TOTAL=$(echo "$RESPONSE" | jq -r '.total_events // 0')
+              echo "- **Events Processed:** $PROCESSED" >> $GITHUB_STEP_SUMMARY
+              echo "- **Errors:** $ERRORS" >> $GITHUB_STEP_SUMMARY
+              echo "- **Total Events:** $TOTAL" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
