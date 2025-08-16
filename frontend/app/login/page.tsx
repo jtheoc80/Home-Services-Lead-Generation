@@ -109,6 +109,7 @@ function LoginContent() {
       </div>
     </div>
   );
+
 }
 
 export default function LoginPage() {
@@ -124,4 +125,5 @@ export default function LoginPage() {
       <LoginContent />
     </Suspense>
   );
+
 }
