@@ -1,6 +1,6 @@
 # Supabase Schema Alignment – Permit → Lead Trigger (v2)
 
-Date: 2025-08-16  
+Date: August 16, 2025
 Migrations Introduced:
 - 20250816_add_missing_columns_companion.sql
 - 20250816_update_create_lead_from_permit.sql
