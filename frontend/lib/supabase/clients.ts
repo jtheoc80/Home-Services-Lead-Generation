@@ -13,13 +13,15 @@ export function createBrowserSupabase() {
 
 // Server-side client for server components using SSR package
 export function createServerSupabase() {
+  const cookieStore = cookies()
+  
   return createServerClient(url, anon, {
     cookies: {
-      get: (name: string) => cookies().get(name)?.value,
+      get: (name: string) => cookieStore.get(name)?.value,
       set: (name: string, value: string, options: CookieOptions) => {
         try {
-          cookies().set(name, value, options)
-        } catch (error) {
+          cookieStore.set(name, value, options)
+        } catch {
           // The `set` method was called from a Server Component.
           // This can be ignored if you have middleware refreshing
           // user sessions.
@@ -27,8 +29,8 @@ export function createServerSupabase() {
       },
       remove: (name: string, options: CookieOptions) => {
         try {
-          cookies().set(name, '', { ...options, maxAge: 0 })
-        } catch (error) {
+          cookieStore.set(name, '', { ...options, maxAge: 0 })
+        } catch {
           // The `remove` method was called from a Server Component.
           // This can be ignored if you have middleware refreshing
           // user sessions.
