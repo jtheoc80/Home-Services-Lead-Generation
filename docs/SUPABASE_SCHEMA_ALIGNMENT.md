@@ -165,4 +165,4 @@ Expected: lead_count = 1
 - Soft-update of leads when permit fields change (status/value)
 
 ---
-This document accompanies the August 2025 trigger upgrade and should be kept in sync with subsequent migration iterations.
+This document accompanies the 2025-08-16 trigger upgrade and should be kept in sync with subsequent migration iterations.
