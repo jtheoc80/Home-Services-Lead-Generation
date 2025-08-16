@@ -40,6 +40,17 @@ This platform serves **Texas statewide**, with tier-1 coverage for major metropo
 - **API-First Architecture**: Auto-generated TypeScript and Python clients with OpenAPI validation
 - **Production-Ready**: PostGIS spatial data, Row Level Security, optimized indexing
 
+## 🔄 Permit → Lead Trigger (v2) Overview
+
+A new two-part migration (August 16, 2025) upgrades the automatic creation of leads from permits:
+
+- Resilient trigger with canonical ID resolution (permit_id → permit_no → source_record_id → UUID)
+- Duplicate prevention via external_permit_id (preferred) or legacy permit_id UUID
+- Runtime adaptive logic (works even if some columns not yet deployed)
+- Enriched metadata (raw_data merge + canonical fields)
+- Unified service/trade classification with safe fallbacks
+
+Documentation & full details: see [docs/SUPABASE_SCHEMA_ALIGNMENT.md](docs/SUPABASE_SCHEMA_ALIGNMENT.md)
 
 ## 🏗️ Deployment Architecture
 
