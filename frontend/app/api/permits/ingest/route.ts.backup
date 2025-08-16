@@ -282,21 +282,24 @@ export async function POST(request: NextRequest) {
         source = body.source;
 
 
+
+      } catch {
+
+
       } catch (error) {
+
+
+
 
 
 
 
       } catch {
 
+
+
+
         // Ignore JSON parse errors; will handle missing source below
-
-      } catch (error) {
-        return NextResponse.json(
-          { error: 'Invalid JSON body: unable to parse request body' },
-          { status: 400 }
-        );
-
       }
     }
     
