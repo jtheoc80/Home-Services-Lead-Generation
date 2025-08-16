@@ -1,0 +1,108 @@
+name: TX Permits Ingestion (Vercel API)
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Source to ingest (austin, houston, dallas, or all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - austin
+          - houston
+          - dallas
+          - all
+  
+  # Nightly schedule (5 AM UTC = 11 PM CST)
+  schedule:
+    - cron: '0 5 * * *'
+
+env:
+  VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN || 'your-app.vercel.app' }}
+  INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
+
+jobs:
+  ingest-tx-permits-vercel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Validate environment
+      run: |
+        if [ -z "${{ env.INGEST_API_KEY }}" ]; then
+          echo "❌ INGEST_API_KEY secret not configured"
+          exit 1
+        fi
+        if [ -z "${{ env.VERCEL_DOMAIN }}" ]; then
+          echo "❌ VERCEL_DOMAIN secret not configured"
+          exit 1
+        fi
+        echo "✅ Environment validated"
+        
+    - name: Trigger permit ingestion
+      id: ingest
+      run: |
+        SOURCE="${{ github.event.inputs.source || 'all' }}"
+        
+        echo "🚀 Triggering permit ingestion for source: $SOURCE"
+        echo "📡 Target: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest"
+        
+        # Make the API call to the Vercel endpoint
+        RESPONSE=$(curl -s -w "\n%{http_code}" \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-Ingest-Key: ${{ env.INGEST_API_KEY }}" \
+          -d "{\"source\": \"$SOURCE\"}" \
+          "https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest")
+        
+        # Extract status code from response
+        HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+        RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+        
+        echo "📊 HTTP Status: $HTTP_STATUS"
+        echo "📋 Response:"
+        echo "$RESPONSE_BODY" | jq '.' 2>/dev/null || echo "$RESPONSE_BODY"
+        
+        # Check if successful
+        if [ "$HTTP_STATUS" -eq 200 ]; then
+          echo "✅ Permit ingestion completed successfully"
+          
+          # Extract summary information if available
+          FETCHED=$(echo "$RESPONSE_BODY" | jq -r '.summary.fetched // "N/A"' 2>/dev/null)
+          INSERTED=$(echo "$RESPONSE_BODY" | jq -r '.summary.inserted // "N/A"' 2>/dev/null)
+          UPDATED=$(echo "$RESPONSE_BODY" | jq -r '.summary.updated // "N/A"' 2>/dev/null)
+          ERRORS=$(echo "$RESPONSE_BODY" | jq -r '.summary.errors // "N/A"' 2>/dev/null)
+          
+          echo "summary_fetched=$FETCHED" >> $GITHUB_OUTPUT
+          echo "summary_inserted=$INSERTED" >> $GITHUB_OUTPUT
+          echo "summary_updated=$UPDATED" >> $GITHUB_OUTPUT
+          echo "summary_errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Permit ingestion failed with status: $HTTP_STATUS"
+          echo "success=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+      
+    - name: Workflow Summary
+      if: always()
+      run: |
+        echo "## TX Permits Ingestion Summary (Vercel API)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Source**: ${{ github.event.inputs.source || 'all' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Target**: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ steps.ingest.outputs.success == 'true' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.ingest.outputs.success }}" == "true" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fetched**: ${{ steps.ingest.outputs.summary_fetched }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Inserted**: ${{ steps.ingest.outputs.summary_inserted }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Updated**: ${{ steps.ingest.outputs.summary_updated }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors**: ${{ steps.ingest.outputs.summary_errors }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY

@@ -1,6 +1,7 @@
 // Force dynamic rendering and Node runtime for permit ingestion API
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabaseServer';
@@ -258,6 +259,26 @@ async function fetchDallasPermits(): Promise<DallasPermitRecord[]> {
 // Main API route handler
 export async function POST(request: NextRequest) {
   try {
+    // Check for ingest API key in header
+    const ingestKey = request.headers.get('X-Ingest-Key');
+    const configuredKey = process.env.INGEST_API_KEY;
+    
+    // Ensure INGEST_API_KEY is configured
+    if (!configuredKey) {
+      console.error('INGEST_API_KEY not configured on server');
+      return NextResponse.json({ 
+        error: 'Ingest endpoint not available' 
+      }, { status: 500 });
+    }
+    
+    // Validate provided key
+    if (!ingestKey || ingestKey !== configuredKey) {
+      console.warn('Unauthorized ingest endpoint access');
+      return NextResponse.json({ 
+        error: 'Unauthorized. X-Ingest-Key header required.' 
+      }, { status: 401 });
+    }
+    
     // Get Supabase client with service role key
     const supabase = getSupabaseClient({ useServiceRole: true });
     
