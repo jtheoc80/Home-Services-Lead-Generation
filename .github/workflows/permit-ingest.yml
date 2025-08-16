@@ -1,6 +1,21 @@
 name: Permit Ingest
 on:
   workflow_dispatch:
+    inputs:
+      source:
+        description: 'Source to ingest (austin, dallas, all)'
+        required: true
+        default: 'austin'
+        type: choice
+        options:
+          - austin
+          - dallas
+          - all
+      dry_run:
+        description: 'Dry run mode (fetch data but do not write to database)'
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: "0 6 * * *"         # 06:00 UTC daily
 
@@ -8,14 +23,38 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Austin ingest
+      - name: Self-test before ingest
         run: |
-          curl -sS -X POST "$INGEST_URL?source=austin" \
-            -H "x-cron-secret: $CRON_SECRET"
-      - name: Trigger Dallas ingest
+          echo "Running self-test to verify API connectivity..."
+          response=$(curl -s -X POST "$INGEST_URL/selftest" \
+            -H "Content-Type: application/json")
+          echo "Self-test response: $response"
+          
+      - name: Trigger permit ingest
         run: |
-          curl -sS -X POST "$INGEST_URL?source=dallas" \
-            -H "x-cron-secret: $CRON_SECRET"
+          source="${{ github.event.inputs.source || 'austin,dallas' }}"
+          dry_param=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            dry_param="&dry=1"
+            echo "Running in DRY RUN mode - no database writes will occur"
+          fi
+          
+          # If running from schedule or source is 'all', run both Austin and Dallas
+          if [ "$source" = "all" ] || [ -z "${{ github.event.inputs.source }}" ]; then
+            sources="austin dallas"
+          else
+            sources="$source"
+          fi
+          
+          for src in $sources; do
+            echo "Triggering ingest for source: $src"
+            response=$(curl -s -X POST "$INGEST_URL?source=$src$dry_param" \
+              -H "x-cron-secret: $CRON_SECRET" \
+              -H "Content-Type: application/json")
+            echo "Response for $src: $response"
+            echo "---"
+          done
+          
     env:
       INGEST_URL: ${{ secrets.INGEST_URL }}   # e.g. https://your-app.vercel.app/api/permits/ingest
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
