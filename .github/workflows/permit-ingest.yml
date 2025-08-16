@@ -1,0 +1,21 @@
+name: Permit Ingest
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"         # 06:00 UTC daily
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Austin ingest
+        run: |
+          curl -sS -X POST "$INGEST_URL?source=austin" \
+            -H "x-cron-secret: $CRON_SECRET"
+      - name: Trigger Dallas ingest
+        run: |
+          curl -sS -X POST "$INGEST_URL?source=dallas" \
+            -H "x-cron-secret: $CRON_SECRET"
+    env:
+      INGEST_URL: ${{ secrets.INGEST_URL }}   # e.g. https://your-app.vercel.app/api/permits/ingest
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}

@@ -288,8 +288,52 @@ export async function POST(request: NextRequest) {
     // Get Supabase client with service role key
     const supabase = getSupabaseClient({ useServiceRole: true });
     
-    const body = await request.json();
-    const { source } = body;
+    // Support both query parameters and JSON body for source
+    const { searchParams } = new URL(request.url);
+    let source = searchParams.get('source');
+    
+    // If no query parameter, try to get from JSON body (backward compatibility)
+    if (!source) {
+      try {
+        const body = await request.json();
+        source = body.source;
+      } catch (error) {
+        // If no JSON body and no query param, return error
+        if (!source) {
+          return NextResponse.json(
+            { error: 'Source parameter required either as query parameter (?source=austin) or in JSON body' },
+            { status: 400 }
+          );
+        }
+      }
+        // Ignore JSON parse errors; will handle missing source below
+      }
+    }
+    if (!source) {
+      return NextResponse.json(
+        { error: 'Source parameter required either as query parameter (?source=austin) or in JSON body' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate cron secret if provided
+    const cronSecret = request.headers.get('x-cron-secret');
+    const expectedCronSecret = process.env.CRON_SECRET;
+    
+    if (cronSecret) {
+      if (!expectedCronSecret) {
+        return NextResponse.json(
+          { error: 'Server misconfiguration: CRON_SECRET environment variable not set' },
+          { status: 500 }
+        );
+      }
+      if (cronSecret !== expectedCronSecret) {
+        return NextResponse.json(
+          { error: 'Invalid cron secret' },
+          { status: 401 }
+        );
+      }
+    }
     
     let permits: NormalizedPermit[] = [];
     let sourceData: unknown[] = [];
