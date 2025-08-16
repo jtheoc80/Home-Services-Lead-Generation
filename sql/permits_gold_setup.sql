@@ -210,5 +210,105 @@ where issued_date is not null;
 
 comment on view public.permits_analytics is 'Analytics view with computed columns for reporting and lead generation';
 
+-- Function to upsert permit data (for API use)
+create or replace function upsert_permit(p jsonb)
+returns jsonb as $$
+declare
+  result_id uuid;
+  result_row public.permits_gold%rowtype;
+begin
+  -- Insert or update permit data
+  insert into public.permits_gold (
+    jurisdiction,
+    source_type,
+    permit_id,
+    source_permit_number,
+    issued_date,
+    application_date,
+    work_type,
+    permit_category,
+    work_description,
+    address,
+    latitude,
+    longitude,
+    valuation,
+    applicant_name,
+    contractor_name,
+    property_owner,
+    permit_status,
+    current_status,
+    raw_data,
+    source_url,
+    scraped_at
+  ) values (
+    coalesce(p->>'jurisdiction', p->>'source'),
+    coalesce(p->>'source_type', 'api'),
+    coalesce(p->>'permit_id', p->>'permit_no', p->>'source_record_id'),
+    p->>'permit_no',
+    (p->>'issued_date')::timestamptz,
+    (p->>'applied_date')::timestamptz,
+    normalize_work_type(p->>'description', p->>'permit_type'),
+    coalesce(p->>'permit_type', p->>'category'),
+    p->>'description',
+    coalesce(p->>'address', p->>'address_full'),
+    (p->>'latitude')::numeric,
+    (p->>'longitude')::numeric,
+    (p->>'value')::numeric,
+    p->>'applicant_name',
+    p->>'contractor_name',
+    p->>'property_owner',
+    coalesce(p->>'status', p->>'permit_status'),
+    coalesce(p->>'status', p->>'current_status'),
+    p,
+    p->>'source_url',
+    coalesce((p->>'scraped_at')::timestamptz, now())
+  )
+  on conflict (jurisdiction, permit_id)
+  do update set
+    source_permit_number = excluded.source_permit_number,
+    issued_date = excluded.issued_date,
+    application_date = excluded.application_date,
+    work_type = excluded.work_type,
+    permit_category = excluded.permit_category,
+    work_description = excluded.work_description,
+    address = excluded.address,
+    latitude = excluded.latitude,
+    longitude = excluded.longitude,
+    valuation = excluded.valuation,
+    applicant_name = excluded.applicant_name,
+    contractor_name = excluded.contractor_name,
+    property_owner = excluded.property_owner,
+    permit_status = excluded.permit_status,
+    current_status = excluded.current_status,
+    raw_data = excluded.raw_data,
+    source_url = excluded.source_url,
+    updated_at = now()
+  returning id into result_id;
+
+  -- Get the full row to return
+  select * into result_row from public.permits_gold where id = result_id;
+  
+  -- Return success with the inserted/updated row
+  return jsonb_build_object(
+    'success', true,
+    'id', result_row.id,
+    'jurisdiction', result_row.jurisdiction,
+    'permit_id', result_row.permit_id,
+    'created_at', result_row.created_at,
+    'updated_at', result_row.updated_at
+  );
+exception
+  when others then
+    -- Return error information
+    return jsonb_build_object(
+      'success', false,
+      'error', sqlerrm,
+      'sqlstate', sqlstate
+    );
+end;
+$$ language plpgsql security definer;
+
+comment on function upsert_permit(jsonb) is 'Upsert permit data from API calls with conflict resolution';
+
 -- Success message
-select 'Texas permits_gold table and analytics view created successfully!' as message;
+select 'Texas permits_gold table, analytics view, and upsert function created successfully!' as message;
