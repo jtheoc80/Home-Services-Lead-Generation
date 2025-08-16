@@ -89,7 +89,27 @@ class SupabaseFocusedTester:
         for var in required_vars:
             value = os.getenv(var) or os.getenv(var.replace('_KEY', ''))
             if value:
-                present_vars[var] = "configured" if not value.startswith('your_') else "needs_real_value"
+            fallback_var = var.replace('_KEY', '') if var.endswith('_KEY') else None
+            value = os.getenv(var)
+            fallback_value = os.getenv(fallback_var) if fallback_var else None
+            if value and fallback_value:
+                self.logger.warning(
+                    f"Both environment variables '{var}' and '{fallback_var}' are set. "
+                    f"Using '{var}'. Please ensure only one is set to avoid ambiguity."
+                )
+            used_var = None
+            if value:
+                used_var = var
+                present_vars[var] = {
+                    "status": "configured" if not value.startswith('your_') else "needs_real_value",
+                    "used_env_var": var
+                }
+            elif fallback_value:
+                used_var = fallback_var
+                present_vars[var] = {
+                    "status": "configured" if not fallback_value.startswith('your_') else "needs_real_value",
+                    "used_env_var": fallback_var
+                }
             else:
                 missing_required.append(var)
                 
