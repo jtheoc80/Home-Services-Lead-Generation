@@ -83,7 +83,7 @@ function mapAustinPermit(record: AustinPermitRecord): NormalizedPermit {
     issued_date: record.issued_date || record.issue_date,
     permit_type: record.permit_type,
     work_description: record.description,
-    address: record.original_address1 || record.project_address,
+    address: record.project_address || record.original_address1,
     city: 'Austin',
     county: 'Travis',
     applicant_name: record.applicant_name,
