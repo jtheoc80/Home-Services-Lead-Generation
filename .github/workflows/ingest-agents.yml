@@ -1,0 +1,110 @@
+name: Ingest Agents (Austin/Dallas)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [austin, dallas]
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "$INGEST_URL" ]; then
+            echo "::error::INGEST_URL secret not configured"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret not configured"
+            exit 1
+          fi
+          echo "✅ Environment validated for ${{ matrix.source }}"
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Dry run ${{ matrix.source }}
+        id: dry
+        run: |
+          set -e
+          RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}&dry=1" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          FETCHED=$(jq -r '.fetched // 0' <<< "$RESP")
+          if [ "$FETCHED" -eq 0 ]; then
+            echo "::warning::Fetched=0 for ${{ matrix.source }} (check dataset/token)"
+          fi
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Real ingest ${{ matrix.source }}
+        id: real
+        run: |
+          set -e
+          RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          UPSERTS=$(jq -r '.upserts // 0' <<< "$RESP")
+          if [ "$UPSERTS" -eq 0 ]; then
+            echo "::warning::Upserts=0 for ${{ matrix.source }} (maybe all deduped?)"
+          fi
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: ingest
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "$DEBUG_URL" ]; then
+            echo "::error::DEBUG_URL secret not configured"
+            exit 1
+          fi
+          echo "✅ Environment validated for verification"
+        env:
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
+
+      - name: Check Supabase counts
+        id: check
+        run: |
+          set -e
+          RESP=$(curl -sS "$DEBUG_URL")
+          echo "$RESP"
+          echo "resp=$RESP" >> $GITHUB_OUTPUT
+          OK=$(jq -r '.ok' <<< "$RESP")
+          LEADS=$(jq -r '.leads // 0' <<< "$RESP")
+          PERMITS=$(jq -r '.permits // 0' <<< "$RESP")
+          if [ "$OK" != "true" ]; then
+            echo "::error::Debug endpoint failed"; exit 1
+          fi
+          echo "Leads=$LEADS, Permits=$PERMITS"
+        env:
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
+
+      - name: Summarize
+        run: echo "✅ Verification complete"
+
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "## Ingest Agents Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sources:** austin, dallas (parallel execution)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Schedule:** Every 6 hours" >> $GITHUB_STEP_SUMMARY
+          echo "- **Verification:** ${{ steps.check.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
