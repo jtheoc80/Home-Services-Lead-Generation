@@ -46,6 +46,9 @@ build/
 .coverage
 htmlcov/
 
+# Test and debugging files
+test_nixpacks_*.py
+
 # Frontend
 frontend/.env.local
 frontend/.env
