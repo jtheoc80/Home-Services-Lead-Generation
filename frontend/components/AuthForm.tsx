@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase-browser';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -18,6 +19,11 @@ export default function AuthForm({ onSuccess, redirectTo = '/dashboard' }: AuthF
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const searchParams = useSearchParams();
+  const redirectedFrom = searchParams?.get('redirectedFrom');
+
+  // Determine final redirect destination
+  const finalRedirectTo = redirectedFrom || redirectTo;
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,16 +48,19 @@ export default function AuthForm({ onSuccess, redirectTo = '/dashboard' }: AuthF
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}${redirectTo}`,
+          emailRedirectTo: `${window.location.origin}${finalRedirectTo}`,
         },
       });
 
       if (error) {
         setMessage({ type: 'error', text: error.message });
       } else {
+        const destinationMessage = redirectedFrom 
+          ? `Check your email for the magic link to log in! You'll be redirected to ${redirectedFrom}.`
+          : 'Check your email for the magic link to log in!';
         setMessage({
           type: 'success',
-          text: 'Check your email for the magic link to log in!',
+          text: destinationMessage,
         });
       }
     } catch (error) {
@@ -95,7 +104,7 @@ export default function AuthForm({ onSuccess, redirectTo = '/dashboard' }: AuthF
         setMessage({ type: 'success', text: 'Successfully logged in!' });
         onSuccess?.();
         if (typeof window !== 'undefined') {
-          window.location.href = redirectTo;
+          window.location.href = finalRedirectTo;
         }
       }
     } catch (error) {
