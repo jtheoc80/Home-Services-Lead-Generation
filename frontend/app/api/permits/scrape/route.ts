@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     // Preferred: use RPC so we get ON CONFLICT + type casting in SQL
     for (const row of rows) {
       try {
-        const { data, error } = await supabase.rpc('upsert_permit', { p: row as any })
+        const { error } = await supabase.rpc('upsert_permit', { p: row as any })
         if (error) {
           console.error('Upsert error:', error)
           errors++
