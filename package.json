@@ -8,10 +8,7 @@
     "supa:smoke": "tsx scripts/supaSmoke.ts",
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
-
-
     "etl:delta": "tsx scripts/etlDelta.ts",
-
     "e2e:smoke": "tsx scripts/e2eLeadSmoke.ts",
     "e2e:supabase-delta": "tsx scripts/e2e_supabase_delta.ts",
     "e2e:supabase": "tsx scripts/e2e_supabase_delta.ts",
@@ -35,33 +32,18 @@
     "visual:dry-run": "node scripts/visual-regression-dry-run.js",
     "botctl": "tsx tools/botctl.ts",
     "bot:resolve": "tsx tools/bots/resolveConflicts.ts",
-
     "bot:resolve-json:local": "tsx tools/bots/resolveConflicts.ts --strategy json",
-
-
     "bot:resolve-json": "tsx tools/bots/resolveJsonConflicts.ts",
-
-
     "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
-
-
-
-
-
-    "db:wire": "tsx tools/botctl.ts db:wire",
-
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb",
     "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom"
   },
   "overrides": {
     "react": "19.1.1",
-
     "react-dom": "19.1.1",
-
     "@types/react": "19.1.10",
     "@types/react-dom": "19.1.7"
-
   },
   "workspaces": [
     "frontend"
@@ -82,7 +64,7 @@
     "@playwright/test": "^1.54.2",
     "@redocly/cli": "^2.0.2",
     "globby": "^14.0.0",
-    "tsx": "^4.0.0",
+    "tsx": "^4.20.4",
     "yaml": "^2.0.0"
   },
   "engines": {
