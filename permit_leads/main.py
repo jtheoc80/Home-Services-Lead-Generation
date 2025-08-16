@@ -2,8 +2,9 @@ import argparse
 import logging
 import os
 import json
+import hashlib
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import datetime as dt
 
 from .adapters.storage import Storage
@@ -77,16 +78,26 @@ def write_sqlite_output(permits: List[PermitRecord], output_paths: Dict[str, Pat
     logger.info(f"Saved {saved_count} new permits to SQLite database")
 
 
-def write_supabase_output(permits: List[PermitRecord]) -> None:
+def write_supabase_output(permits: List[PermitRecord], jurisdiction: str = None) -> None:
     """Write permits to Supabase using the SupabaseSink."""
     if not permits:
         return
     
+    # Determine table name based on jurisdiction
+    jurisdiction_table_map = {
+        'tx-harris': 'permits_raw_harris',
+        'tx-fort-bend': 'permits_raw_fort_bend',
+        'tx-brazoria': 'permits_raw_brazoria', 
+        'tx-galveston': 'permits_raw_galveston'
+    }
+    
+    # Default to Harris County table for backward compatibility
+    table_name = jurisdiction_table_map.get(jurisdiction, 'permits_raw_harris')
+    
     try:
-        # Initialize SupabaseSink for Harris County permits
-        # Use 'permits_raw_harris' table as specified in the docs
+        # Initialize SupabaseSink with jurisdiction-specific table
         sink = SupabaseSink(
-            upsert_table="permits_raw_harris",
+            upsert_table=table_name,
             conflict_col="event_id",
             chunk_size=500
         )
@@ -122,8 +133,17 @@ def write_supabase_output(permits: List[PermitRecord]) -> None:
         # Don't raise - allow other outputs to succeed
 
 
-def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, Path]) -> List[PermitRecord]:
-    """Run region-aware scraper using registry configuration."""
+def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, Path]) -> Tuple[List[PermitRecord], Dict[str, List[PermitRecord]]]:
+def run_region_aware_scraper(
+    args: argparse.Namespace,
+    output_paths: Dict[str, Path],
+    return_jurisdiction_map: bool = False
+) -> Union[List[PermitRecord], Tuple[List[PermitRecord], Dict[str, List[PermitRecord]]]]:
+    """Run region-aware scraper using registry configuration.
+
+    If return_jurisdiction_map is False (default), returns List[PermitRecord].
+    If True, returns (List[PermitRecord], Dict[str, List[PermitRecord]]).
+    """
     try:
         adapter = RegionAwareAdapter()
         since = dt.datetime.now() - dt.timedelta(days=args.days)
@@ -132,6 +152,8 @@ def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, P
             # Scrape specific jurisdiction
             logger.info(f"Scraping jurisdiction: {args.jurisdiction}")
             permits = adapter.scrape_jurisdiction(args.jurisdiction, since, limit=args.limit)
+            # Return permits and a dict mapping the jurisdiction to its permits
+            return permits, {args.jurisdiction: permits}
         else:
             # Scrape all active jurisdictions
             logger.info("Scraping all active jurisdictions")
@@ -139,12 +161,12 @@ def run_region_aware_scraper(args: argparse.Namespace, output_paths: Dict[str, P
             permits = []
             for jurisdiction_permits in results.values():
                 permits.extend(jurisdiction_permits)
-        
-        return permits
+            # Return combined permits and the jurisdiction-specific results
+            return permits, results
         
     except Exception as e:
         logger.error(f"Error in region-aware scraper: {e}")
-        return []
+        return [], {}
 
 
 def run_legacy_scraper(source_name: str, args: argparse.Namespace, output_paths: Dict[str, Path]) -> List[PermitRecord]:
@@ -291,11 +313,16 @@ def handle_scrape(args: argparse.Namespace):
     
     output_paths = setup_output_directories(output_dir)
     all_permits: List[PermitRecord] = []
+    jurisdiction_results = {}  # Initialize for legacy compatibility
+    
+    if use_region_aware:
+        # Use new region-aware system
     
     if use_region_aware:
         # Use new region-aware system
         logger.info("Using region-aware scraping system")
-        permits = run_region_aware_scraper(args, output_paths)
+        # Initialize for legacy compatibility
+        permits, jurisdiction_results = run_region_aware_scraper(args, output_paths)
         all_permits.extend(permits)
         sources_processed = ["region-aware"]
     else:
@@ -322,9 +349,19 @@ def handle_scrape(args: argparse.Namespace):
         if "sqlite" in args.formats:
             write_sqlite_output(all_permits, output_paths)
         
-        # Add Supabase sink for Harris County permits
-        if use_region_aware and args.jurisdiction == 'tx-harris':
-            write_supabase_output(all_permits)
+        # Add Supabase sink for all Texas counties
+        if use_region_aware:
+            # Support all Texas counties that have Supabase tables
+            tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston']
+            
+            if args.jurisdiction and args.jurisdiction in tx_counties:
+                # Single jurisdiction case
+                write_supabase_output(all_permits, args.jurisdiction)
+            elif not args.jurisdiction:
+                # All jurisdictions case - write each jurisdiction separately
+                for jurisdiction, permits_list in jurisdiction_results.items():
+                    if jurisdiction in tx_counties and permits_list:
+                        write_supabase_output(permits_list, jurisdiction)
     
     total_permits = len(all_permits)
     residential_permits = sum(1 for p in all_permits if p.is_residential())
