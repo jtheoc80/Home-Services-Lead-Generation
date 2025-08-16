@@ -317,7 +317,11 @@ def handle_scrape(args: argparse.Namespace):
     
     if use_region_aware:
         # Use new region-aware system
+    
+    if use_region_aware:
+        # Use new region-aware system
         logger.info("Using region-aware scraping system")
+        # Initialize for legacy compatibility
         permits, jurisdiction_results = run_region_aware_scraper(args, output_paths)
         all_permits.extend(permits)
         sources_processed = ["region-aware"]
