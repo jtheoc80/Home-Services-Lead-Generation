@@ -20,7 +20,7 @@ on:
     - cron: '0 5 * * *'
 
 env:
-  VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN || 'your-app.vercel.app' }}
+  VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
   INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
 
 jobs:
