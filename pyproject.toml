@@ -24,7 +24,7 @@ gunicorn = "^21.2.0"
 
 # Data processing
 pandas = ">=2.2,<3.0"
-numpy = ">=1.26,<2.0"
+numpy = ">=1.26,<3.0"
 scikit-learn = ">=1.5.0,<2.0.0"
 
 # Database and ORM
