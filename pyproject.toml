@@ -19,7 +19,7 @@ python = ">=3.11,<4.0"
 
 # Web framework dependencies
 fastapi = "^0.104.0"
-uvicorn = {extras = ["standard"], version = "^0.24.0"}
+uvicorn = {extras = ["standard"], version = "^0.35.0"}
 gunicorn = "^21.2.0"
 
 # Data processing
