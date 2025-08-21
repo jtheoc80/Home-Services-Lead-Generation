@@ -1736,18 +1736,15 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "python-multipart"
-version = "0.0.6"
+version = "0.0.20"
 description = "A streaming multipart parser for Python"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "python_multipart-0.0.6-py3-none-any.whl", hash = "sha256:ee698bab5ef148b0a760751c261902cd096e57e10558e11aca17646b74ee1c18"},
-    {file = "python_multipart-0.0.6.tar.gz", hash = "sha256:e9925a80bb668529f1b67c7fdb0a5dacdd7cbfc6fb0bff3ea443fe22bdd62132"},
+    {file = "python_multipart-0.0.20-py3-none-any.whl", hash = "sha256:8a62d3a8335e06589fe01f2a3e178cdcc632f3fbe0d492ad9ee0ec35aab1f104"},
+    {file = "python_multipart-0.0.20.tar.gz", hash = "sha256:8dd0cab45b8e23064ae09147625994d090fa46f5b0d1e13af944c331a7fa9d13"},
 ]
-
-[package.extras]
-dev = ["atomicwrites (==1.2.1)", "attrs (==19.2.0)", "coverage (==6.5.0)", "hatch", "invoke (==1.7.3)", "more-itertools (==4.3.0)", "pbr (==4.3.0)", "pluggy (==1.0.0)", "py (==1.11.0)", "pytest (==7.2.0)", "pytest-cov (==4.0.0)", "pytest-timeout (==2.1.0)", "pyyaml (==5.1)"]
 
 [[package]]
 name = "pytz"
@@ -2719,10 +2716,14 @@ watchdog = ["watchdog (>=2.3)"]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
 
+
+content-hash = "df64fa9f82bec69fd1e5220d11dd319ebb3f203872d20db2f120a71b69956cc6"
+
 content-hash = "fbaac23e55db4e95153b7522f3c0556e16c75f14b30f77cee32583db90d52017"
 
 
 content-hash = "f0ef5b3be704de2d404f657f66ff48b647acca09d702a3faa21e83e3c986a14d"
+
 
 
 content-hash = "20356cfcfebe6e8f1038e34d8bb3523440bf7a364f5ee3371aefd5820b2cbb4b"
@@ -2737,6 +2738,7 @@ content-hash = "9b634f0817cd806e67b851a6f524354785bb9d4c90dce141d3abaa6ff25a7df9
 content-hash = "20b3e8324967c4e3e8b594427bca8d5bcada85eff8a629967f096aa65c1c86c8"
 
 content-hash = "6322debbc7bd0e8f6e0dda70188ed3b5d85327999a0f3d5326c38c41176182fa"
+
 
 
 
