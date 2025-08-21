@@ -18,7 +18,7 @@ packages = [
 python = ">=3.11,<4.0"
 
 # Web framework dependencies
-fastapi = "^0.104.0"
+fastapi = "^0.116.1"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
 gunicorn = "^23.0.0"
 
