@@ -67,13 +67,18 @@ stripe = "^8.0.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
-pytest = "^7.0.0"
+pytest = "^8.4.1"
 pytest-cov = "^4.0.0"
 pytest-asyncio = "^0.21.0"
 
 # Code quality
+
 ruff = "^0.1.0"
+black = "^25.1.0"
+
+ruff = "^0.12.9"
 black = "^23.0.0"
+
 mypy = "^1.0.0"
 
 # OpenAPI and client generation
