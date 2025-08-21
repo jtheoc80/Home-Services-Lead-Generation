@@ -33,7 +33,7 @@ supabase = "^2.6.0"
 
 # Authentication and security
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
-python-multipart = "^0.0.6"
+python-multipart = "^0.0.20"
 
 # Environment and configuration
 python-dotenv = "^1.1.1"
