@@ -1,7 +1,191 @@
-# This is the updated content of the .github/workflows/ingest-nightly.yml file
-# ... (rest of the original content)
+name: Nightly Data Ingestion
 
-# Change on line 108
-- name: Upload artifact
-  uses: actions/upload-artifact@v4
-# ... (rest of the original content)
+on:
+  schedule:
+    # Run nightly at 2:00 AM UTC (9 PM EST / 8 PM CST)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Load data since timestamp (ISO format, optional)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Run in dry-run mode (no data changes)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  
+jobs:
+  ingest-data:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Validate environment variables
+        run: |
+          python scripts/validate_env.py --mode=ingestion
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REDIS_URL: redis://localhost:6379/0
+          
+      - name: Check database connectivity
+        run: |
+          python -c "
+          import psycopg2
+          import os
+          conn = psycopg2.connect(os.environ['DATABASE_URL'])
+          with conn.cursor() as cur:
+              cur.execute('SELECT version()')
+              print('Database connection successful:', cur.fetchone()[0])
+          conn.close()
+          "
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          
+      - name: Load raw data
+        run: |
+          python -m ingest.run load_raw ${{ inputs.since && format('--since {0}', inputs.since) || '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: redis://localhost:6379/0
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          
+      - name: Normalize data
+        run: |
+          python -m ingest.run normalize
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: redis://localhost:6379/0
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          
+      - name: Publish to gold tables
+        run: |
+          python -m ingest.run publish
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: redis://localhost:6379/0
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          
+      - name: Generate ingestion report
+        if: always()
+        run: |
+          python scripts/generate_ingest_report.py > ingest-report.md
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          
+      - name: Upload ingestion logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-logs-${{ github.run_number }}
+          path: |
+            ingest-report.md
+            logs/
+          retention-days: 30
+          
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `🚨 Nightly ingestion failed - Run #${{ github.run_number }}`;
+            const body = `
+            ## Ingestion Failure Alert
+            
+            **Workflow:** [Nightly Data Ingestion](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **Run Number:** ${{ github.run_number }}
+            **Trigger:** ${{ github.event_name }}
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+            
+            ### Next Steps
+            1. Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. Review the uploaded artifacts for detailed error information
+            3. Verify data source availability and API limits
+            4. Check database connectivity and schema integrity
+            
+            ### Manual Recovery
+            If needed, you can manually trigger the ingestion:
+            \`\`\`bash
+            python -m ingest.run load_raw --since $(date -d "yesterday" -I)T00:00:00Z
+            python -m ingest.run normalize
+            python -m ingest.run publish
+            \`\`\`
+            
+            This issue will auto-close when the next scheduled run succeeds.
+            `;
+            
+            // Create issue
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'ingestion', 'automated']
+            });
+            
+            console.log(`Created issue #${issue.number}: ${title}`);
+            
+      - name: Close previous failure issues on success
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Find open issues with ingestion failure label
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'ingestion',
+              state: 'open'
+            });
+            
+            // Close issues that are automated failure alerts
+            for (const issue of issues) {
+              if (issue.title.includes('Nightly ingestion failed')) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `✅ Resolved: Nightly ingestion is now working successfully (Run #${{ github.run_number }})`
+                });
+                
+                console.log(`Closed issue #${issue.number}`);
+              }
+            }
