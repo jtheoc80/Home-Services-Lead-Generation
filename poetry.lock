@@ -1650,22 +1650,23 @@ testing = ["coverage (>=6.2)", "flaky (>=3.5.0)", "hypothesis (>=5.7.1)", "mypy 
 
 [[package]]
 name = "pytest-cov"
-version = "4.1.0"
+version = "6.2.1"
 description = "Pytest plugin for measuring coverage."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest-cov-4.1.0.tar.gz", hash = "sha256:3904b13dfbfec47f003b8e77fd5b589cd11904a21ddf1ab38a64f204d6a10ef6"},
-    {file = "pytest_cov-4.1.0-py3-none-any.whl", hash = "sha256:6ba70b9e97e69fcc3fb45bfeab2d0a138fb65c4d0d6a41ef33983ad114be8c3a"},
+    {file = "pytest_cov-6.2.1-py3-none-any.whl", hash = "sha256:f5bc4c23f42f1cdd23c70b1dab1bbaef4fc505ba950d53e0081d0730dd7e86d5"},
+    {file = "pytest_cov-6.2.1.tar.gz", hash = "sha256:25cc6cc0a5358204b8108ecedc51a9b57b34cc6b8c967cc2c01a4e00d8a67da2"},
 ]
 
 [package.dependencies]
-coverage = {version = ">=5.2.1", extras = ["toml"]}
-pytest = ">=4.6"
+coverage = {version = ">=7.5", extras = ["toml"]}
+pluggy = ">=1.2"
+pytest = ">=6.2.5"
 
 [package.extras]
-testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtualenv"]
+testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "python-dateutil"
@@ -2718,6 +2719,9 @@ watchdog = ["watchdog (>=2.3)"]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
 
+content-hash = "f0ef5b3be704de2d404f657f66ff48b647acca09d702a3faa21e83e3c986a14d"
+
+
 content-hash = "20356cfcfebe6e8f1038e34d8bb3523440bf7a364f5ee3371aefd5820b2cbb4b"
 
 
@@ -2730,6 +2734,7 @@ content-hash = "9b634f0817cd806e67b851a6f524354785bb9d4c90dce141d3abaa6ff25a7df9
 content-hash = "20b3e8324967c4e3e8b594427bca8d5bcada85eff8a629967f096aa65c1c86c8"
 
 content-hash = "6322debbc7bd0e8f6e0dda70188ed3b5d85327999a0f3d5326c38c41176182fa"
+
 
 
 
