@@ -53,6 +53,59 @@ This document lists the required GitHub repository secrets needed for the automa
 - [`permits-harris.yml`](.github/workflows/permits-harris.yml) - For permit scraping operations
 - [`etl.yml`](.github/workflows/etl.yml) - For ETL data source configuration
 
+---
+
+### 4. `STAGING_SUPABASE_URL`
+
+**Description:** Staging Supabase project URL for backup validation testing.
+
+**Format:** `https://your-staging-project-id.supabase.co`
+
+**Where to find:** Staging Supabase Dashboard → Settings → API → Project URL
+
+**Used in workflows:**
+- [`monthly-backup-validation.yml`](.github/workflows/monthly-backup-validation.yml) - For backup restoration testing in staging environment
+
+---
+
+### 5. `STAGING_SUPABASE_SERVICE_ROLE`
+
+**Description:** Staging Supabase service role key for backup validation operations.
+
+**Format:** Long JWT token starting with `eyJ`
+
+**Where to find:** Staging Supabase Dashboard → Settings → API → service_role key
+
+**Security Note:** ⚠️ This key has full database access to staging environment. Keep secure.
+
+**Used in workflows:**
+- [`monthly-backup-validation.yml`](.github/workflows/monthly-backup-validation.yml) - For staging database operations during backup validation
+
+---
+
+### 6. `CRON_SECRET`
+
+**Description:** Authentication secret for secured Vercel ingest endpoints.
+
+**Format:** Secure random string
+
+**Used in workflows:**
+- [`ingest-agents.yml`](.github/workflows/ingest-agents.yml) - For Austin/Dallas permit ingestion authentication
+
+---
+
+### 7. `VERCEL_DOMAIN`
+
+**Description:** Vercel deployment domain for permit ingestion API calls.
+
+**Format:** `your-app.vercel.app` (without https://)
+
+**Where to find:** Vercel Dashboard → Project → Settings → Domains
+
+**Used in workflows:**
+- [`ingest-agents.yml`](.github/workflows/ingest-agents.yml) - For Austin/Dallas permit ingestion endpoint
+- [`ingest-tx-vercel.yml`](.github/workflows/ingest-tx-vercel.yml) - For Texas permit ingestion endpoint
+
 ## 🛠️ How to Set Secrets in GitHub
 
 ### Step 1: Navigate to Repository Settings
@@ -72,6 +125,10 @@ After adding all secrets, you should see:
 - ✅ `SUPABASE_URL`
 - ✅ `SUPABASE_SERVICE_ROLE_KEY`  
 - ✅ `HC_ISSUED_PERMITS_URL`
+- ✅ `STAGING_SUPABASE_URL`
+- ✅ `STAGING_SUPABASE_SERVICE_ROLE`
+- ✅ `CRON_SECRET`
+- ✅ `VERCEL_DOMAIN`
 
 ## 🔧 Alternative Setup with GitHub CLI
 
@@ -82,11 +139,19 @@ If you have [GitHub CLI](https://cli.github.com/) installed and authenticated:
 gh secret set SUPABASE_URL
 gh secret set SUPABASE_SERVICE_ROLE_KEY  
 gh secret set HC_ISSUED_PERMITS_URL
+gh secret set STAGING_SUPABASE_URL
+gh secret set STAGING_SUPABASE_SERVICE_ROLE
+gh secret set CRON_SECRET
+gh secret set VERCEL_DOMAIN
 
 # Or set values directly
 gh secret set SUPABASE_URL --body "https://your-project-id.supabase.co"
 gh secret set SUPABASE_SERVICE_ROLE_KEY --body "your-service-role-key-here"
 gh secret set HC_ISSUED_PERMITS_URL --body "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+gh secret set STAGING_SUPABASE_URL --body "https://your-staging-project-id.supabase.co"
+gh secret set STAGING_SUPABASE_SERVICE_ROLE --body "your-staging-service-role-key-here"
+gh secret set CRON_SECRET --body "your-secure-cron-secret-here"
+gh secret set VERCEL_DOMAIN --body "your-app.vercel.app"
 ```
 
 **Verify secrets are set:**
@@ -103,17 +168,20 @@ gh secret list
 - **Separate environments** - Use different keys for development, staging, and production
 
 ### Troubleshooting
-- **Workflow failures:** Check that all three secrets are properly set with correct values
-- **Authentication errors:** Verify the Supabase service role key is valid and not expired
+- **Workflow failures:** Check that all required secrets are properly set with correct values
+- **Authentication errors:** Verify the Supabase service role keys are valid and not expired
 - **Data source issues:** Confirm the Harris County permits URL is accessible and returns data
 - **Secret not found:** Ensure secret names match exactly (case-sensitive)
+- **Backup validation failures:** Verify staging Supabase credentials are configured correctly
+- **Ingest endpoint errors:** Check that CRON_SECRET and VERCEL_DOMAIN are set and valid
 
 ### Workflow Dependencies
 Most automated workflows will fail if these secrets are missing or invalid:
 - ETL pipelines will not be able to store data
-- Backup validation will fail without database access
+- Backup validation will fail without database access or staging environment credentials
 - Harris County permit scraping will not function
 - Schema drift detection requires read access to compare schemas
+- Ingest workflows require proper authentication and endpoint configuration
 
 ## 📚 Related Documentation
 
