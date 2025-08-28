@@ -113,7 +113,10 @@ jobs:
             recent_backup=$(find $BACKUP_DIR -name "supabase_backup_*.tar.gz" -mtime -7 | sort -r | head -n1)
           fi
           
-          force_export="${{ github.event.inputs.force_export || 'false' }}"
+          force_export="${{ github.event.inputs.force_export }}"
+          if [ "$force_export" = "" ]; then
+            force_export="false"
+          fi
           
           if [ -n "$recent_backup" ] && [ "$force_export" = "false" ]; then
             echo "use_existing=true" >> $GITHUB_OUTPUT
@@ -181,9 +184,17 @@ jobs:
           timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           backup_name=$(basename "$backup_file" .tar.gz)
           
-          # Determine overall status
-          restore_status="${{ steps.restore.outputs.restore_status || 'failed' }}"
-          tests_status="${{ steps.smoke_tests.outputs.tests_status || 'failed' }}"
+          # Determine overall status using shell logic
+          restore_status="${{ steps.restore.outputs.restore_status }}"
+          tests_status="${{ steps.smoke_tests.outputs.tests_status }}"
+          
+          if [ -z "$restore_status" ]; then
+            restore_status="failed"
+          fi
+          
+          if [ -z "$tests_status" ]; then
+            tests_status="failed"
+          fi
           
           if [ "$restore_status" = "success" ] && [ "$tests_status" = "pass" ]; then
             overall_status="✅ PASS"
@@ -193,6 +204,27 @@ jobs:
             overall_status="❌ FAIL"
             status_emoji="❌"
             status_color="danger"
+          fi
+          
+          # Set backup export status based on conditions
+          export_status=""
+          if [ "${{ steps.check_backup.outputs.use_existing }}" = "true" ]; then
+            export_status="✅ Used Recent"
+          else
+            export_status="✅ Success"
+          fi
+          
+          # Set restore and test status display
+          if [ "$restore_status" = "success" ]; then
+            restore_display="✅ Success"
+          else
+            restore_display="❌ Failed"
+          fi
+          
+          if [ "$tests_status" = "pass" ]; then
+            tests_display="✅ Pass"
+          else
+            tests_display="❌ Fail"
           fi
           
           # Create GitHub step summary
@@ -205,9 +237,9 @@ jobs:
           
           | Component | Status | Details |
           |-----------|--------|---------|
-          | 💾 Backup Export | ${{ steps.check_backup.outputs.use_existing == 'true' && '✅ Used Recent' || '✅ Success' }} | $backup_name |
-          | 🔄 Staging Restore | $([ "$restore_status" = "success" ] && echo "✅ Success" || echo "❌ Failed") | Restored to staging environment |
-          | 🧪 Smoke Tests | $([ "$tests_status" = "pass" ] && echo "✅ Pass" || echo "❌ Fail") | Database validation tests |
+          | 💾 Backup Export | $export_status | $backup_name |
+          | 🔄 Staging Restore | $restore_display | Restored to staging environment |
+          | 🧪 Smoke Tests | $tests_display | Database validation tests |
           
           ## 📈 Summary
           
@@ -217,8 +249,14 @@ jobs:
           - **Staging URL:** $STAGING_SUPABASE_URL
           - **Workflow:** [Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           
-          $([ "$tests_status" = "pass" ] && [ "$restore_status" = "success" ] && echo "✅ **Backup system validation successful!** Your production backups are restorable and functional." || echo "❌ **Backup validation failed!** Please investigate the issues and fix the backup system.")
           EOF
+          
+          # Add final status message based on results
+          if [ "$tests_status" = "pass" ] && [ "$restore_status" = "success" ]; then
+            echo "✅ **Backup system validation successful!** Your production backups are restorable and functional." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Backup validation failed!** Please investigate the issues and fix the backup system." >> $GITHUB_STEP_SUMMARY
+          fi
           
           # Set outputs for notifications
           echo "overall_status=$overall_status" >> $GITHUB_OUTPUT
@@ -329,15 +367,33 @@ jobs:
             }
 
       - name: Send Slack notification
-        if: always() && (env.SLACK_WEBHOOK != '' && (github.event.inputs.notification_channel == 'slack' || github.event.inputs.notification_channel == 'both' || github.event.inputs.notification_channel == ''))
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
+            // Check if Slack webhook is configured and notification is requested
+            const slackWebhook = '${{ env.SLACK_WEBHOOK }}';
+            const notificationChannel = '${{ github.event.inputs.notification_channel }}';
+            
+            const shouldNotify = slackWebhook !== '' && 
+              (notificationChannel === 'slack' || 
+               notificationChannel === 'both' || 
+               notificationChannel === '');
+            
+            if (!shouldNotify) {
+              console.log('Slack notification skipped - webhook not configured or channel not selected');
+              return;
+            }
+            
             const overallStatus = '${{ steps.summary.outputs.overall_status }}';
             const statusEmoji = '${{ steps.summary.outputs.status_emoji }}';
             const statusColor = '${{ steps.summary.outputs.status_color }}';
             const backupName = '${{ steps.summary.outputs.backup_name }}';
             const timestamp = '${{ steps.summary.outputs.timestamp }}';
+            
+            // Determine restore and test status
+            const restoreStatus = '${{ steps.restore.outputs.restore_status }}' === 'success' ? '✅ Success' : '❌ Failed';
+            const testStatus = '${{ steps.smoke_tests.outputs.tests_status }}' === 'pass' ? '✅ Pass' : '❌ Fail';
             
             const payload = {
               "text": `${statusEmoji} Monthly Backup Validation ${overallStatus.includes('PASS') ? 'Completed Successfully' : 'Failed'}`,
@@ -359,12 +415,12 @@ jobs:
                     },
                     {
                       "title": "Restore Status", 
-                      "value": "${{ steps.restore.outputs.restore_status === 'success' && '✅ Success' || '❌ Failed' }}",
+                      "value": restoreStatus,
                       "short": true
                     },
                     {
                       "title": "Smoke Tests",
-                      "value": "${{ steps.smoke_tests.outputs.tests_status === 'pass' && '✅ Pass' || '❌ Fail' }}",
+                      "value": testStatus,
                       "short": true
                     }
                   ],
@@ -375,7 +431,7 @@ jobs:
             };
             
             try {
-              const response = await fetch('${{ env.SLACK_WEBHOOK }}', {
+              const response = await fetch(slackWebhook, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -393,9 +449,19 @@ jobs:
             }
 
       - name: Cleanup staging environment
-        if: always() && github.event.inputs.skip_cleanup != 'true'
+        if: always()
         run: |
           echo "Cleaning up staging environment..."
+          
+          skip_cleanup="${{ github.event.inputs.skip_cleanup }}"
+          if [ "$skip_cleanup" = "" ]; then
+            skip_cleanup="false"
+          fi
+          
+          if [ "$skip_cleanup" = "true" ]; then
+            echo "🔄 Cleanup skipped per user request"
+            exit 0
+          fi
           
           # Optional: Clear staging database to save resources
           # This is safe since it's a staging environment used only for testing
