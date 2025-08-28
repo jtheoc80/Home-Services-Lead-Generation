@@ -1,6 +1,140 @@
 #!/usr/bin/env tsx
 
 /**
+
+ * ETL Delta Smoke Test Script
+ * 
+ * Tests the Harris County ETL pipeline by:
+ * 1. Reading current count from permits_raw_harris
+ * 2. Fetching permits from last 7 days and upserting
+ * 3. Verifying that new rows were added
+ * 4. Exiting with appropriate status code
+ */
+
+import { fetchHarrisIssuedPermits } from './harrisPermitsFetcher';
+import { supabaseUpsert, createSupabaseClient } from './supabaseUpsert';
+
+interface CountResult {
+  count: number;
+}
+
+/**
+ * Get current count from permits_raw_harris table
+ */
+async function getCurrentCount(): Promise<number> {
+  const supabase = createSupabaseClient();
+  
+  const { data, error, count } = await supabase
+    .from('permits_raw_harris')
+    .select('*', { count: 'exact', head: true });
+  
+  if (error) {
+    throw new Error(`Failed to get current count from permits_raw_harris: ${error.message}`);
+  }
+  
+  return count || 0;
+}
+
+/**
+ * Main ETL Delta test function
+ */
+async function main(): Promise<void> {
+  try {
+    console.log('🚀 Starting Harris County ETL Delta Test');
+    console.log('=====================================');
+    
+    // Calculate timestamp for 7 days ago
+    const sevenDaysAgo = Date.now() - (7 * 24 * 3600 * 1000);
+    const sevenDaysAgoDate = new Date(sevenDaysAgo);
+    
+    console.log(`📅 Fetching permits since: ${sevenDaysAgoDate.toISOString()}`);
+    console.log('');
+    
+    // Step 1: Get current count
+    console.log('📊 Step 1: Getting current count from permits_raw_harris...');
+    const oldCount = await getCurrentCount();
+    console.log(`Current count: ${oldCount}`);
+    console.log('');
+    
+    // Step 2: Fetch new permits
+    console.log('🔍 Step 2: Fetching Harris County permits...');
+    const permits = await fetchHarrisIssuedPermits(sevenDaysAgo);
+    console.log(`Fetched ${permits.length} permits from Harris County`);
+    console.log('');
+    
+    // Step 3: Upsert permits
+    console.log('💾 Step 3: Upserting permits to permits_raw_harris...');
+    await supabaseUpsert('permits_raw_harris', permits, 'event_id');
+    console.log('');
+    
+    // Step 4: Get new count and verify delta
+    console.log('📈 Step 4: Verifying delta...');
+    const newCount = await getCurrentCount();
+    const delta = newCount - oldCount;
+    
+    console.log(`Old count: ${oldCount}`);
+    console.log(`New count: ${newCount}`);
+    console.log(`Delta: ${delta}`);
+    console.log('');
+    
+    // Step 5: Assert and report results
+    if (delta > 0) {
+      console.log('✅ SUCCESS: ETL Delta test passed');
+      console.log(`📈 Inserted/Updated: ${delta} rows`);
+      console.log('');
+      
+      // Log summary for monitoring
+      const summary = {
+        timestamp: new Date().toISOString(),
+        test: 'etl-delta',
+        status: 'success',
+        oldCount,
+        newCount,
+        delta,
+        permitsFetched: permits.length,
+        sinceDate: sevenDaysAgoDate.toISOString()
+      };
+      
+      console.log('📋 Summary:', JSON.stringify(summary, null, 2));
+      process.exit(0);
+      
+    } else {
+      console.log('❌ FAILURE: ETL Delta test failed');
+      console.log(`📉 No new rows were inserted/updated (delta: ${delta})`);
+      console.log('');
+      
+      // Log failure summary for monitoring
+      const summary = {
+        timestamp: new Date().toISOString(),
+        test: 'etl-delta',
+        status: 'failure',
+        oldCount,
+        newCount,
+        delta,
+        permitsFetched: permits.length,
+        sinceDate: sevenDaysAgoDate.toISOString(),
+        error: 'No new rows inserted/updated'
+      };
+      
+      console.log('📋 Summary:', JSON.stringify(summary, null, 2));
+      process.exit(1);
+    }
+    
+  } catch (error: any) {
+    console.error('❌ ETL Delta test failed with error:', error.message);
+    console.error('');
+    
+    // Log error summary for monitoring
+    const summary = {
+      timestamp: new Date().toISOString(),
+      test: 'etl-delta',
+      status: 'error',
+      error: error.message,
+      sinceDate: new Date(Date.now() - (7 * 24 * 3600 * 1000)).toISOString()
+    };
+    
+    console.log('📋 Summary:', JSON.stringify(summary, null, 2));
+=======
  * ETL Delta Script for Harris County Permits
  * 
  * Reads process.env.HC_ISSUED_PERMITS_URL and fetches permits from the last 7 days.
@@ -12,23 +146,15 @@
  * Uses @supabase/supabase-js + SUPABASE_SERVICE_ROLE_KEY.
  * Logs inserted/updated counts and exits non-zero on any HTTP/DB error.
  * 
- * Enhanced with:
- * - Print current working directory and discovered CSVs before processing
- * - Write summary line to logs/etl_output.log with record count
- * - Save any generated CSVs into artifacts/ directory
- * - Handle ETL_ALLOW_EMPTY=1 environment variable for graceful empty exits
- * - Call scripts/ensure_artifacts.py at the end
- * 
  * Usage: tsx scripts/etlDelta.ts
  * 
  * Environment Variables:
  *   HC_ISSUED_PERMITS_URL - Harris County FeatureServer URL
  *   SUPABASE_URL - Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key for database access
- *   ETL_ALLOW_EMPTY - Set to "1" to exit with code 0 instead of 1 when no records found
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 
 // Pagination size for ArcGIS queries
@@ -88,7 +214,7 @@ function getSevenDaysAgo(): Date {
   return sevenDaysAgo;
 }
 
-async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
+async function checkPermitCount(baseUrl: string, since: Date): Promise<number> {
   const sinceTimestamp = since.getTime();
   
   const queryParams = new URLSearchParams({
@@ -97,8 +223,10 @@ async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
     f: 'json'
   });
   
-  const url = `${hcUrl}/query?${queryParams}`;
-  console.log(`Checking permit count for last 7 days...`);
+  const url = `${baseUrl}/query?${queryParams}`;
+  
+  console.log(`Checking permit count for last 7 days from: ${since.toISOString()}`);
+  console.log(`Count query URL: ${url}`);
   
   try {
     const response = await axios.get(url, {
@@ -112,22 +240,26 @@ async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    const data = response.data;
-    const count = data.count || 0;
+    const data = response.data as { count: number };
     
-    console.log(`Found ${count} permits in the last 7 days`);
-    return count;
+    if (typeof data.count !== 'number') {
+      throw new Error('Invalid response format: count field missing or not a number');
+    }
+    
+    console.log(`Found ${data.count} permits in the last 7 days`);
+    return data.count;
     
   } catch (error) {
-    console.error('Error checking permit count:', error);
+    console.error(`Error checking permit count:`, error);
     throw new Error(`Failed to check permit count: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-async function fetchPermits(hcUrl: string, since: Date): Promise<PermitRecord[]> {
+async function fetchPermits(baseUrl: string, since: Date): Promise<PermitRecord[]> {
   const permits: PermitRecord[] = [];
   let offset = 0;
   let hasMore = true;
+  
   const sinceTimestamp = since.getTime();
   
   console.log(`Fetching permits since: ${since.toISOString()}`);
@@ -143,7 +275,7 @@ async function fetchPermits(hcUrl: string, since: Date): Promise<PermitRecord[]>
         orderByFields: 'ISSUEDDATE DESC'
       });
       
-      const url = `${hcUrl}/query?${queryParams}`;
+      const url = `${baseUrl}/query?${queryParams}`;
       console.log(`Fetching batch ${Math.floor(offset / PAGE_SIZE) + 1} (offset: ${offset})`);
       
       const response = await axios.get(url, {
@@ -158,93 +290,115 @@ async function fetchPermits(hcUrl: string, since: Date): Promise<PermitRecord[]>
       }
       
       const data = response.data as ArcGISResponse;
-      const features = data.features || [];
       
-      console.log(`Received ${features.length} features in this batch`);
+      if (!data.features || !Array.isArray(data.features)) {
+        throw new Error('Invalid response format from ArcGIS server');
+      }
       
-      // Process features into permit records
-      for (const feature of features) {
+      // Process features
+      for (const feature of data.features) {
         const attrs = feature.attributes;
         
+        // Map ArcGIS attributes to our schema
         const permit: PermitRecord = {
-          event_id: attrs.EVENT_ID || attrs.OBJECTID,
-          permit_number: attrs.PERMIT_NUMBER || attrs.PERMITNUMBER || null,
-          permit_name: attrs.PERMIT_NAME || attrs.PERMITNAME || null,
-          app_type: attrs.APP_TYPE || attrs.APPTYPE || null,
+          event_id: attrs.EVENTID || attrs.OBJECTID || null,
+          permit_number: attrs.PERMITNUMBER || null,
+          permit_name: attrs.PERMITNAME || attrs.PROJECTNAME || null,
+          app_type: attrs.APPTYPE || null,
           issue_date: attrs.ISSUEDDATE ? new Date(attrs.ISSUEDDATE).toISOString() : null,
-          full_address: attrs.FULL_ADDRESS || attrs.FULLADDRESS || attrs.ADDRESS || null,
+          full_address: attrs.FULLADDRESS || null,
           status: attrs.STATUS || null,
-          project_number: attrs.PROJECT_NUMBER || attrs.PROJECTNUMBER || null,
+          project_number: attrs.PROJECTNUMBER || null,
           raw: attrs
         };
         
-        // Only include permits with required fields
+        // Skip records without event_id
         if (permit.event_id) {
           permits.push(permit);
         }
       }
       
-      // Check if we have more data
-      hasMore = features.length === PAGE_SIZE;
-      offset += PAGE_SIZE;
+      console.log(`Fetched ${data.features.length} permits in this batch (${permits.length} valid permits so far)`);
+      
+      // Check if we should continue pagination
+      if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) {
+        hasMore = false;
+      } else {
+        offset += PAGE_SIZE;
+      }
       
       // Safety check to prevent infinite loops
       if (offset > 100000) {
-        console.log('Reached safety limit of 100,000 records');
-        break;
+      if (offset > MAX_OFFSET_LIMIT) {
+        console.warn(`Reached maximum offset limit (${MAX_OFFSET_LIMIT}), stopping pagination`);
+        hasMore = false;
       }
       
     } catch (error) {
-      console.error(`Error fetching batch at offset ${offset}:`, error);
+      console.error(`Error fetching permits at offset ${offset}:`, error);
       throw new Error(`Failed to fetch permits: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
-  console.log(`Fetched ${permits.length} valid permits total`);
   return permits;
 }
 
 async function upsertPermits(supabase: SupabaseClient, permits: PermitRecord[]): Promise<{ inserted: number; updated: number }> {
+  if (permits.length === 0) {
+    console.log('No permits to upsert');
+    return { inserted: 0, updated: 0 };
+  }
+  
+  console.log(`Upserting ${permits.length} permits to Supabase in batches of ${UPSERT_BATCH_SIZE}...`);
+  
+  let totalUpserted = 0;
   let insertedCount = 0;
   let updatedCount = 0;
   
-  console.log(`Upserting ${permits.length} permits in batches of ${UPSERT_BATCH_SIZE}`);
-  
   for (let i = 0; i < permits.length; i += UPSERT_BATCH_SIZE) {
     const batch = permits.slice(i, i + UPSERT_BATCH_SIZE);
-    const batchNumber = Math.floor(i / UPSERT_BATCH_SIZE) + 1;
-    const totalBatches = Math.ceil(permits.length / UPSERT_BATCH_SIZE);
-    
-    console.log(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} records)`);
     
     try {
-      const { data, error, count } = await supabase
+      // For tracking inserts vs updates, we'll check existing records first
+      const existingIds = batch.map(p => p.event_id);
+      const { data: existing, error: selectError } = await supabase
         .from('permits_raw_harris')
-        .upsert(batch, {
+        .select('event_id')
+        .in('event_id', existingIds);
+      
+      if (selectError) {
+        throw selectError;
+      }
+      
+      const existingIdSet = new Set((existing || []).map((row: any) => row.event_id));
+      const batchInserts = batch.filter(p => !existingIdSet.has(p.event_id)).length;
+      const batchUpdates = batch.length - batchInserts;
+      
+      const { error } = await supabase
+        .from('permits_raw_harris')
+        .upsert(batch, { 
           onConflict: 'event_id',
-          count: 'exact'
+          ignoreDuplicates: false 
         });
       
       if (error) {
-        throw new Error(`Supabase upsert error: ${error.message}`);
+        throw error;
       }
       
-      console.log(`Batch ${batchNumber} processed successfully`);
+      totalUpserted += batch.length;
+      insertedCount += batchInserts;
+      updatedCount += batchUpdates;
       
-      // Note: Supabase doesn't differentiate between inserts and updates in the response
-      // We'll count all as "upserted"
-      const batchCount = count || batch.length;
-      insertedCount += batchCount; // This represents "upserted" records
+      console.log(`Upserted batch ${Math.floor(i / UPSERT_BATCH_SIZE) + 1}/${Math.ceil(permits.length / UPSERT_BATCH_SIZE)} ` +
+                  `(${totalUpserted}/${permits.length} total, +${batchInserts} new, ~${batchUpdates} updated)`);
       
     } catch (error) {
-      console.error(`Error upserting batch ${batchNumber}:`, error);
+      console.error(`Error upserting batch starting at index ${i}:`, error);
       throw new Error(`Failed to upsert permits: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
-  // For simplicity, we'll report all as "inserted" since Supabase doesn't distinguish
-  const totalUpserted = insertedCount;
-  console.log(`Successfully upserted ${totalUpserted} permits`);
+  console.log(`Successfully upserted ${totalUpserted} permits (${insertedCount} inserted, ${updatedCount} updated)`);
   return { inserted: insertedCount, updated: updatedCount };
 }
 
@@ -300,6 +454,7 @@ async function writeSummaryToLog(recordCount: number, message: string): Promise<
 async function callEnsureArtifacts(args?: string): Promise<void> {
   try {
     const { spawn } = await import('child_process');
+    const { promisify } = await import('util');
     
     const spawnArgs = ['scripts/ensure_artifacts.py'];
     if (args) {
@@ -442,14 +597,17 @@ async function main(): Promise<void> {
   }
 }
 
-// Only run main if this script is executed directly (ESM compatible check)
-if (process.argv[1] && (process.argv[1].endsWith('etlDelta.ts') || process.argv[1].endsWith('etlDelta.js'))) {
-  // Handle unhandled promise rejections
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    process.exit(1);
-  });
 
-  // Run the main function
+// Only run main if this script is executed directly (ESM compatible check)
+if (process.argv[1] && process.argv[1].endsWith('etlDelta.ts') || process.argv[1].endsWith('etlDelta.js')) {
   main();
-}
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Run the main function
+main();
+

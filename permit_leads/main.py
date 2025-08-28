@@ -53,9 +53,15 @@ def write_jsonl_output(permits: List[PermitRecord], jurisdiction: str, output_pa
 def write_csv_output(permits: List[PermitRecord], output_paths: Dict[str, Path]) -> None:
     if not permits:
         return
+    
+    # Save CSV to artifacts directory instead of output_paths
+    artifacts_dir = Path.cwd() / "artifacts"
+    artifacts_dir.mkdir(exist_ok=True)
+    
     date_str = dt.datetime.now().strftime('%Y-%m-%d')
-    csv_file = output_paths['aggregate'] / f"permits_{date_str}.csv"
-    latest_csv = output_paths['aggregate'] / "permits_latest.csv"
+    csv_file = artifacts_dir / f"permits_{date_str}.csv"
+    latest_csv = artifacts_dir / "permits_latest.csv"
+    
     storage = Storage(csv_path=csv_file)
     storage.save_records(permits)
     if latest_csv.is_symlink():
@@ -67,7 +73,29 @@ def write_csv_output(permits: List[PermitRecord], output_paths: Dict[str, Path])
     except OSError:
         import shutil
         shutil.copy2(csv_file, latest_csv)
+    
     logger.info(f"Wrote {len(permits)} permits to {csv_file} and {latest_csv}")
+    
+    # Write summary to log file
+    write_summary_to_log(len(permits), f"CSV output: {len(permits)} permits written to {csv_file.name}")
+
+
+def write_summary_to_log(record_count: int, message: str) -> None:
+    """Write summary line to logs/etl_output.log"""
+    try:
+        logs_dir = Path.cwd() / "logs"
+        logs_dir.mkdir(exist_ok=True)
+        log_file = logs_dir / "etl_output.log"
+        
+        timestamp = dt.datetime.now().isoformat()
+        log_entry = f"{timestamp} - Permit Leads ETL: {record_count} records - {message}\n"
+        
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+        
+        print(f"📝 Summary logged to {log_file}")
+    except Exception as e:
+        logger.warning(f"Failed to write to log file: {e}")
 
 
 def write_sqlite_output(permits: List[PermitRecord], output_paths: Dict[str, Path]) -> None:
@@ -296,6 +324,18 @@ def handle_scrape(args: argparse.Namespace):
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug logging enabled")
     
+    # Print current working directory and discovered CSVs
+    import glob as glob_module
+    current_dir = Path.cwd()
+    print(f"📂 Current working directory: {current_dir}")
+    
+    # Discover CSV files in data/**/*.csv recursively
+    csv_files = glob_module.glob('data/**/*.csv', recursive=True)
+    print(f"📋 Discovered {len(csv_files)} CSV files:")
+    for csv_file in csv_files:
+        print(f"  - {csv_file}")
+    print()
+    
     # Determine scraping mode
     use_region_aware = getattr(args, 'region_aware', False) or getattr(args, 'jurisdiction', None)
     
@@ -361,6 +401,26 @@ def handle_scrape(args: argparse.Namespace):
     
     total_permits = len(all_permits)
     residential_permits = sum(1 for p in all_permits if p.is_residential())
+    
+    # Handle empty pipeline results
+    if total_permits == 0:
+        print("\n=== SCRAPING SUMMARY ===")
+        print("No permits found to process")
+        
+        # Write summary to log file
+        write_summary_to_log(0, "No input found")
+        
+        # Handle ETL_ALLOW_EMPTY environment variable
+        import os
+        allow_empty = os.getenv("ETL_ALLOW_EMPTY", "").strip() == "1"
+        if allow_empty:
+            print("🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit")
+            call_ensure_artifacts("--empty-pipeline")
+            return
+        else:
+            call_ensure_artifacts()
+            return
+    
     print("\n=== SCRAPING SUMMARY ===")
     print(f"Total permits: {total_permits}")
     print(f"Residential permits: {residential_permits}")
@@ -375,6 +435,40 @@ def handle_scrape(args: argparse.Namespace):
                 print("\nLatest permits:")
                 for permit in latest:
                     print(f"  {permit.get('permit_id', 'N/A')} - {permit.get('address', 'N/A')}")
+    
+    # Write final summary to log file
+    write_summary_to_log(total_permits, f"Scraping completed: {total_permits} total permits, {residential_permits} residential")
+    
+    # Call ensure_artifacts.py at the end
+    call_ensure_artifacts()
+
+
+def call_ensure_artifacts(args: str = "") -> None:
+    """Call scripts/ensure_artifacts.py"""
+    try:
+        import subprocess
+        import sys
+        
+        cmd = [sys.executable, "scripts/ensure_artifacts.py"]
+        if args:
+            cmd.append(args)
+        
+        print(f"🔧 Calling ensure_artifacts.py{' ' + args if args else ''}")
+        
+        result = subprocess.run(cmd, cwd=Path.cwd(), capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("✅ ensure_artifacts.py completed successfully")
+            if result.stdout:
+                print(result.stdout)
+        else:
+            print(f"❌ ensure_artifacts.py exited with code {result.returncode}")
+            if result.stderr:
+                print(f"Error: {result.stderr}")
+            if result.stdout:
+                print(f"Output: {result.stdout}")
+    except Exception as e:
+        logger.warning(f"Failed to call ensure_artifacts.py: {e}")
 
 
 def handle_export(args: argparse.Namespace):
