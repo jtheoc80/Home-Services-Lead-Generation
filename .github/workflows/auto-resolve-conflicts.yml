@@ -36,21 +36,25 @@ jobs:
     steps:
       - name: Parse PR number from comment
         id: parse-pr
-        run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "strategy=safe" >> $GITHUB_OUTPUT
-            
-            # Check if strategy is specified in comment
-            if echo "${{ github.event.comment.body }}" | grep -q "/resolve theirs-all"; then
-              echo "strategy=theirs-all" >> $GITHUB_OUTPUT
-            elif echo "${{ github.event.comment.body }}" | grep -q "/resolve ours-all"; then
-              echo "strategy=ours-all" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
-            echo "strategy=${{ inputs.strategy }}" >> $GITHUB_OUTPUT
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'issue_comment') {
+              const commentBody = context.payload.comment.body;
+              core.setOutput('pr_number', context.payload.issue.number);
+              
+              // Check strategy in comment
+              if (commentBody.includes('/resolve theirs-all')) {
+                core.setOutput('strategy', 'theirs-all');
+              } else if (commentBody.includes('/resolve ours-all')) {
+                core.setOutput('strategy', 'ours-all');
+              } else {
+                core.setOutput('strategy', 'safe');
+              }
+            } else {
+              core.setOutput('pr_number', '${{ inputs.pr_number }}');
+              core.setOutput('strategy', '${{ inputs.strategy }}');
+            }
 
       - name: Get PR details
         id: pr-details
@@ -71,12 +75,14 @@ jobs:
 
       - name: Check if conflicts exist
         id: check-conflicts
-        run: |
-          if [ "${{ steps.pr-details.outputs.mergeable }}" = "false" ] && [ "${{ steps.pr-details.outputs.mergeable_state }}" = "dirty" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const mergeable = '${{ steps.pr-details.outputs.mergeable }}';
+            const mergeableState = '${{ steps.pr-details.outputs.mergeable_state }}';
+            
+            const hasConflicts = mergeable === 'false' && mergeableState === 'dirty';
+            core.setOutput('has_conflicts', hasConflicts.toString());
 
       - name: Checkout repository
         if: steps.check-conflicts.outputs.has_conflicts == 'true'
@@ -190,6 +196,7 @@ jobs:
           script: |
             const strategy = '${{ steps.parse-pr.outputs.strategy }}';
             const mergeResult = '${{ steps.resolve-conflicts.outputs.merge_result }}';
+            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
             let message = '🤖 **Auto-resolve completed successfully!**\n\n';
             
@@ -202,7 +209,7 @@ jobs:
             }
             
             message += `🔧 **Validation**: Build and tests passed\n`;
-            message += `\n_Triggered by: @${{ github.event.comment ? github.event.comment.user.login : github.actor }}_`;
+            message += `\n_Triggered by: @${triggeredBy}_`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -220,6 +227,7 @@ jobs:
           script: |
             const strategy = '${{ steps.parse-pr.outputs.strategy }}';
             const remainingFiles = `${{ steps.resolve-conflicts.outputs.remaining_files }}`.split('\n').filter(f => f.trim());
+            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
             let message = '⚠️ **Auto-resolve partially completed**\n\n';
             message += `📋 **Strategy**: \`${strategy}\`\n`;
@@ -235,7 +243,7 @@ jobs:
             message += '\n💡 **Next steps**:\n';
             message += '- Resolve remaining conflicts manually\n';
             message += '- Or try a different strategy: `/resolve theirs-all` or `/resolve ours-all`\n';
-            message += `\n_Triggered by: @${{ github.event.comment ? github.event.comment.user.login : github.actor }}_`;
+            message += `\n_Triggered by: @${triggeredBy}_`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -252,6 +260,7 @@ jobs:
         with:
           script: |
             const strategy = '${{ steps.parse-pr.outputs.strategy }}';
+            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
             let message = '❌ **Auto-resolve failed validation**\n\n';
             message += `📋 **Strategy**: \`${strategy}\`\n`;
@@ -262,7 +271,7 @@ jobs:
             message += '- Check build/test failures in the workflow logs\n';
             message += '- Resolve conflicts manually\n';
             message += '- Fix any breaking changes before merging\n';
-            message += `\n_Triggered by: @${{ github.event.comment ? github.event.comment.user.login : github.actor }}_`;
+            message += `\n_Triggered by: @${triggeredBy}_`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -276,9 +285,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
+            
             let message = '✅ **No conflicts detected**\n\n';
             message += 'This pull request can be merged without conflicts.\n';
-            message += `\n_Triggered by: @${{ github.event.comment ? github.event.comment.user.login : github.actor }}_`;
+            message += `\n_Triggered by: @${triggeredBy}_`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
