@@ -1,5 +1,15 @@
 name: Workflow Lint
 
+on: [push, pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v1
+
+
 on:
   pull_request:
     paths:
@@ -141,3 +151,4 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Run time:** $(date)" >> $GITHUB_STEP_SUMMARY
+
