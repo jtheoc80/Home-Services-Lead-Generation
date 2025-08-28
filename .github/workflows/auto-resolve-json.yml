@@ -52,7 +52,8 @@ jobs:
         with:
           script: |
             const pr = await github.rest.pulls.get({
-              owner: context.repo.owner, repo: context.repo.repo,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
               pull_number: Number('${{ steps.pr.outputs.number }}')
             });
             core.setOutput('base', pr.data.base.ref);
