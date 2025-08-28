@@ -10,9 +10,7 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 gunicorn>=21.2.0
 
-# FastAPI and authentication dependencies
-fastapi>=0.104.0
-uvicorn>=0.24.0
+# Authentication dependencies
 python-jose[cryptography]>=3.3.0
 python-multipart>=0.0.6
 
