@@ -18,7 +18,7 @@ on:
         type: boolean
 
 env:
-  SAMPLE_DATA: ${{ github.event.inputs.sample_data == 'true' && '1' || '0' }}
+  SAMPLE_DATA: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.sample_data) && '1' || '0' }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
@@ -88,87 +88,27 @@ jobs:
         exit 1
         
     - name: Commit and push data
-      if: steps.scrape.outputs.new_permits > 0
+      if: ${{ steps.scrape.outputs.new_permits != '0' }}
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
-        # Add only data files
         git add data/
-        
-        # Check if there are changes to commit
         if git diff --staged --quiet; then
           echo "No changes to commit"
           exit 0
         fi
-        
-        # Create commit with summary
         TODAY=$(date +%Y-%m-%d)
-        
-        git commit -m "Update Harris County permit data for ${TODAY}
-
-        - ${{ steps.scrape.outputs.new_permits }} permits processed
-        - Automated Harris County scrape on $(date)
-        - Source: Harris County ArcGIS Feature Server"
-        
+        git commit -m "Update Harris County permit data for ${TODAY}" \
+                    -m "${{ steps.scrape.outputs.new_permits }} permits processed" \
+                    -m "Automated Harris County scrape"
         git push
         
-    - name: Generate summary
-      if: always()
-      run: |
-        echo "## 🏠 Harris County Permit Scraping Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ steps.scrape.outputs.new_permits }}" -gt 0 ]; then
-          echo "✅ **Success**: Found ${{ steps.scrape.outputs.new_permits }} new permits" >> $GITHUB_STEP_SUMMARY
-          
-          # Show latest data files
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📁 Files Updated:" >> $GITHUB_STEP_SUMMARY
-          TODAY=$(date +%Y-%m-%d)
-          find data \( -name "*${TODAY}*" -name "*harris*" \) -o \( -name "*${TODAY}*" -name "permits_*" \) | head -5 | while read file; do
-            if [ -f "$file" ]; then
-              SIZE=$(stat -c%s "$file" 2>/dev/null || echo "0")
-              echo "- \`$file\` (${SIZE} bytes)" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🎯 **Harris County permits processed**: ${{ steps.scrape.outputs.new_permits }}" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "ℹ️ **No new data**: No Harris County permits found" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.check_recent.outputs.recent_files }}" -eq 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Warning**: No recent data found in last 24 hours" >> $GITHUB_STEP_SUMMARY
-          fi
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
-        echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
-        echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Sample data: ${{ env.SAMPLE_DATA == '1' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Run time: $(date)" >> $GITHUB_STEP_SUMMARY
-        
-        # Show environment status
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Environment Status:**" >> $GITHUB_STEP_SUMMARY
-        echo "- Supabase URL: ${{ secrets.SUPABASE_URL != '' && '✅ Set' || '❌ Not set' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Supabase Service Key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' && '✅ Set' || '❌ Not set' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- HC Permits URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && '✅ Set' || '❌ Not set' }}" >> $GITHUB_STEP_SUMMARY
-        
-    - name: Upload data artifacts
-      if: steps.scrape.outputs.new_permits > 0
-      uses: actions/upload-artifact@v4
-      with:
     - name: Set date output
       id: set_date
       run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
 
     - name: Upload data artifacts
-      if: steps.scrape.outputs.new_permits > 0
+      if: ${{ steps.scrape.outputs.new_permits != '0' }}
       uses: actions/upload-artifact@v4
       with:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}
