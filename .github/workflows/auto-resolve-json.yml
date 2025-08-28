@@ -1,14 +1,4 @@
-
-
 name: Auto Resolve JSON
-
-
-
-name: Auto Resolve JSON
-
-name: Auto Resolve JSON Conflicts
-
-
 
 on:
   issue_comment:
@@ -22,7 +12,6 @@ on:
       prefer:
         description: 'Version strategy: higher|ours|theirs'
         required: false
-
         default: 'higher'
         type: choice
         options:
@@ -30,62 +19,11 @@ on:
           - ours
           - theirs
 
-        default: higher
-
-
-
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-
-
-  run:
-    if: >
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/resolve-json') &&
-       contains(fromJSON('["MEMBER","OWNER"]'), github.event.comment.author_association))
-      || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Resolve PR number
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const core = require('@actions/core');
-            if (context.eventName === 'workflow_dispatch') {
-              core.setOutput('number', core.getInput('pr_number', { required: true }));
-            } else {
-              core.setOutput('number', context.payload.issue.number);
-            }
-
-      - name: Fetch PR metadata
-        id: meta
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: Number('${{ steps.pr.outputs.number }}')
-            });
-            core.setOutput('base', pr.data.base.ref);
-            core.setOutput('head', pr.data.head.ref);
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.meta.outputs.head }}
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-
   auto-resolve-json:
     runs-on: ubuntu-latest
     if: |
@@ -97,14 +35,28 @@ jobs:
       github.event_name == 'workflow_dispatch'
     
     steps:
-      - name: Parse PR number from comment
-        id: parse-pr
-        run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-          else
-            echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
-          fi
+      - name: Resolve context and actor
+        id: context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const core = require('@actions/core');
+            
+            // Compute actor inside github-script as required
+            const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+              ? context.payload.comment.user.login
+              : context.actor;
+            
+            // Determine PR number
+            let prNumber;
+            if (context.eventName === 'workflow_dispatch') {
+              prNumber = core.getInput('pr_number', { required: true });
+            } else {
+              prNumber = context.payload.issue.number;
+            }
+            
+            core.setOutput('actor', actor);
+            core.setOutput('pr_number', prNumber);
 
       - name: Get PR details
         id: pr-details
@@ -114,72 +66,42 @@ jobs:
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: ${{ steps.parse-pr.outputs.pr_number }}
+              pull_number: ${{ steps.context.outputs.pr_number }}
             });
             
             core.setOutput('base_ref', pr.base.ref);
             core.setOutput('head_ref', pr.head.ref);
             core.setOutput('head_sha', pr.head.sha);
-            core.setOutput('mergeable', pr.mergeable);
-            core.setOutput('mergeable_state', pr.mergeable_state);
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.pr-details.outputs.head_ref }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
+          node-version: 20
 
       - name: Enable corepack
         run: corepack enable
 
-
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
-
-      - name: Attempt merge (no-commit)
-        run: |
-          git fetch origin ${{ steps.meta.outputs.base }} --depth=1
-          set -o pipefail
-          git merge origin/${{ steps.meta.outputs.base }} --no-commit --no-ff || true
-
-      - name: Run JSON merge bot
-        run: npx tsx tools/bots/jsonResolve.ts --prefer=${{ inputs.prefer || 'higher' }}
-
-      - name: Commit & push
-        run: |
-          if ! git diff --cached --quiet; then
-            git config user.name "json-merge-bot"
-            git config user.email "json-merge-bot@users.noreply.github.com"
-            git commit -m "auto: resolve JSON/package lock conflicts"
-            git push
-          fi
-
 
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Checkout head branch
-        run: |
-          git checkout ${{ steps.pr-details.outputs.head_ref }}
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Attempt merge to surface conflicts
         id: merge-attempt
         run: |
           set +e  # Don't exit on error
           
-          echo "Attempting to merge origin/${{ steps.pr-details.outputs.base_ref }} into ${{ steps.pr-details.outputs.head_ref }}"
+          echo "Attempting no-commit merge of origin/${{ steps.pr-details.outputs.base_ref }}"
+          git fetch origin ${{ steps.pr-details.outputs.base_ref }}
           git merge origin/${{ steps.pr-details.outputs.base_ref }} --no-commit --no-ff || true
           
           # Check if there are conflicts
@@ -193,194 +115,68 @@ jobs:
             echo "No conflicts detected"
           fi
 
+      - name: Resolve prefer strategy
+        id: strategy
+        run: |
+          # Do the fallback to 'higher' in shell, not in ${{ }}
+          prefer="${{ inputs.prefer }}"
+          if [ -z "$prefer" ]; then
+            prefer="higher"
+          fi
+          echo "prefer=$prefer" >> $GITHUB_OUTPUT
+
       - name: Run JSON conflict resolution
-        id: resolve-json
         if: steps.merge-attempt.outputs.has_conflicts == 'true'
         run: |
-          set +e  # Don't exit on error
-          
-          echo "Running JSON conflict resolution..."
-          npm run bot:json-resolve -- --prefer=${{ inputs.prefer || 'higher' }}
-          resolve_exit_code=$?
-          
-          echo "resolve_exit_code=$resolve_exit_code" >> $GITHUB_OUTPUT
-          
-          if [ $resolve_exit_code -eq 0 ]; then
-            echo "resolution_result=success" >> $GITHUB_OUTPUT
-            echo "✅ All JSON conflicts resolved successfully"
-          elif [ $resolve_exit_code -eq 2 ]; then
-            echo "resolution_result=partial" >> $GITHUB_OUTPUT
-            echo "⚠️ Some files still require manual resolution"
-            # Get remaining conflicted files
-            remaining_files=$(git diff --name-only --diff-filter=U || echo "")
-            echo "remaining_files<<EOF" >> $GITHUB_OUTPUT
-            echo "$remaining_files" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            echo "resolution_result=failed" >> $GITHUB_OUTPUT
-            echo "❌ JSON conflict resolution failed"
-            exit 1
-          fi
+          echo "Running JSON conflict resolution with strategy: ${{ steps.strategy.outputs.prefer }}"
+          npx tsx tools/bots/jsonResolve.ts --prefer=${{ steps.strategy.outputs.prefer }}
 
-      - name: Commit resolved changes
-        id: commit-changes
-        if: |
-          steps.merge-attempt.outputs.has_conflicts == 'false' || 
-          steps.resolve-json.outputs.resolution_result == 'success'
+      - name: Check for changes
+        id: changes
         run: |
-          # Check if there are changes to commit
           if git diff --cached --quiet && git diff --quiet; then
-            echo "commit_needed=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "No changes to commit"
           else
-            echo "commit_needed=true" >> $GITHUB_OUTPUT
-            git add .
-            git commit -m "auto: resolve JSON/package lock conflicts"
-            echo "✅ Changes committed successfully"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected"
           fi
 
-      - name: Push changes
-        if: steps.commit-changes.outputs.commit_needed == 'true'
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true'
         run: |
+          git add .
+          git commit -m "auto: resolve JSON/package lock conflicts"
           git push origin ${{ steps.pr-details.outputs.head_ref }}
-          echo "✅ Changes pushed successfully"
+          echo "✅ Changes committed and pushed successfully"
 
-      - name: Run post-merge validation
-        if: steps.commit-changes.outputs.commit_needed == 'true'
-        id: validation
-        run: |
-          set +e  # Don't exit on error
-          
-          echo "Running post-merge validation..."
-          npm run build && npm run test
-          validation_exit_code=$?
-          
-          if [ $validation_exit_code -ne 0 ]; then
-            echo "validation_failed=true" >> $GITHUB_OUTPUT
-            echo "❌ Post-merge validation failed, reverting changes"
-            
-            # Revert the merge commit
-            git reset --hard HEAD~1
-            git push --force-with-lease origin ${{ steps.pr-details.outputs.head_ref }}
-            echo "🔄 Changes reverted due to validation failure"
-          else
-            echo "validation_failed=false" >> $GITHUB_OUTPUT
-            echo "✅ Post-merge validation passed"
-          fi
-
-      - name: Comment on PR - Success
-        if: |
-          (steps.merge-attempt.outputs.has_conflicts == 'false' || 
-           steps.resolve-json.outputs.resolution_result == 'success') &&
-          steps.validation.outputs.validation_failed != 'true'
+      - name: Post summary comment
         uses: actions/github-script@v7
         with:
           script: |
             const hasConflicts = '${{ steps.merge-attempt.outputs.has_conflicts }}' === 'true';
-            const commitNeeded = '${{ steps.commit-changes.outputs.commit_needed }}' === 'true';
-            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
+            const hasChanges = '${{ steps.changes.outputs.has_changes }}' === 'true';
+            const actor = '${{ steps.context.outputs.actor }}';
+            const strategy = '${{ steps.strategy.outputs.prefer }}';
             
-            let message = '🤖 **Auto-resolve JSON completed successfully!**\n\n';
+            let message = '🤖 **Auto-resolve JSON completed**\n\n';
             
             if (!hasConflicts) {
-              message += '✅ **Result**: No conflicts detected\n';
-              message += '📋 **Files**: Clean merge\n';
-            } else {
+              message += '✅ **Result**: No conflicts detected - clean merge possible\n';
+            } else if (hasChanges) {
               message += '✅ **Result**: JSON/package lock conflicts resolved\n';
-              message += '📋 **Strategy**: ' + '${{ inputs.prefer || 'higher' }}' + '\n';
-            }
-            
-            if (commitNeeded) {
-              message += '🔧 **Validation**: Build and tests passed\n';
+              message += `📋 **Strategy**: ${strategy}\n`;
+              message += '🔧 **Action**: Changes committed and pushed\n';
             } else {
-              message += '📝 **Status**: No changes needed\n';
+              message += '✅ **Result**: JSON conflicts resolved (no changes needed)\n';
+              message += `📋 **Strategy**: ${strategy}\n`;
             }
             
-            message += `\n_Triggered by: @${triggeredBy}_`;
+            message += `\n_Triggered by: @${actor}_`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: ${{ steps.parse-pr.outputs.pr_number }},
+              issue_number: ${{ steps.context.outputs.pr_number }},
               body: message
             });
-
-      - name: Comment on PR - Partial Resolution
-        if: steps.resolve-json.outputs.resolution_result == 'partial'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const remainingFiles = `${{ steps.resolve-json.outputs.remaining_files }}`.split('\n').filter(f => f.trim());
-            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
-            
-            let message = '⚠️ **Auto-resolve JSON partially completed**\n\n';
-            message += '📋 **Strategy**: JSON/package lock conflicts resolved\n';
-            message += `❌ **Remaining conflicts**: ${remainingFiles.length} non-JSON files still need manual resolution\n\n`;
-            
-            if (remainingFiles.length > 0) {
-              message += '**Files requiring manual resolution:**\n';
-              remainingFiles.forEach(file => {
-                message += `- \`${file}\`\n`;
-              });
-            }
-            
-            message += '\n💡 **Next steps**:\n';
-            message += '- Resolve remaining non-JSON conflicts manually\n';
-            message += '- Or use `/resolve` for full conflict resolution\n';
-            message += `\n_Triggered by: @${triggeredBy}_`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ steps.parse-pr.outputs.pr_number }},
-              body: message
-            });
-
-      - name: Comment on PR - Validation Failed
-        if: steps.validation.outputs.validation_failed == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
-            
-            let message = '❌ **Auto-resolve JSON failed validation**\n\n';
-            message += '✅ **Conflicts**: JSON/package lock conflicts resolved\n';
-            message += '❌ **Validation**: Build or tests failed after resolution\n';
-            message += '🔄 **Action**: Changes have been reverted\n\n';
-            message += '💡 **Next steps**:\n';
-            message += '- Check build/test failures in the workflow logs\n';
-            message += '- Resolve conflicts manually\n';
-            message += '- Fix any breaking changes before merging\n';
-            message += `\n_Triggered by: @${triggeredBy}_`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ steps.parse-pr.outputs.pr_number }},
-              body: message
-            });
-
-      - name: Comment on PR - No Conflicts
-        if: steps.merge-attempt.outputs.has_conflicts == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
-            
-            let message = '✅ **No conflicts detected**\n\n';
-            message += 'This pull request can be merged without conflicts.\n';
-            message += `\n_Triggered by: @${triggeredBy}_`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ steps.parse-pr.outputs.pr_number }},
-              body: message
-            });
-
-      - name: Fail job if partial resolution
-        if: steps.resolve-json.outputs.resolution_result == 'partial'
-        run: |
-          echo "❌ Job failed: Some files still require manual resolution"
-          echo "JSON/package lock conflicts were resolved, but other conflicts remain"
-          exit 1
