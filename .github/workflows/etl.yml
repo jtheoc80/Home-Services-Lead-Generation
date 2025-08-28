@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: etl-artifacts
-          path: artifacts/**/*.csv
+          path: permit_leads/artifacts/**/*.csv
 
       - name: Run data ingestion
         if: steps.etl_run.outputs.record_count > 0 || github.event.inputs.force == 'true'
