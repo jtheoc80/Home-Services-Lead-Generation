@@ -315,7 +315,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const authorAssociation = context.payload.comment ? context.payload.comment.author_association : 'UNKNOWN';
+            const authorAssociation = context.payload.comment ? context.payload.comment.author_association : 'NONE';
             const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
               ? context.payload.comment.user.login
               : context.actor;
