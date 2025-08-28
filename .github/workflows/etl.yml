@@ -82,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: etl-logs
-          path: logs/**/*.log
+          path: permit_leads/logs/**/*.log
 
       - name: Upload csv output
         uses: actions/upload-artifact@v4
