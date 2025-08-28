@@ -22,3 +22,47 @@ jobs:
         run: cd frontend && npm ci && npm run build
       - name: Env schema check (local)
         run: node scripts/check-required-env.mjs
+      - name: Upload frontend build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: frontend/.next/
+          retention-days: 7
+  
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: backend/.venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: cd backend && poetry install --no-dev
+      - name: Validate backend configuration
+        run: cd backend && poetry run python validate.py
+      - name: Test ETL state management
+        run: cd backend && poetry run python -m pytest tests/test_etl_state.py -v
+      - name: Upload ETL artifacts  
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-artifacts-${{ github.sha }}
+          path: |
+            backend/config/sources_tx.yaml
+            backend/permit_leads/etl_state.py
+            backend/permit_leads/adapters/etl_aware_arcgis_adapter.py
+          retention-days: 30
