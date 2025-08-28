@@ -61,7 +61,12 @@ jobs:
         echo "ETL allow empty: ${ETL_ALLOW_EMPTY}"
         
         # Run with sample data for 1 day
-        python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose || true
+        python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose
+        SCRAPER_EXIT_CODE=$?
+        if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
+          echo "::error::Harris County permit scraper failed with exit code $SCRAPER_EXIT_CODE"
+        fi
+        # Continue regardless of scraper result
         
         # Ensure artifacts are created even when empty
         [ -f scripts/ensure_artifacts.py ] && python scripts/ensure_artifacts.py || true
