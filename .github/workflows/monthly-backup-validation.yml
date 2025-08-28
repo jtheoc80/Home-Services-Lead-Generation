@@ -343,8 +343,11 @@ jobs:
             const backupName = '${{ steps.summary.outputs.backup_name }}';
             const timestamp = '${{ steps.summary.outputs.timestamp }}';
             
-            const restoreStatus = '${{ steps.restore.outputs.restore_status || 'failed' }}';
-            const testsStatus = '${{ steps.smoke_tests.outputs.tests_status || 'failed' }}';
+            function getStatus(output, fallback = 'failed') {
+              return output && output !== '' ? output : fallback;
+            }
+            const restoreStatus = getStatus('${{ steps.restore.outputs.restore_status }}');
+            const testsStatus = getStatus('${{ steps.smoke_tests.outputs.tests_status }}');
             const sr = restoreStatus === 'success' ? '✅ Success' : '❌ Failed';
             const st = testsStatus === 'pass' ? '✅ Pass' : '❌ Fail';
             
