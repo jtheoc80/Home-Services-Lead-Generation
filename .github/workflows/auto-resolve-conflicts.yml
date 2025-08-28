@@ -191,9 +191,12 @@ jobs:
             const strategy = '${{ steps.parse-pr.outputs.strategy }}';
             const mergeResult = '${{ steps.resolve-conflicts.outputs.merge_result }}';
             
-            const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
-              ? context.payload.comment.user.login
-              : context.actor;
+            function getActor(context) {
+              return (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+                ? context.payload.comment.user.login
+                : context.actor;
+            }
+            const actor = getActor(context);
             
             let message = '🤖 **Auto-resolve completed successfully!**\n\n';
             
