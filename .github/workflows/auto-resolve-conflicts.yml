@@ -198,6 +198,13 @@ jobs:
             const mergeResult = '${{ steps.resolve-conflicts.outputs.merge_result }}';
             const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
+            function getActor(context) {
+              return (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+                ? context.payload.comment.user.login
+                : context.actor;
+            }
+            const actor = getActor(context);
+            
             let message = '🤖 **Auto-resolve completed successfully!**\n\n';
             
             if (mergeResult === 'clean') {
@@ -209,7 +216,11 @@ jobs:
             }
             
             message += `🔧 **Validation**: Build and tests passed\n`;
+
+            message += `\n_Triggered by: @${actor}_`;
+
             message += `\n_Triggered by: @${triggeredBy}_`;
+
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -229,6 +240,10 @@ jobs:
             const remainingFiles = `${{ steps.resolve-conflicts.outputs.remaining_files }}`.split('\n').filter(f => f.trim());
             const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
+            const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+              ? context.payload.comment.user.login
+              : context.actor;
+            
             let message = '⚠️ **Auto-resolve partially completed**\n\n';
             message += `📋 **Strategy**: \`${strategy}\`\n`;
             message += `❌ **Remaining conflicts**: ${remainingFiles.length} files still need manual resolution\n\n`;
@@ -243,7 +258,11 @@ jobs:
             message += '\n💡 **Next steps**:\n';
             message += '- Resolve remaining conflicts manually\n';
             message += '- Or try a different strategy: `/resolve theirs-all` or `/resolve ours-all`\n';
+
+            message += `\n_Triggered by: @${actor}_`;
+
             message += `\n_Triggered by: @${triggeredBy}_`;
+
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -262,6 +281,10 @@ jobs:
             const strategy = '${{ steps.parse-pr.outputs.strategy }}';
             const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
+            const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+              ? context.payload.comment.user.login
+              : context.actor;
+            
             let message = '❌ **Auto-resolve failed validation**\n\n';
             message += `📋 **Strategy**: \`${strategy}\`\n`;
             message += '✅ **Conflicts**: Successfully resolved\n';
@@ -271,7 +294,11 @@ jobs:
             message += '- Check build/test failures in the workflow logs\n';
             message += '- Resolve conflicts manually\n';
             message += '- Fix any breaking changes before merging\n';
+
+            message += `\n_Triggered by: @${actor}_`;
+
             message += `\n_Triggered by: @${triggeredBy}_`;
+
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -285,11 +312,21 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+
+            const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+              ? context.payload.comment.user.login
+              : context.actor;
+            
+            let message = '✅ **No conflicts detected**\n\n';
+            message += 'This pull request can be merged without conflicts.\n';
+            message += `\n_Triggered by: @${actor}_`;
+
             const triggeredBy = '${{ github.event.comment.user.login }}' || '${{ github.actor }}';
             
             let message = '✅ **No conflicts detected**\n\n';
             message += 'This pull request can be merged without conflicts.\n';
             message += `\n_Triggered by: @${triggeredBy}_`;
+
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -307,10 +344,15 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const authorAssociation = context.payload.comment ? context.payload.comment.author_association : 'NONE';
+            const actor = (context.payload.comment && context.payload.comment.user && context.payload.comment.user.login)
+              ? context.payload.comment.user.login
+              : context.actor;
+            
             let message = '🚫 **Access Denied**\n\n';
             message += 'Only repository owners and members can trigger auto-resolve.\n';
-            message += `Your association: \`${{ github.event.comment.author_association }}\`\n`;
-            message += `\n_Triggered by: @${{ github.event.comment.user.login }}_`;
+            message += `Your association: \`${authorAssociation}\`\n`;
+            message += `\n_Triggered by: @${actor}_`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
