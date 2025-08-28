@@ -18,7 +18,6 @@ on:
         type: boolean
 
 env:
-  SAMPLE_DATA: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.sample_data) && '1' || '0' }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
@@ -121,9 +120,11 @@ jobs:
     - name: Run Harris County permit scraper
       id: scrape
       run: |
-        DAYS="${{ github.event.inputs.days || '1' }}"
+        DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
+        [ "${{ inputs.sample_data }}" = "true" ] && export SAMPLE_DATA=1 || export SAMPLE_DATA=0
         
         echo "Scraping Harris County permits for the last ${DAYS} days..."
+        echo "Sample data mode: ${SAMPLE_DATA}"
         python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose
         
         # Count new permits from today's run
@@ -197,16 +198,32 @@ jobs:
         echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
         echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Sample data: ${{ env.SAMPLE_DATA == '1' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+        if [ "${SAMPLE_DATA}" = "1" ]; then
+          echo "- Sample data: Yes" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Sample data: No" >> $GITHUB_STEP_SUMMARY
+        fi
         echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         echo "- Run time: $(date)" >> $GITHUB_STEP_SUMMARY
         
         # Show environment status
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Environment Status:**" >> $GITHUB_STEP_SUMMARY
-        echo "- Supabase URL: ${{ secrets.SUPABASE_URL != '' && '✅ Set' || '❌ Not set' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Supabase Service Key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' && '✅ Set' || '❌ Not set' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- HC Permits URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && '✅ Set' || '❌ Not set' }}" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "- Supabase URL: ✅ Set" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Supabase URL: ❌ Not set" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+          echo "- Supabase Service Key: ✅ Set" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Supabase Service Key: ❌ Not set" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
+          echo "- HC Permits URL: ✅ Set" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- HC Permits URL: ❌ Not set" >> $GITHUB_STEP_SUMMARY
+        fi
 
 
     - name: Set date output
