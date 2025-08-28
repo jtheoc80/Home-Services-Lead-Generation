@@ -288,6 +288,8 @@ jobs:
             const testsStatus = '${{ steps.smoke_tests.outputs.tests_status || 'failed' }}';
             
             const title = 'Monthly Backup Validation Report';
+            const backupStatus = '${{ steps.check_backup.outputs.use_existing }}' === 'true' ? '✅ Used Recent' : '✅ Success';
+            
             const issueBody = `# 🔄 Monthly Supabase Backup Validation Report
             
             **Overall Status:** ${overallStatus}
@@ -296,7 +298,7 @@ jobs:
             
             | Component | Status | Details |
             |-----------|--------|---------|
-            | 💾 Backup Export | ${{ steps.check_backup.outputs.use_existing == 'true' ? '✅ Used Recent' : '✅ Success' }} | ${backupName} |
+            | 💾 Backup Export | ${backupStatus} | ${backupName} |
             | 🔄 Staging Restore | ${restoreStatus === 'success' ? '✅ Success' : '❌ Failed'} | Restored to staging environment |
             | 🧪 Smoke Tests | ${testsStatus === 'pass' ? '✅ Pass' : '❌ Fail'} | Database validation tests |
             
