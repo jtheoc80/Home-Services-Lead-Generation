@@ -83,17 +83,18 @@ cat vercel.json | grep -E "(buildCommand|outputDirectory|installCommand)"
 **Current Expected Configuration:**
 ```json
 {
-  "buildCommand": "cd frontend && npm run build:production",
-  "outputDirectory": "frontend/.next", 
-  "installCommand": "cd frontend && npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "next build",
+  "outputDirectory": ".next"
 }
 ```
 
 **Remediation:**
-1. Ensure all commands include `cd frontend &&` prefix
-2. Verify `outputDirectory` points to `frontend/.next`
-3. Check that `installCommand` installs in frontend directory
+1. Ensure root directory is set to `frontend` in Vercel dashboard
+2. Remove any `cd frontend &&` prefixes from commands (should not be needed)
+3. Verify `outputDirectory` points to `.next` (relative to frontend)
+4. Use `next build` instead of `npm run build` for consistency
 
 #### Build Command Issues
 **Symptoms:**
