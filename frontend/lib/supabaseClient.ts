@@ -30,8 +30,7 @@ function validateSupabaseEnvironment(): { supabaseUrl: string; supabaseAnonKey: 
     }
   }
   
-  // TypeScript knows these are strings now because of the checks above
-  return { supabaseUrl: supabaseUrl!, supabaseAnonKey: supabaseAnonKey! };
+  return { supabaseUrl: supabaseUrl, supabaseAnonKey: supabaseAnonKey };
 }
 
 // Validate environment on module load
