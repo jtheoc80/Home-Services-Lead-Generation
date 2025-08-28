@@ -71,12 +71,20 @@ jobs:
 
       - name: Check if conflicts exist
         id: check-conflicts
-        run: |
-          if [ "${{ steps.pr-details.outputs.mergeable }}" = "false" ] && [ "${{ steps.pr-details.outputs.mergeable_state }}" = "dirty" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const mergeable = '${{ steps.pr-details.outputs.mergeable }}';
+            const mergeableState = '${{ steps.pr-details.outputs.mergeable_state }}';
+            
+            const hasConflicts = mergeable === 'false' && mergeableState === 'dirty';
+            core.setOutput('has_conflicts', hasConflicts ? 'true' : 'false');
+            
+            if (hasConflicts) {
+              console.log('✅ Conflicts detected - proceeding with resolution');
+            } else {
+              console.log('ℹ️ No conflicts detected');
+            }
 
       - name: Checkout repository
         if: steps.check-conflicts.outputs.has_conflicts == 'true'

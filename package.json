@@ -42,6 +42,7 @@
     "bot:resolve-json:local": "tsx tools/bots/resolveConflicts.ts --strategy json",
     "bot:resolve-json": "tsx tools/bots/resolveJsonConflicts.ts",
     "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
+    "workflow:lint": "node scripts/workflow-lint.js",
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb",
     "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom"
@@ -74,7 +75,7 @@
     "@redocly/cli": "^2.0.5",
     "globby": "^14.0.0",
     "tsx": "^4.20.5",
-    "yaml": "^2.0.0"
+    "yaml": "^2.8.1"
   },
   "engines": {
     "node": ">=20.19.0 <21"

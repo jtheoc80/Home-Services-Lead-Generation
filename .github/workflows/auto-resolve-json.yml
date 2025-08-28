@@ -1,8 +1,5 @@
 
-name: Auto Resolve JSON Conflicts
-
 name: Auto Resolve JSON
-
 
 on:
   issue_comment:
@@ -10,117 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-
-        description: PR number to resolve
+        description: 'Pull Request Number'
         required: true
       prefer:
         description: 'Version strategy: higher|ours|theirs'
         required: false
         default: higher
 
-        description: 'Pull Request Number'
-        required: true
-
-
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-
-  run:
-    if: >
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/resolve-json') &&
-       (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER'))
-      || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Resolve PR number
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const core = require('@actions/core');
-            if (context.eventName === 'workflow_dispatch') {
-              core.setOutput('number', core.getInput('pr_number', { required: true }));
-            } else {
-              const issue = context.payload.issue;
-              const pr = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: issue.number
-              });
-              core.setOutput('number', pr.data.number);
-            }
-
-      - name: Fetch PR metadata
-        id: meta
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: Number(`${{ steps.pr.outputs.number }}`)
-            });
-            core.setOutput('base', pr.data.base.ref);
-            core.setOutput('head', pr.data.head.ref);
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.meta.outputs.head }}
-          fetch-depth: 0
-
-      - name: Configure git
-        run: |
-          git config user.name "json-merge-bot"
-          git config user.email "json-merge-bot@users.noreply.github.com"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: corepack enable
-
-      - name: Install bot deps
-        run: npm ci
-
-      - name: Merge base into head (no commit)
-        run: |
-          git fetch origin ${{ steps.meta.outputs.base }} --depth=1
-          set -o pipefail
-          git merge origin/${{ steps.meta.outputs.base }} --no-commit --no-ff || true
-
-      - name: Run JSON merge bot
-        id: bot
-        run: |
-          npx tsx tools/bots/jsonResolve.ts --prefer=${{ inputs.prefer || 'higher' }}
-
-      - name: Commit & push
-        run: |
-          if ! git diff --cached --quiet; then
-            git commit -m "auto: resolve JSON/package lock conflicts"
-            git push
-          fi
-
-      - name: Comment summary
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = "JSON merge bot finished on PR #" + ${{ steps.pr.outputs.number }} + ".\n" +
-                         "- Base: `${{ steps.meta.outputs.base }}`\n" +
-                         "- Head: `${{ steps.meta.outputs.head }}`\n" +
-                         "- Strategy: `${{ inputs.prefer || 'higher' }}`\n";
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(`${{ steps.pr.outputs.number }}`),
-              body
-            });
-=======
   auto-resolve-json:
     runs-on: ubuntu-latest
     if: |
@@ -389,4 +287,3 @@ jobs:
           echo "❌ Job failed: Some files still require manual resolution"
           echo "JSON/package lock conflicts were resolved, but other conflicts remain"
           exit 1
-

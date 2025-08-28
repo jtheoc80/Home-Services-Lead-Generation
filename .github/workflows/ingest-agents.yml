@@ -1,5 +1,5 @@
 
-name: Agents Ingest Matrix
+name: Ingest Agents (Austin/Dallas)
 
 on:
   # Manual trigger
@@ -11,19 +11,13 @@ on:
         default: 'false'
         type: boolean
   
-  # Scheduled trigger (daily at 5 AM UTC = 11 PM CST)
+  # Scheduled trigger (every 6 hours)
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 */6 * * *"
 
 env:
   VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
   CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-name: Ingest Agents (Austin/Dallas)
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 */6 * * *"   # every 6 hours
 
 jobs:
   ingest:
@@ -126,59 +120,6 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "🔗 [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        source: [austin, dallas]
-    steps:
-      - name: Validate environment
-        run: |
-          if [ -z "$INGEST_URL" ]; then
-            echo "::error::INGEST_URL secret not configured"
-            exit 1
-          fi
-          if [ -z "$CRON_SECRET" ]; then
-            echo "::error::CRON_SECRET secret not configured"
-            exit 1
-          fi
-          echo "✅ Environment validated for ${{ matrix.source }}"
-        env:
-          INGEST_URL: ${{ secrets.INGEST_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-      - name: Dry run ${{ matrix.source }}
-        id: dry
-        run: |
-          set -e
-          RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}&dry=1" \
-            -H "x-cron-secret: $CRON_SECRET")
-          echo "$RESP"
-          echo "resp=$RESP" >> $GITHUB_OUTPUT
-          FETCHED=$(jq -r '.fetched // 0' <<< "$RESP")
-          if [ "$FETCHED" -eq 0 ]; then
-            echo "::warning::Fetched=0 for ${{ matrix.source }} (check dataset/token)"
-          fi
-        env:
-          INGEST_URL: ${{ secrets.INGEST_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
-      - name: Real ingest ${{ matrix.source }}
-        id: real
-        run: |
-          set -e
-          RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}" \
-            -H "x-cron-secret: $CRON_SECRET")
-          echo "$RESP"
-          echo "resp=$RESP" >> $GITHUB_OUTPUT
-          UPSERTS=$(jq -r '.upserts // 0' <<< "$RESP")
-          if [ "$UPSERTS" -eq 0 ]; then
-            echo "::warning::Upserts=0 for ${{ matrix.source }} (maybe all deduped?)"
-          fi
-        env:
-          INGEST_URL: ${{ secrets.INGEST_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
   verify:
     runs-on: ubuntu-latest

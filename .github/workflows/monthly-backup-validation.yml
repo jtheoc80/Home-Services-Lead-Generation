@@ -329,10 +329,24 @@ jobs:
             }
 
       - name: Send Slack notification
-        if: always() && (env.SLACK_WEBHOOK != '' && (github.event.inputs.notification_channel == 'slack' || github.event.inputs.notification_channel == 'both' || github.event.inputs.notification_channel == ''))
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
+            const slackWebhook = process.env.SLACK_WEBHOOK;
+            const notificationChannel = '${{ github.event.inputs.notification_channel }}';
+            
+            // Determine if we should send Slack notification
+            const shouldSendSlack = slackWebhook && 
+              (notificationChannel === 'slack' || 
+               notificationChannel === 'both' || 
+               notificationChannel === '');
+            
+            if (!shouldSendSlack) {
+              console.log('Skipping Slack notification - webhook not configured or channel not selected');
+              return;
+            }
+            
             const overallStatus = '${{ steps.summary.outputs.overall_status }}';
             const statusEmoji = '${{ steps.summary.outputs.status_emoji }}';
             const statusColor = '${{ steps.summary.outputs.status_color }}';
@@ -375,7 +389,7 @@ jobs:
             };
             
             try {
-              const response = await fetch('${{ env.SLACK_WEBHOOK }}', {
+              const response = await fetch(slackWebhook, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -391,10 +405,19 @@ jobs:
             } catch (error) {
               console.log('Error sending Slack notification:', error.message);
             }
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
       - name: Cleanup staging environment
-        if: always() && github.event.inputs.skip_cleanup != 'true'
+        if: always()
         run: |
+          skip_cleanup="${{ github.event.inputs.skip_cleanup }}"
+          
+          if [ "$skip_cleanup" = "true" ]; then
+            echo "⏭️ Cleanup skipped by user request"
+            exit 0
+          fi
+          
           echo "Cleaning up staging environment..."
           
           # Optional: Clear staging database to save resources
