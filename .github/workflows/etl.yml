@@ -19,10 +19,14 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
+  ETL_ALLOW_EMPTY: '1'
 
 jobs:
   etl:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: permit_leads
     
     steps:
       - name: Checkout repository
@@ -41,7 +45,9 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: |
+          cd ..
+          poetry install --no-interaction
 
       - name: Run ETL scraping
         id: etl_run
@@ -55,16 +61,34 @@ jobs:
           SINCE_PERIOD="${{ github.event.inputs.since || '1d' }}"
           echo "Running ETL with --since $SINCE_PERIOD"
           
+          # Create logs and artifacts directories
+          mkdir -p logs artifacts
+          
           # Run the ETL process
-          poetry run python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee etl_output.log
+          cd .. && poetry run python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
+          
+          # Move CSV files to artifacts directory if they exist
+          find . -name "*.csv" -not -path "./permit_leads/*" -exec mv {} permit_leads/artifacts/ \; 2>/dev/null || true
           
           # Check if any records were processed
-          RECORD_COUNT=$(grep -o "Processed [0-9]* records" etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
+          RECORD_COUNT=$(grep -o "Processed [0-9]* records" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
           echo "Records processed: $RECORD_COUNT"
           echo "record_count=$RECORD_COUNT" >> $GITHUB_OUTPUT
           
           # Save output for later use
           echo "ETL completed with $RECORD_COUNT records"
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-logs
+          path: permit_leads/logs/**/*.log
+
+      - name: Upload csv output
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-artifacts
+          path: permit_leads/artifacts/**/*.csv
 
       - name: Run data ingestion
         if: steps.etl_run.outputs.record_count > 0 || github.event.inputs.force == 'true'
@@ -74,7 +98,7 @@ jobs:
         run: |
           # Run the ingestion step - assuming there's an ingest command
           echo "Running data ingestion..."
-          poetry run python -c "
+          cd .. && poetry run python -c "
           import sys
           import os
           sys.path.insert(0, 'backend')
@@ -82,7 +106,7 @@ jobs:
               from app.ingest import ingest_csv_data
               # Ingest any CSV files created
               import glob
-              csv_files = glob.glob('*.csv')
+              csv_files = glob.glob('permit_leads/artifacts/*.csv')
               for csv_file in csv_files:
                   print(f'Ingesting {csv_file}')
                   ingest_csv_data(csv_file)

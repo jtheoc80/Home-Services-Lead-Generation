@@ -4,7 +4,10 @@
   "type": "module",
   "description": "LeadLedgerPro - Home Services Lead Generation Platform",
   "scripts": {
-    "build": "echo \"no-op backend build (frontend builds on Vercel)\"",
+    "build": "echo 'noop: use npm run build:frontend for frontend builds or npm run api:serve for backend development'",
+    "build:frontend": "npm --prefix frontend ci && npm --prefix frontend run build",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "api:serve": "uvicorn backend.main:app --reload --port 8000",
     "supa:smoke": "tsx scripts/supaSmoke.ts",
     "harris:smoke": "tsx scripts/harrisCounty/smoke.ts",
     "scrape:harris": "node scripts/scrape-harris.cjs",
@@ -58,6 +61,7 @@
     "axios": "^1.11.0",
     "commander": "^14.0.0",
     "execa": "^9.6.0",
+    "glob": "^11.0.3",
     "json-stable-stringify": "^1.3.0",
     "pg": "^8.16.3",
     "playwright": "^1.40.0",
@@ -69,7 +73,7 @@
     "@playwright/test": "^1.54.2",
     "@redocly/cli": "^2.0.5",
     "globby": "^14.0.0",
-    "tsx": "^4.20.4",
+    "tsx": "^4.20.5",
     "yaml": "^2.0.0"
   },
   "engines": {

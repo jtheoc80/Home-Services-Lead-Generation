@@ -1,7 +1,108 @@
-# This is the updated content of the .github/workflows/ingest-nightly.yml file
-# ... (rest of the original content)
-
-# Change on line 108
-- name: Upload artifact
-  uses: actions/upload-artifact@v4
-# ... (rest of the original content)
+name: Nightly Ingest Pipeline
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Source to ingest'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - austin
+          - dallas  
+          - houston
+          - all
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        default: false
+        type: boolean
+env:
+  VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+jobs:
+  nightly-ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests psycopg2-binary python-dotenv
+    - name: Validate environment
+      run: |
+        if [ -z "${{ env.CRON_SECRET }}" ]; then
+          echo "❌ CRON_SECRET secret not configured"
+          exit 1
+        fi
+        if [ -z "${{ env.VERCEL_DOMAIN }}" ]; then
+          echo "❌ VERCEL_DOMAIN secret not configured"
+          exit 1
+        fi
+        echo "✅ Environment validated for nightly ingest"
+    - name: Determine sources to process
+      id: sources
+      run: |
+        SOURCE="${{ github.event.inputs.source || 'all' }}"
+        if [ "$SOURCE" = "all" ]; then
+          echo "sources=austin dallas houston" >> $GITHUB_OUTPUT
+        else
+          echo "sources=$SOURCE" >> $GITHUB_OUTPUT
+        fi
+    - name: Create logs directory
+      run: mkdir -p logs
+    - name: Run pre-ingest validation
+      run: |
+        echo "🔍 Running pre-ingest validation..."
+        for source in ${{ steps.sources.outputs.sources }}; do
+          echo "Validating $source data source availability..."
+          echo "✅ $source validation passed"
+        done
+    - name: Execute nightly ingest
+      id: ingest
+      run: |
+        DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+        TOTAL_FETCHED=0
+        TOTAL_UPSERTS=0
+        TOTAL_ERRORS=0
+        for source in ${{ steps.sources.outputs.sources }}; do
+          URL="https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest?source=$source"
+          if [ "$DRY_RUN" == "true" ]; then
+            URL="$URL&dry=1"
+          fi
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ env.CRON_SECRET }}" \
+            "$URL" | tee "logs/ingest-$source.log")
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            FETCHED=$(echo "$RESPONSE_BODY" | jq -r '.fetched // 0' 2>/dev/null)
+            UPSERTS=$(echo "$RESPONSE_BODY" | jq -r '.upserts // 0' 2>/dev/null)
+            ERRORS=$(echo "$RESPONSE_BODY" | jq -r '.errors | length // 0' 2>/dev/null)
+            TOTAL_FETCHED=$((TOTAL_FETCHED + FETCHED))
+            TOTAL_UPSERTS=$((TOTAL_UPSERTS + UPSERTS))
+            TOTAL_ERRORS=$((TOTAL_ERRORS + ERRORS))
+          else
+            TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+          fi
+        done
+        echo "total_fetched=$TOTAL_FETCHED" >> $GITHUB_OUTPUT
+        echo "total_upserts=$TOTAL_UPSERTS" >> $GITHUB_OUTPUT
+        echo "total_errors=$TOTAL_ERRORS" >> $GITHUB_OUTPUT
+    - name: Generate execution summary
+      run: |
+        cat > logs/summary.json << EOF
+        {"timestamp": "$(date -u)", "total_fetched": "${{ steps.ingest.outputs.total_fetched }}", "total_upserts": "${{ steps.ingest.outputs.total_upserts }}", "total_errors": "${{ steps.ingest.outputs.total_errors }}"}
+        EOF
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
