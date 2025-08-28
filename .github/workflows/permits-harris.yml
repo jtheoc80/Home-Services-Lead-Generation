@@ -105,7 +105,7 @@ jobs:
         
     - name: Set date output
       id: set_date
-      run: echo "date=$(date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
 
     - name: Upload data artifacts
       if: ${{ steps.scrape.outputs.new_permits != '0' }}
