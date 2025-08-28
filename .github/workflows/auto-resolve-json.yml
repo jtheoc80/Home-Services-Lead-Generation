@@ -2,7 +2,12 @@
 
 name: Auto Resolve JSON
 
+
+
+name: Auto Resolve JSON
+
 name: Auto Resolve JSON Conflicts
+
 
 
 on:
@@ -13,10 +18,20 @@ on:
       pr_number:
         description: 'Pull Request Number'
         required: true
+        type: number
       prefer:
         description: 'Version strategy: higher|ours|theirs'
         required: false
+
+        default: 'higher'
+        type: choice
+        options:
+          - higher
+          - ours
+          - theirs
+
         default: higher
+
 
 
 permissions:
@@ -24,6 +39,7 @@ permissions:
   pull-requests: write
 
 jobs:
+
 
   run:
     if: >
@@ -68,6 +84,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
 
   auto-resolve-json:
     runs-on: ubuntu-latest
@@ -183,7 +200,7 @@ jobs:
           set +e  # Don't exit on error
           
           echo "Running JSON conflict resolution..."
-          npm run bot:resolve-json
+          npm run bot:json-resolve -- --prefer=${{ inputs.prefer || 'higher' }}
           resolve_exit_code=$?
           
           echo "resolve_exit_code=$resolve_exit_code" >> $GITHUB_OUTPUT
@@ -270,7 +287,7 @@ jobs:
               message += '📋 **Files**: Clean merge\n';
             } else {
               message += '✅ **Result**: JSON/package lock conflicts resolved\n';
-              message += '📋 **Strategy**: Prefer incoming changes (theirs) for JSON/lock files\n';
+              message += '📋 **Strategy**: ' + '${{ inputs.prefer || 'higher' }}' + '\n';
             }
             
             if (commitNeeded) {
@@ -367,4 +384,3 @@ jobs:
           echo "❌ Job failed: Some files still require manual resolution"
           echo "JSON/package lock conflicts were resolved, but other conflicts remain"
           exit 1
-

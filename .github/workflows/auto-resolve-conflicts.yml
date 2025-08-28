@@ -36,21 +36,25 @@ jobs:
     steps:
       - name: Parse PR number from comment
         id: parse-pr
-        run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "strategy=safe" >> $GITHUB_OUTPUT
-            
-            # Check if strategy is specified in comment
-            if echo "${{ github.event.comment.body }}" | grep -q "/resolve theirs-all"; then
-              echo "strategy=theirs-all" >> $GITHUB_OUTPUT
-            elif echo "${{ github.event.comment.body }}" | grep -q "/resolve ours-all"; then
-              echo "strategy=ours-all" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "pr_number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
-            echo "strategy=${{ inputs.strategy }}" >> $GITHUB_OUTPUT
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'issue_comment') {
+              const commentBody = context.payload.comment.body;
+              core.setOutput('pr_number', context.payload.issue.number);
+              
+              // Check strategy in comment
+              if (commentBody.includes('/resolve theirs-all')) {
+                core.setOutput('strategy', 'theirs-all');
+              } else if (commentBody.includes('/resolve ours-all')) {
+                core.setOutput('strategy', 'ours-all');
+              } else {
+                core.setOutput('strategy', 'safe');
+              }
+            } else {
+              core.setOutput('pr_number', '${{ inputs.pr_number }}');
+              core.setOutput('strategy', '${{ inputs.strategy }}');
+            }
 
       - name: Get PR details
         id: pr-details
@@ -71,12 +75,14 @@ jobs:
 
       - name: Check if conflicts exist
         id: check-conflicts
-        run: |
-          if [ "${{ steps.pr-details.outputs.mergeable }}" = "false" ] && [ "${{ steps.pr-details.outputs.mergeable_state }}" = "dirty" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const mergeable = '${{ steps.pr-details.outputs.mergeable }}';
+            const mergeableState = '${{ steps.pr-details.outputs.mergeable_state }}';
+            
+            const hasConflicts = mergeable === 'false' && mergeableState === 'dirty';
+            core.setOutput('has_conflicts', hasConflicts.toString());
 
       - name: Checkout repository
         if: steps.check-conflicts.outputs.has_conflicts == 'true'

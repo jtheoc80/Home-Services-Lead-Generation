@@ -100,8 +100,15 @@ jobs:
           echo "Running TypeScript type check..."
           if ! npm run typecheck 2>&1; then
             echo "type_issues=true" >> $GITHUB_OUTPUT
+
+            echo "TypeScript issues found"
           else
             echo "type_issues=false" >> $GITHUB_OUTPUT
+            echo "TypeScript OK"
+
+          else
+            echo "type_issues=false" >> $GITHUB_OUTPUT
+
           fi
 
       - name: Run tests
