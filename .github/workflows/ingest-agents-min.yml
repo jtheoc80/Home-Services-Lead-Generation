@@ -155,7 +155,7 @@ jobs:
         if: always()
         run: |
           # Determine verification status with shell conditional
-          if [ "${{ steps.check.outcome }}" == "success" ]; then
+          if [ "${{ needs.verify.result }}" == "success" ]; then
             VERIFICATION_STATUS="✅ Passed"
           else
             VERIFICATION_STATUS="❌ Failed"
