@@ -360,13 +360,27 @@ CREATE TRIGGER trg_lead_from_permit
 -- UPSERT PERMIT FUNCTION
 -- ================================================================================
 
+-- Helper function to extract permit_id from JSONB
+CREATE OR REPLACE FUNCTION public.extract_permit_id(p JSONB)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT COALESCE(
+    p->>'permit_id',
+    p->>'permit_no',
+    p->>'permit_number',
+    p->>'source_record_id'
+  );
+$$;
+
 CREATE OR REPLACE FUNCTION public.upsert_permit(p JSONB)
 RETURNS UUID
 LANGUAGE plpgsql
 AS $$
 DECLARE
   rid UUID;
-  v_permit_id TEXT := COALESCE(p->>'permit_id', p->>'permit_no', p->>'permit_number', p->>'source_record_id');
+  v_permit_id TEXT := public.extract_permit_id(p);
   v_record_hash TEXT;
 BEGIN
   -- Generate record hash for change detection
