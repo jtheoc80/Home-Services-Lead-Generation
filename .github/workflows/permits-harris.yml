@@ -64,7 +64,7 @@ jobs:
         python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose || true
         
         # Ensure artifacts are created even when empty
-        python scripts/ensure_artifacts.py
+        [ -f scripts/ensure_artifacts.py ] && python scripts/ensure_artifacts.py || true
         
     - name: Upload logs and data artifacts
       if: always()
