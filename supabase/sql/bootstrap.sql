@@ -403,8 +403,7 @@ BEGIN
   VALUES (
     p->>'source', 
     p->>'source_record_id', 
-    v_permit_id,
-    COALESCE(p->>'permit_number', p->>'permit_no'), 
+    COALESCE(p->>'permit_no', p->>'permit_number'), 
     NULLIF(p->>'issued_date','')::TIMESTAMPTZ,
     NULLIF(p->>'application_date','')::TIMESTAMPTZ,
     NULLIF(p->>'expiration_date','')::TIMESTAMPTZ,
