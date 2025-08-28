@@ -386,7 +386,6 @@ async function main(): Promise<void> {
         process.exit(0);
       } else {
         await callEnsureArtifacts();
-        process.exit(0);
       }
     }
     
