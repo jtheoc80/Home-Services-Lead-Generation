@@ -62,7 +62,9 @@ jobs:
         with:
           name: etl-artifacts-${{ github.sha }}
           path: |
-            backend/config/sources_tx.yaml
-            backend/permit_leads/etl_state.py
-            backend/permit_leads/adapters/etl_aware_arcgis_adapter.py
+            config/sources_tx.yaml
+            permit_leads/etl_state.py
+            permit_leads/adapters/etl_aware_arcgis_adapter.py
+            scripts/etl_state_cli.py
+            scripts/etl_state_helper.py
           retention-days: 30
