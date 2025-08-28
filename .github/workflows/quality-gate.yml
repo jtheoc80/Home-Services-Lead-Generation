@@ -93,14 +93,23 @@ jobs:
           echo "Running ESLint..."
           if ! npm run lint 2>&1; then
             echo "lint_issues=true" >> $GITHUB_OUTPUT
-            echo "ESLint issues found"
           else
             echo "lint_issues=false" >> $GITHUB_OUTPUT
-            echo "ESLint OK"
           fi
-          
+
           echo "Running TypeScript type check..."
-          if ! npm run typecheck 2>&1; then echo "type_issues=true" >> $GITHUB_OUTPUT; fi
+          if ! npm run typecheck 2>&1; then
+            echo "type_issues=true" >> $GITHUB_OUTPUT
+
+            echo "TypeScript issues found"
+          else
+            echo "type_issues=false" >> $GITHUB_OUTPUT
+            echo "TypeScript OK"
+
+          else
+            echo "type_issues=false" >> $GITHUB_OUTPUT
+
+          fi
 
       - name: Run tests
         id: tests
@@ -123,7 +132,6 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
-      - name: Auto-fix formatting issues (bot branch)
       - name: Set autofix output
         id: set-autofix
         run: |
