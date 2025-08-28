@@ -123,7 +123,6 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
-      - name: Auto-fix formatting issues (bot branch)
       - name: Set autofix output
         id: set-autofix
         run: |
