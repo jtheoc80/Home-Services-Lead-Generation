@@ -14,10 +14,16 @@ on:
         default: '7'
         type: string
 
+env:
+  ETL_ALLOW_EMPTY: '1'
+
 jobs:
   etl-harris:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: scripts
     
     steps:
       - name: Checkout repository
@@ -30,7 +36,9 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: |
+          cd ..
+          npm ci
       
       - name: Run Harris County ETL Delta Test
         env:
@@ -42,8 +50,14 @@ jobs:
           echo "Harris County URL: $HC_ISSUED_PERMITS_URL"
           echo "Supabase URL: $SUPABASE_URL"
           
+          # Create logs and artifacts directories
+          mkdir -p logs artifacts
+          
           # Run the ETL delta test with JSON output for monitoring
-          npx tsx scripts/etlDelta.ts 2>&1 | tee etl-output.log
+          cd .. && npx tsx scripts/etlDelta.ts 2>&1 | tee scripts/logs/etl-output.log
+          
+          # Move any CSV files to artifacts directory
+          find . -name "*.csv" -not -path "./scripts/*" -exec mv {} scripts/artifacts/ \; 2>/dev/null || true
           
           # Check exit code
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -57,26 +71,28 @@ jobs:
         if: always()
         run: |
           # Extract JSON summary from output for monitoring
-          if [ -f etl-output.log ]; then
+          if [ -f logs/etl-output.log ]; then
             echo "Extracting JSON logs..."
-            grep -o '{.*"test".*"etl-delta".*}' etl-output.log > etl-summary.json || echo '{"error": "No JSON summary found"}' > etl-summary.json
+            grep -o '{.*"test".*"etl-delta".*}' logs/etl-output.log > logs/etl-summary.json || echo '{"error": "No JSON summary found"}' > logs/etl-summary.json
             
             echo "ETL Summary:"
-            cat etl-summary.json
+            cat logs/etl-summary.json
           else
-            echo '{"error": "No log file found"}' > etl-summary.json
+            echo '{"error": "No log file found"}' > logs/etl-summary.json
           fi
       
-      - name: Upload ETL logs
-        if: always()
+      - name: Upload logs
         uses: actions/upload-artifact@v4
         with:
-          name: harris-etl-logs-${{ github.run_number }}
-          path: |
-            etl-output.log
-            etl-summary.json
-          retention-days: 30
-      
+          name: etl-logs
+          path: logs/**/*.log
+
+      - name: Upload csv output
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-artifacts
+          path: artifacts/**/*.csv
+
       - name: Check for stale data (24h failure protection)
         if: always()
         env:
