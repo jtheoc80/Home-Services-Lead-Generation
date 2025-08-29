@@ -160,4 +160,3 @@ jobs:
         name: permit-data-$(date +%Y-%m-%d)
         path: ../data/
         retention-days: 30
-        retention-days: 30
