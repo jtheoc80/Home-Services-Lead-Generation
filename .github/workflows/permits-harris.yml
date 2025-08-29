@@ -303,8 +303,6 @@ jobs:
 
         python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose --retries 5
 
-        poetry run python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose
-
         
         # Count new permits from today's run
         TODAY=$(date +%Y-%m-%d)
