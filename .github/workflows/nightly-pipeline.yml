@@ -59,18 +59,21 @@ jobs:
         run: python scripts/redis_smoketest.py
 
       - name: Create output directory
+        working-directory: permit_leads
         run: |
-          mkdir -p out
+          mkdir -p out logs artifacts
 
       - name: Run scraper for Houston counties only
+        working-directory: permit_leads
         run: |
           # Use input parameter if provided, otherwise default to 14 days
           DAYS="${{ github.event.inputs.days || '14' }}"
-          python permit_leads/main.py --days $DAYS --outdir out
+          python main.py --days $DAYS --outdir out
 
       - name: Export leads to CSV
+        working-directory: permit_leads
         run: |
-          python permit_leads/export_leads.py
+          python export_leads.py
 
       - name: Setup database schema
         if: env.DATABASE_URL != ''
@@ -98,9 +101,9 @@ jobs:
           "
 
       - name: Ingest leads to PostgreSQL
-        if: env.DATABASE_URL != '' && hashFiles('out/leads_recent.csv') != ''
+        if: env.DATABASE_URL != '' && hashFiles('permit_leads/out/leads_recent.csv') != ''
         run: |
-          python backend/app/ingest.py out/leads_recent.csv
+          python backend/app/ingest.py permit_leads/out/leads_recent.csv
 
       - name: Process notifications (if enabled)
         if: env.DATABASE_URL != ''
@@ -133,7 +136,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: leads-recent-${{ github.run_number }}
-          path: out/leads_recent.csv
+          path: permit_leads/out/leads_recent.csv
           if-no-files-found: warn
           retention-days: 30
 
@@ -143,8 +146,10 @@ jobs:
         with:
           name: processing-logs-${{ github.run_number }}
           path: |
-            out/*.log
-            *.log
+            permit_leads/out/**/*.log
+            permit_leads/logs/**/*.log
+            permit_leads/logs/etl_output.log
+            permit_leads/artifacts/**/*.csv
           if-no-files-found: ignore
           retention-days: 7
 
@@ -155,8 +160,8 @@ jobs:
           END_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           # Count leads processed
-          if [ -f "out/leads_recent.csv" ]; then
-            LEAD_COUNT=$(tail -n +2 out/leads_recent.csv | wc -l)
+          if [ -f "permit_leads/out/leads_recent.csv" ]; then
+            LEAD_COUNT=$(tail -n +2 permit_leads/out/leads_recent.csv | wc -l)
             LEAD_STATUS="✅ $LEAD_COUNT leads processed"
           else
             LEAD_COUNT=0

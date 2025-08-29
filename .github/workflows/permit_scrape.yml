@@ -47,12 +47,14 @@ jobs:
         pip install -r permit_leads/requirements.txt
         
     - name: Create data directory
+      working-directory: permit_leads
       run: |
         mkdir -p data/permits/{raw,aggregate}
+        mkdir -p logs artifacts
         
     - name: Run permit scraper
+      working-directory: permit_leads
       run: |
-        cd permit_leads
         if [ "${{ github.event_name }}" = "schedule" ]; then
           # Scheduled run - use defaults
           python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
@@ -79,6 +81,7 @@ jobs:
         
     - name: Commit and push data
       if: steps.check_data.outputs.new_files > 0
+      working-directory: permit_leads
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -142,5 +145,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: permit-data-$(date +%Y-%m-%d)
-        path: data/
+        path: |
+          permit_leads/data/
+          permit_leads/artifacts/**/*.csv
+          permit_leads/logs/**/*.log
+          permit_leads/logs/etl_output.log
         retention-days: 30

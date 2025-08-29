@@ -49,11 +49,13 @@ jobs:
         pip install -r permit_leads/requirements.txt
         
     - name: Create directories
+      working-directory: permit_leads
       run: |
         mkdir -p data/permits/{raw,aggregate}
         mkdir -p logs artifacts
         
     - name: Run Harris County permit scraper (dry-run with sample data)
+      working-directory: permit_leads
       run: |
         echo "🔧 Running dry-run with sample data and ETL_ALLOW_EMPTY=1"
         echo "Sample data mode: ${SAMPLE_DATA}"
@@ -68,7 +70,7 @@ jobs:
         # Continue regardless of scraper result
         
         # Ensure artifacts are created even when empty
-        [ -f scripts/ensure_artifacts.py ] && python scripts/ensure_artifacts.py || true
+        [ -f ../scripts/ensure_artifacts.py ] && python ../scripts/ensure_artifacts.py || true
         
     - name: Upload logs and data artifacts
       if: always()
@@ -76,9 +78,10 @@ jobs:
       with:
         name: harris-dryrun-logs-${{ github.run_number }}
         path: |
-          logs/
-          data/
-          artifacts/
+          permit_leads/logs/**/*.log
+          permit_leads/logs/etl_output.log
+          permit_leads/data/
+          permit_leads/artifacts/**/*.csv
         retention-days: 7
     
   scrape-harris-permits:
@@ -99,8 +102,10 @@ jobs:
         pip install -r permit_leads/requirements.txt
         
     - name: Create data directory
+      working-directory: permit_leads
       run: |
         mkdir -p data/permits/{raw,aggregate}
+        mkdir -p logs artifacts
         
     - name: Check for 24h zero results
       id: check_recent
@@ -119,6 +124,7 @@ jobs:
         
     - name: Run Harris County permit scraper
       id: scrape
+      working-directory: permit_leads
       run: |
         DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
         [ "${{ inputs.sample_data }}" = "true" ] && export SAMPLE_DATA=1 || export SAMPLE_DATA=0
@@ -148,6 +154,7 @@ jobs:
         
     - name: Commit and push data
       if: ${{ steps.scrape.outputs.new_permits != '0' }}
+      working-directory: permit_leads
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -235,5 +242,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}
-        path: data/
+        path: |
+          permit_leads/data/
+          permit_leads/artifacts/**/*.csv
+          permit_leads/logs/**/*.log
+          permit_leads/logs/etl_output.log
         retention-days: 30

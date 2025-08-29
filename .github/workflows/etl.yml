@@ -24,9 +24,6 @@ env:
 jobs:
   etl:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: permit_leads
     
     steps:
       - name: Checkout repository
@@ -46,11 +43,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd ..
           poetry install --no-interaction
 
       - name: Run ETL scraping
         id: etl_run
+        working-directory: permit_leads
         env:
           HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -61,34 +58,29 @@ jobs:
           SINCE_PERIOD="${{ github.event.inputs.since || '1d' }}"
           echo "Running ETL with --since $SINCE_PERIOD"
           
-          # Create logs and artifacts directories
+          # Create logs and artifacts directories in permit_leads directory  
           mkdir -p logs artifacts
           
           # Run the ETL process
-          cd .. && poetry run python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
-          
-          # Move CSV files to artifacts directory if they exist
-          find . -name "*.csv" -not -path "./permit_leads/*" -exec mv {} permit_leads/artifacts/ \; 2>/dev/null || true
+          poetry run python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee logs/etl_output.log
           
           # Check if any records were processed
-          RECORD_COUNT=$(grep -o "Processed [0-9]* records" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
+          RECORD_COUNT=$(grep -o "Processed [0-9]* records" logs/etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
           echo "Records processed: $RECORD_COUNT"
           echo "record_count=$RECORD_COUNT" >> $GITHUB_OUTPUT
           
           # Save output for later use
           echo "ETL completed with $RECORD_COUNT records"
 
-      - name: Upload logs
+      - name: Upload ETL artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: etl-logs
-          path: permit_leads/logs/**/*.log
-
-      - name: Upload csv output
-        uses: actions/upload-artifact@v4
-        with:
-          name: etl-artifacts
-          path: permit_leads/artifacts/**/*.csv
+          name: etl-artifacts-${{ github.run_id }}
+          path: |
+            permit_leads/artifacts/**/*.csv
+            permit_leads/logs/**/*.log
+            permit_leads/logs/etl_output.log
+          if-no-files-found: warn
 
       - name: Run data ingestion
         if: steps.etl_run.outputs.record_count > 0 || github.event.inputs.force == 'true'
@@ -98,7 +90,7 @@ jobs:
         run: |
           # Run the ingestion step - assuming there's an ingest command
           echo "Running data ingestion..."
-          cd .. && poetry run python -c "
+          poetry run python -c "
           import sys
           import os
           sys.path.insert(0, 'backend')
@@ -177,22 +169,23 @@ jobs:
         with:
           name: etl-results-${{ github.run_id }}
           path: |
-            *.csv
-            *.log
-            etl_output.log
+            permit_leads/artifacts/**/*.csv
+            permit_leads/logs/**/*.log
+            permit_leads/logs/etl_output.log
           retention-days: 7
 
       - name: Update job summary
         if: always()
+        working-directory: permit_leads
         run: |
           echo "## ETL Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Time Period**: ${{ github.event.inputs.since || '1d' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Records Processed**: ${{ steps.etl_run.outputs.record_count }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: $([ '${{ steps.etl_run.outputs.record_count }}' -gt 0 ] && echo '✅ Success' || echo '⚠️ Zero Records')" >> $GITHUB_STEP_SUMMARY
           
-          if [ -f etl_output.log ]; then
+          if [ -f logs/etl_output.log ]; then
             echo "### ETL Output (last 20 lines)" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -20 etl_output.log >> $GITHUB_STEP_SUMMARY
+            tail -20 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi

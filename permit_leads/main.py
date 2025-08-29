@@ -62,8 +62,18 @@ def write_csv_output(permits: List[PermitRecord], output_paths: Dict[str, Path])
     csv_file = artifacts_dir / f"permits_{date_str}.csv"
     latest_csv = artifacts_dir / "permits_latest.csv"
     
-    storage = Storage(csv_path=csv_file)
-    storage.save_records(permits)
+    # Write CSV manually since Storage class expects db_path too
+    import csv
+    with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+        if permits:
+            # Get field names from the first permit
+            fieldnames = list(permits[0].dict().keys())
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for permit in permits:
+                writer.writerow(permit.dict())
+    
+    # Create symlink or copy for latest
     if latest_csv.is_symlink():
         latest_csv.unlink()
     elif latest_csv.exists():

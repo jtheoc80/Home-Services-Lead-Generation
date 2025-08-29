@@ -21,9 +21,6 @@ jobs:
   etl-harris:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: scripts
     
     steps:
       - name: Checkout repository
@@ -37,10 +34,10 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cd ..
           npm ci
       
       - name: Run Harris County ETL Delta Test
+        working-directory: scripts
         env:
           HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || 'https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -50,14 +47,11 @@ jobs:
           echo "Harris County URL: $HC_ISSUED_PERMITS_URL"
           echo "Supabase URL: $SUPABASE_URL"
           
-          # Create logs and artifacts directories
+          # Create logs and artifacts directories in scripts directory
           mkdir -p logs artifacts
           
           # Run the ETL delta test with JSON output for monitoring
-          cd .. && npx tsx scripts/etlDelta.ts 2>&1 | tee scripts/logs/etl-output.log
-          
-          # Move any CSV files to artifacts directory
-          find . -name "*.csv" -not -path "./scripts/*" -exec mv {} scripts/artifacts/ \; 2>/dev/null || true
+          npx tsx etlDelta.ts 2>&1 | tee logs/etl-output.log
           
           # Check exit code
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -69,6 +63,7 @@ jobs:
       
       - name: Extract JSON logs
         if: always()
+        working-directory: scripts
         run: |
           # Extract JSON summary from output for monitoring
           if [ -f logs/etl-output.log ]; then
@@ -81,20 +76,19 @@ jobs:
             echo '{"error": "No log file found"}' > logs/etl-summary.json
           fi
       
-      - name: Upload logs
+      - name: Upload ETL artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: etl-logs
-          path: scripts/logs/**/*.log
-
-      - name: Upload csv output
-        uses: actions/upload-artifact@v4
-        with:
-          name: etl-artifacts
-          path: scripts/artifacts/**/*.csv
+          name: etl-artifacts-${{ github.run_id }}
+          path: |
+            scripts/artifacts/**/*.csv
+            scripts/logs/**/*.log
+            scripts/logs/etl_output.log
+          if-no-files-found: warn
 
       - name: Check for stale data (24h failure protection)
         if: always()
+        working-directory: scripts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
