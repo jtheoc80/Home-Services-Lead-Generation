@@ -107,7 +107,7 @@ jobs:
           "
 
       - name: Ingest leads to PostgreSQL
-        if: env.DATABASE_URL != '' && hashFiles('../out/leads_recent.csv') != ''
+        if: env.DATABASE_URL != '' && hashFiles('out/leads_recent.csv') != ''
         run: |
           cd ..
           python backend/app/ingest.py out/leads_recent.csv
