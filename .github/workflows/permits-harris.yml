@@ -85,8 +85,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
+        pipx install poetry && poetry install --no-interaction --no-ansi
         
     - name: Create directories
       run: |
@@ -100,7 +99,7 @@ jobs:
         echo "ETL allow empty: ${ETL_ALLOW_EMPTY}"
         
         # Run with sample data for 1 day
-        python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose
+        poetry run python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose
         SCRAPER_EXIT_CODE=$?
         if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
           echo "::error::Harris County permit scraper failed with exit code $SCRAPER_EXIT_CODE"
@@ -185,10 +184,9 @@ jobs:
     - name: Install dependencies
       run: |
         cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
+        pipx install poetry && poetry install --no-interaction --no-ansi
         
-        
+
     - name: Create data directory
       run: |
         cd ..
@@ -298,7 +296,7 @@ jobs:
         
         echo "Scraping Harris County permits for the last ${DAYS} days..."
         echo "Sample data mode: ${SAMPLE_DATA}"
-        python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose
+        poetry run python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose
         
         # Count new permits from today's run
         TODAY=$(date +%Y-%m-%d)

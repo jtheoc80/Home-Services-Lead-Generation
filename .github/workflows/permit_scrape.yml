@@ -53,8 +53,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
+        pipx install poetry && poetry install --no-interaction --no-ansi
         
     - name: Create data directory
       run: |
@@ -65,16 +64,16 @@ jobs:
       run: |
         if [ "${{ github.event_name }}" = "schedule" ]; then
           # Scheduled run - use defaults
-          python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
+          poetry run python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
         else
           # Manual run - use inputs
           SOURCE="${{ github.event.inputs.source }}"
           DAYS="${{ github.event.inputs.days }}"
           
           if [ "$SOURCE" = "all" ]; then
-            python -m permit_leads --all --days "$DAYS" --formats csv sqlite jsonl
+            poetry run python -m permit_leads --all --days "$DAYS" --formats csv sqlite jsonl
           else
-            python -m permit_leads --source "$SOURCE" --days "$DAYS" --formats csv sqlite jsonl
+            poetry run python -m permit_leads --source "$SOURCE" --days "$DAYS" --formats csv sqlite jsonl
           fi
         fi
         
