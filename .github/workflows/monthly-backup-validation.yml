@@ -40,11 +40,11 @@ jobs:
     env:
       # Production Supabase (source)
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       
       # Staging Supabase (destination)
       STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-      STAGING_SUPABASE_SERVICE_ROLE: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE }}
+      STAGING_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
       
       # Notification settings
       SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
@@ -87,13 +87,13 @@ jobs:
           echo "Validating required environment variables..."
           
           # Check production Supabase
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE" ]; then
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
             echo "❌ Production Supabase credentials missing"
             exit 1
           fi
           
           # Check staging Supabase
-          if [ -z "$STAGING_SUPABASE_URL" ] || [ -z "$STAGING_SUPABASE_SERVICE_ROLE" ]; then
+          if [ -z "$STAGING_SUPABASE_URL" ] || [ -z "$STAGING_SUPABASE_SERVICE_ROLE_KEY" ]; then
             echo "❌ Staging Supabase credentials missing"
             exit 1
           fi
