@@ -237,10 +237,13 @@ jobs:
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
       run: |
-        DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
         
-        # Set SAMPLE_DATA using if/then for consistency
-        if [ "${{ inputs.sample_data }}" = "true" ]; then
+        # Set SAMPLE_DATA using bash default pattern
+        if [ "$SAMPLE" = "true" ]; then
           export SAMPLE_DATA=1
         else
           export SAMPLE_DATA=0
@@ -340,8 +343,8 @@ jobs:
         echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
         
-        # Set days default using shell logic instead of logical OR
-        DAYS_DISPLAY="${{ github.event.inputs.days }}"
+        # Set days default using shell logic
+        DAYS_DISPLAY="${{ inputs.days }}"
         [ -z "$DAYS_DISPLAY" ] && DAYS_DISPLAY="1"
         echo "- Days back: $DAYS_DISPLAY" >> $GITHUB_STEP_SUMMARY
         if [ "${SAMPLE_DATA}" = "1" ]; then
