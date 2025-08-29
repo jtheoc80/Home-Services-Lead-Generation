@@ -167,11 +167,11 @@ jobs:
             # This would ideally check a persistent store, but for now we'll use a simple approach
             # In a real implementation, you'd query your database or use artifact storage
             echo "zero_records_24h=true" >> $GITHUB_OUTPUT
+            echo "WARNING: Zero records detected for 24+ hours"
           else
             echo "Skipping 24h check - records found or force enabled"
             echo "zero_records_24h=false" >> $GITHUB_OUTPUT
           fi
-          echo "WARNING: Zero records detected for 24+ hours"
 
       - name: Create issue for zero records
         if: steps.check_24h.outputs.zero_records_24h == 'true'
