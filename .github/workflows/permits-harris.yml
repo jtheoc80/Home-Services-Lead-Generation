@@ -20,7 +20,7 @@ on:
 env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+  SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
 
 jobs:
   preflight:
@@ -71,7 +71,7 @@ jobs:
       SAMPLE_DATA: 1
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
     
     steps:
     - name: Checkout repository
@@ -170,10 +170,31 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
 
     
     steps:
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
+      run: |
+        ok=1
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+
     - name: Checkout repository
       uses: actions/checkout@v5
       
@@ -188,50 +209,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r permit_leads/requirements.txt
         
-        
     - name: Create data directory
       run: |
         cd ..
         mkdir -p data/permits/{raw,aggregate}
-        
-    - name: "Preflight: verify required secrets"
-      id: preflight
-      shell: bash
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
-      run: |
-        ok=1
-        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY HC_ISSUED_PERMITS_URL; do
-          val="${!v}"
-          if [ -z "$val" ]; then
-            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
-            ok=0
-          else
-            echo "::add-mask::$val"
-          fi
-        done
-        echo "ok=$ok" >> "$GITHUB_OUTPUT"
-        [ "$ok" -eq 1 ]
-
-    - name: "Preflight: test Supabase connectivity"
-      if: ${{ steps.preflight.outputs.ok == '1' }}
-      id: supa
-      shell: bash
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
-          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "http_code=$code" >> "$GITHUB_OUTPUT"
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::warning title=Supabase REST check failed::HTTP $code"
-        fi
         
     - name: Check for 24h zero results
       id: check_recent
@@ -248,49 +229,21 @@ jobs:
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${RECENT_FILES} recent Harris County files"
         
-    - name: Preflight checks
-      id: preflight
-      run: |
-        # Validate environment variables
-        if [ -z "$SUPABASE_URL" ]; then
-          echo "❌ SUPABASE_URL not set"
-          exit 1
-        fi
-        if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-          echo "❌ SUPABASE_SERVICE_ROLE_KEY not set"
-          exit 1
-        fi
-        echo "✅ Environment variables validated"
-        echo "ok=1" >> $GITHUB_OUTPUT
-        
-    - name: "Preflight: test Supabase REST"
-      if: ${{ steps.preflight.outputs.ok == '1' }}
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
-          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "HTTP=$code"
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::warning title=Supabase REST check failed::HTTP $code"
-        fi
-        
     - name: Run Harris County permit scraper
       if: ${{ steps.preflight.outputs.ok == '1' }}
       id: scrape
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
       run: |
-        DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
         
-        # Set SAMPLE_DATA using if/then for consistency
-        if [ "${{ inputs.sample_data }}" = "true" ]; then
+        # Set SAMPLE_DATA using bash default pattern
+        if [ "$SAMPLE" = "true" ]; then
           export SAMPLE_DATA=1
         else
           export SAMPLE_DATA=0
@@ -390,8 +343,8 @@ jobs:
         echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
         
-        # Set days default using shell logic instead of logical OR
-        DAYS_DISPLAY="${{ github.event.inputs.days }}"
+        # Set days default using shell logic
+        DAYS_DISPLAY="${{ inputs.days }}"
         [ -z "$DAYS_DISPLAY" ] && DAYS_DISPLAY="1"
         echo "- Days back: $DAYS_DISPLAY" >> $GITHUB_STEP_SUMMARY
         if [ "${SAMPLE_DATA}" = "1" ]; then

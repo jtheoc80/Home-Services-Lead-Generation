@@ -29,35 +29,46 @@ jobs:
     timeout-minutes: 30
     
     steps:
-    - name: Validate environment
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
+        INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
       run: |
-        if [ -z "${{ env.INGEST_API_KEY }}" ]; then
-          echo "❌ INGEST_API_KEY secret not configured"
-          exit 1
-        fi
-        if [ -z "${{ env.VERCEL_DOMAIN }}" ]; then
-          echo "❌ VERCEL_DOMAIN secret not configured"
-          exit 1
-        fi
-        echo "✅ Environment validated"
+        ok=1
+        for v in VERCEL_DOMAIN INGEST_API_KEY; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
         
     - name: Trigger permit ingestion
       id: ingest
+      env:
+        VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
+        INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
       run: |
-        # Set source default using shell logic instead of logical OR
-        SOURCE="${{ github.event.inputs.source }}"
+        # Set source default using shell logic
+        SOURCE="${{ inputs.source }}"
         [ -z "$SOURCE" ] && SOURCE="all"
         
         echo "🚀 Triggering permit ingestion for source: $SOURCE"
-        echo "📡 Target: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest"
+        echo "📡 Target: https://$VERCEL_DOMAIN/api/permits/ingest"
         
         # Make the API call to the Vercel endpoint
         RESPONSE=$(curl -s -w "\n%{http_code}" \
           -X POST \
           -H "Content-Type: application/json" \
-          -H "X-Ingest-Key: ${{ env.INGEST_API_KEY }}" \
+          -H "X-Ingest-Key: $INGEST_API_KEY" \
           -d "{\"source\": \"$SOURCE\"}" \
-          "https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest")
+          "https://$VERCEL_DOMAIN/api/permits/ingest")
         
         # Extract status code from response
         HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
@@ -91,8 +102,8 @@ jobs:
     - name: Workflow Summary
       if: always()
       run: |
-        # Set defaults and status using shell logic instead of ternary/logical OR
-        SOURCE="${{ github.event.inputs.source }}"
+        # Set defaults and status using shell logic
+        SOURCE="${{ inputs.source }}"
         [ -z "$SOURCE" ] && SOURCE="all"
         
         if [ "${{ steps.ingest.outputs.success }}" = "true" ]; then
