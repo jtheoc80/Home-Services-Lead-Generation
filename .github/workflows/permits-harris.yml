@@ -121,11 +121,11 @@ jobs:
       id: preflight
       run: |
         # Validate environment variables
-        if [ -z "${{ env.SUPABASE_URL }}" ]; then
+        if [ -z "$SUPABASE_URL" ]; then
           echo "❌ SUPABASE_URL not set"
           exit 1
         fi
-        if [ -z "${{ env.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+        if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
           echo "❌ SUPABASE_SERVICE_ROLE_KEY not set"
           exit 1
         fi
