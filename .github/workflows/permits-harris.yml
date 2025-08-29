@@ -338,6 +338,7 @@ jobs:
         git push
         
 
+
     - name: Write job summary
       run: |
 
@@ -431,6 +432,7 @@ jobs:
 
 
 
+
     - name: Set date output
       id: set_date
       run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
@@ -454,3 +456,28 @@ jobs:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}
         path: ../data/
         retention-days: 30
+
+    - name: Write scrape summary
+      if: always()
+      run: |
+        # Set up variables
+        DAYS="${{ github.event.inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        
+        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
+          SAMPLE="1"
+        else
+          SAMPLE="0"
+        fi
+        
+        echo "### Scrape Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Secrets: $([ '${{ steps.preflight.outputs.ok }}' = '1' ] && echo '✅ present' || echo '❌ missing')" >> $GITHUB_STEP_SUMMARY
+        # Check Supabase REST status
+        if [ "${{ steps.supa.outputs.http_code }}" = "200" ] || [ "${{ steps.supa.outputs.http_code }}" = "206" ]; then
+          SUPABASE_REST_STATUS="✅ ok"
+        else
+          SUPABASE_REST_STATUS="❌ failed"
+        fi
+        echo "- Supabase REST: ${SUPABASE_REST_STATUS}" >> $GITHUB_STEP_SUMMARY
+        echo "- Days: $DAYS, Sample: $SAMPLE" >> $GITHUB_STEP_SUMMARY
+        echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
