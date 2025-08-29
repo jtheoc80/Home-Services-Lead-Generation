@@ -80,8 +80,6 @@ jobs:
           python permit_leads/main.py --days $DAYS --outdir out
 
 
-          # Use same logic for second python script
-
           python main.py --days $DAYS --outdir ../out
 
 
