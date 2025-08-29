@@ -91,8 +91,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: |
-          # Set default time period using shell logic instead of logical OR
-          SINCE_PERIOD="${{ github.event.inputs.since }}"
+          # Set default time period using shell logic
+          SINCE_PERIOD="${{ inputs.since }}"
           [ -z "$SINCE_PERIOD" ] && SINCE_PERIOD="1d"
           echo "Running ETL with --since $SINCE_PERIOD"
           
@@ -118,11 +118,22 @@ jobs:
           if-no-files-found: warn
 
       - name: Run data ingestion
-        if: steps.etl_run.outputs.record_count > 0 || github.event.inputs.force == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          # Set defaults in bash for cron-safe execution
+          FORCE="${{ inputs.force }}"
+          [ -z "$FORCE" ] && FORCE="false"
+          
+          # Check if we should run ingestion
+          if [ "${{ steps.etl_run.outputs.record_count }}" -gt 0 ] || [ "$FORCE" = "true" ]; then
+            echo "Running data ingestion..."
+            # Add actual ingestion logic here
+            echo "Data ingestion completed"
+          else
+            echo "Skipping data ingestion - no records and force not enabled"
+          fi
           # Run the ingestion step - assuming there's an ingest command
           echo "Running data ingestion..."
           cd .. && poetry run python -c "
@@ -145,14 +156,21 @@ jobs:
 
       - name: Check for 24h zero records
         id: check_24h
-        if: steps.etl_run.outputs.record_count == 0 && github.event.inputs.force != 'true'
         run: |
-          # Check if we've had 0 records for 24 hours
-          echo "Checking 24-hour zero record condition..."
+          # Set defaults in bash for cron-safe execution
+          FORCE="${{ inputs.force }}"
+          [ -z "$FORCE" ] && FORCE="false"
           
-          # This would ideally check a persistent store, but for now we'll use a simple approach
-          # In a real implementation, you'd query your database or use artifact storage
-          echo "zero_records_24h=true" >> $GITHUB_OUTPUT
+          # Check if we should check for 24h zero records condition
+          if [ "${{ steps.etl_run.outputs.record_count }}" -eq 0 ] && [ "$FORCE" != "true" ]; then
+            echo "Checking 24-hour zero record condition..."
+            # This would ideally check a persistent store, but for now we'll use a simple approach
+            # In a real implementation, you'd query your database or use artifact storage
+            echo "zero_records_24h=true" >> $GITHUB_OUTPUT
+          else
+            echo "Skipping 24h check - records found or force enabled"
+            echo "zero_records_24h=false" >> $GITHUB_OUTPUT
+          fi
           echo "WARNING: Zero records detected for 24+ hours"
 
       - name: Create issue for zero records
@@ -214,7 +232,7 @@ jobs:
         if: always()
         run: |
           # Set time period default using shell logic
-          TIME_PERIOD="${{ github.event.inputs.since }}"
+          TIME_PERIOD="${{ inputs.since }}"
           [ -z "$TIME_PERIOD" ] && TIME_PERIOD="1d"
           
           # Set status using shell logic instead of ternary

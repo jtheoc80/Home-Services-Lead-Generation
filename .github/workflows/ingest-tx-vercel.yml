@@ -44,8 +44,8 @@ jobs:
     - name: Trigger permit ingestion
       id: ingest
       run: |
-        # Set source default using shell logic instead of logical OR
-        SOURCE="${{ github.event.inputs.source }}"
+        # Set source default using shell logic
+        SOURCE="${{ inputs.source }}"
         [ -z "$SOURCE" ] && SOURCE="all"
         
         echo "🚀 Triggering permit ingestion for source: $SOURCE"
@@ -91,8 +91,8 @@ jobs:
     - name: Workflow Summary
       if: always()
       run: |
-        # Set defaults and status using shell logic instead of ternary/logical OR
-        SOURCE="${{ github.event.inputs.source }}"
+        # Set defaults and status using shell logic
+        SOURCE="${{ inputs.source }}"
         [ -z "$SOURCE" ] && SOURCE="all"
         
         if [ "${{ steps.ingest.outputs.success }}" = "true" ]; then
