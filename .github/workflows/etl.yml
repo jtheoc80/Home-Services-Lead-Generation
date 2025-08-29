@@ -110,12 +110,13 @@ jobs:
       - name: Upload ETL artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: etl-artifacts-${{ github.run_id }}
+          name: etl-${{ github.run_id }}
           path: |
             artifacts/**/*.csv
             logs/**/*.log
             logs/etl_output.log
           if-no-files-found: warn
+          retention-days: 14
 
       - name: Run data ingestion
         env:
@@ -225,7 +226,7 @@ jobs:
             artifacts/**/*.csv
             logs/**/*.log
             logs/etl_output.log
-          retention-days: 7
+          retention-days: 14
           if-no-files-found: warn
 
       - name: Update job summary

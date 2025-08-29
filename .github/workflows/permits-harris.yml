@@ -113,12 +113,13 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: etl-artifacts-${{ github.run_id }}
+        name: etl-${{ github.run_id }}
         path: |
           artifacts/**/*.csv
           logs/**/*.log
           logs/etl_output.log
         if-no-files-found: warn
+        retention-days: 14
         
     - name: Generate dryrun summary
       if: always()
@@ -142,13 +143,6 @@ jobs:
     - name: Upload logs and data artifacts
       if: always()
       uses: actions/upload-artifact@v4
-      with:
-        name: harris-dryrun-logs-${{ github.run_number }}
-        path: |
-          ../logs/
-          ../data/
-          ../artifacts/
-        retention-days: 7
       with:
         name: harris-dryrun-logs-${{ github.run_number }}
         path: |
@@ -440,12 +434,13 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: etl-artifacts-${{ github.run_id }}
+        name: etl-${{ github.run_id }}
         path: |
           artifacts/**/*.csv
           logs/**/*.log
           logs/etl_output.log
         if-no-files-found: warn
+        retention-days: 14
         
     - name: Upload data artifacts
       if: ${{ steps.scrape.outputs.new_permits != '0' }}

@@ -121,5 +121,14 @@ jobs:
         cat > logs/summary.json << EOF
         {"timestamp": "$(date -u)", "total_fetched": "${{ steps.ingest.outputs.total_fetched }}", "total_upserts": "${{ steps.ingest.outputs.total_upserts }}", "total_errors": "${{ steps.ingest.outputs.total_errors }}"}
         EOF
-    - name: Upload artifact
+    - name: Upload ETL artifacts
+      if: always()
       uses: actions/upload-artifact@v4
+      with:
+        name: etl-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        retention-days: 14
