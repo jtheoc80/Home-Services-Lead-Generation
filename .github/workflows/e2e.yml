@@ -192,7 +192,7 @@ jobs:
             
             let resultEmoji = '✅';
             let resultText = 'passed';
-            // Replace strict equality with loose equality
+            
             let deltaResultText = supabaseOutcome == 'success' ? 'passed' : 'failed';
             let deltaEmoji = supabaseOutcome == 'success' ? '✅' : '❌';
             
