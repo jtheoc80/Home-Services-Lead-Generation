@@ -20,7 +20,7 @@ on:
 env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+  SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
 
 jobs:
   preflight:
@@ -71,7 +71,7 @@ jobs:
       SAMPLE_DATA: 1
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
     
     steps:
     - name: Checkout repository
@@ -85,8 +85,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
+        pipx install poetry && poetry install --no-interaction --no-ansi
         
     - name: Create directories
       run: |
@@ -100,7 +99,11 @@ jobs:
         echo "ETL allow empty: ${ETL_ALLOW_EMPTY}"
         
         # Run with sample data for 1 day
+
         python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose --retries 5
+
+        poetry run python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose
+
         SCRAPER_EXIT_CODE=$?
         if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
           echo "::error::Harris County permit scraper failed with exit code $SCRAPER_EXIT_CODE"
@@ -114,12 +117,13 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: etl-artifacts-${{ github.run_id }}
+        name: etl-${{ github.run_id }}
         path: |
           artifacts/**/*.csv
           logs/**/*.log
           logs/etl_output.log
         if-no-files-found: warn
+        retention-days: 14
         
     - name: Generate dryrun summary
       if: always()
@@ -146,13 +150,6 @@ jobs:
       with:
         name: harris-dryrun-logs-${{ github.run_number }}
         path: |
-          ../logs/
-          ../data/
-          ../artifacts/
-        retention-days: 7
-      with:
-        name: harris-dryrun-logs-${{ github.run_number }}
-        path: |
           logs/
           data/
           artifacts/
@@ -174,7 +171,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
 
     
     steps:
@@ -189,25 +186,25 @@ jobs:
     - name: Install dependencies
       run: |
         cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
+        pipx install poetry && poetry install --no-interaction --no-ansi
         
-        
+
     - name: Create data directory
       run: |
         cd ..
         mkdir -p data/permits/{raw,aggregate}
         
+
     - name: "Preflight: verify required secrets"
       id: preflight
       shell: bash
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
       run: |
         ok=1
-        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY HC_ISSUED_PERMITS_URL; do
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
           val="${!v}"
           if [ -z "$val" ]; then
             echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
@@ -219,9 +216,9 @@ jobs:
         echo "ok=$ok" >> "$GITHUB_OUTPUT"
         [ "$ok" -eq 1 ]
 
-    - name: "Preflight: test Supabase connectivity"
+
+    - name: "Preflight: Supabase REST check"
       if: ${{ steps.preflight.outputs.ok == '1' }}
-      id: supa
       shell: bash
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -232,10 +229,41 @@ jobs:
           -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
           -H "Prefer: count=exact, head=true" \
           "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "http_code=$code" >> "$GITHUB_OUTPUT"
+        echo "HTTP=$code"
         if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::warning title=Supabase REST check failed::HTTP $code"
+          echo "::error title=Supabase REST failed::HTTP $code from $SUPABASE_URL"
+          exit 1
         fi
+
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          "$SUPABASE_URL")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "404" ]; then
+          echo "::error title=Supabase connectivity failed::HTTP $code from $SUPABASE_URL"
+          exit 1
+        fi
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+
+      run: |
+        cd ..
+        python -m pip install --upgrade pip
+        pip install -r permit_leads/requirements.txt
+        
+    - name: Create data directory
+      run: |
+        cd ..
+        mkdir -p data/permits/{raw,aggregate}
         
     - name: Check for 24h zero results
       id: check_recent
@@ -252,49 +280,21 @@ jobs:
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${RECENT_FILES} recent Harris County files"
         
-    - name: Preflight checks
-      id: preflight
-      run: |
-        # Validate environment variables
-        if [ -z "$SUPABASE_URL" ]; then
-          echo "❌ SUPABASE_URL not set"
-          exit 1
-        fi
-        if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-          echo "❌ SUPABASE_SERVICE_ROLE_KEY not set"
-          exit 1
-        fi
-        echo "✅ Environment variables validated"
-        echo "ok=1" >> $GITHUB_OUTPUT
-        
-    - name: "Preflight: test Supabase REST"
-      if: ${{ steps.preflight.outputs.ok == '1' }}
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
-          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "HTTP=$code"
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::warning title=Supabase REST check failed::HTTP $code"
-        fi
-        
     - name: Run Harris County permit scraper
       if: ${{ steps.preflight.outputs.ok == '1' }}
       id: scrape
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
       run: |
-        DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
         
-        # Set SAMPLE_DATA using if/then for consistency
-        if [ "${{ inputs.sample_data }}" = "true" ]; then
+        # Set SAMPLE_DATA using bash default pattern
+        if [ "$SAMPLE" = "true" ]; then
           export SAMPLE_DATA=1
         else
           export SAMPLE_DATA=0
@@ -302,7 +302,11 @@ jobs:
         
         echo "Scraping Harris County permits for the last ${DAYS} days..."
         echo "Sample data mode: ${SAMPLE_DATA}"
+
         python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose --retries 5
+
+        poetry run python -m permit_leads scrape --jurisdiction tx-harris --days "${DAYS}" --formats csv sqlite jsonl --verbose
+
         
         # Count new permits from today's run
         TODAY=$(date +%Y-%m-%d)
@@ -394,8 +398,8 @@ jobs:
         echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
         
-        # Set days default using shell logic instead of logical OR
-        DAYS_DISPLAY="${{ github.event.inputs.days }}"
+        # Set days default using shell logic
+        DAYS_DISPLAY="${{ inputs.days }}"
         [ -z "$DAYS_DISPLAY" ] && DAYS_DISPLAY="1"
         echo "- Days back: $DAYS_DISPLAY" >> $GITHUB_STEP_SUMMARY
         if [ "${SAMPLE_DATA}" = "1" ]; then
@@ -442,12 +446,13 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: etl-artifacts-${{ github.run_id }}
+        name: etl-${{ github.run_id }}
         path: |
           artifacts/**/*.csv
           logs/**/*.log
           logs/etl_output.log
         if-no-files-found: warn
+        retention-days: 14
         
     - name: Upload data artifacts
       if: ${{ steps.scrape.outputs.new_permits != '0' }}
