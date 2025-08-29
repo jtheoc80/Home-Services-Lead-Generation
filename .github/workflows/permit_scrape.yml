@@ -25,14 +25,20 @@ on:
         default: false
         type: boolean
 
-env:
-  SAMPLE_DATA: ${{ github.event.inputs.sample_data == 'true' && '1' || '0' }}
-
 jobs:
   scrape-permits:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Set environment variables 
+      run: |
+        # Set SAMPLE_DATA using shell logic instead of ternary
+        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
+          echo "SAMPLE_DATA=1" >> $GITHUB_ENV
+        else
+          echo "SAMPLE_DATA=0" >> $GITHUB_ENV
+        fi
+        
     - name: Checkout repository
       uses: actions/checkout@v5
       
@@ -132,9 +138,24 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Run details:**" >> $GITHUB_STEP_SUMMARY
-        echo "- Source: ${{ github.event.inputs.source || 'city_of_houston' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Sample data: ${{ env.SAMPLE_DATA == '1' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+        
+        # Set defaults using shell logic instead of logical OR
+        SOURCE="${{ github.event.inputs.source }}"
+        [ -z "$SOURCE" ] && SOURCE="city_of_houston"
+        
+        DAYS="${{ github.event.inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        
+        # Set sample data display using shell logic instead of ternary
+        if [ "${{ env.SAMPLE_DATA }}" = "1" ]; then
+          SAMPLE_DISPLAY="Yes"
+        else
+          SAMPLE_DISPLAY="No"
+        fi
+        
+        echo "- Source: $SOURCE" >> $GITHUB_STEP_SUMMARY
+        echo "- Days back: $DAYS" >> $GITHUB_STEP_SUMMARY
+        echo "- Sample data: $SAMPLE_DISPLAY" >> $GITHUB_STEP_SUMMARY
         echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         
     - name: Upload data artifacts

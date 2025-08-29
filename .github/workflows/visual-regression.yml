@@ -40,14 +40,23 @@ jobs:
     env:
       FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
       BACKEND_URL: ${{ secrets.BACKEND_URL }}
-      PIXEL_DIFF_THRESHOLD: ${{ github.event.inputs.threshold || '0.05' }}
-      BASELINE_MODE: ${{ github.event.inputs.baseline_mode || 'false' }}
       
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Set environment variables
+        run: |
+          # Set defaults using shell logic instead of logical OR
+          THRESHOLD="${{ github.event.inputs.threshold }}"
+          [ -z "$THRESHOLD" ] && THRESHOLD="0.05"
+          echo "PIXEL_DIFF_THRESHOLD=$THRESHOLD" >> $GITHUB_ENV
+          
+          BASELINE="${{ github.event.inputs.baseline_mode }}"
+          [ -z "$BASELINE" ] && BASELINE="false" 
+          echo "BASELINE_MODE=$BASELINE" >> $GITHUB_ENV
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

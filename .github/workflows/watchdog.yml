@@ -51,7 +51,8 @@ jobs:
             const issues = await github.rest.search.issuesAndPullRequests({
               q: `repo:${owner}/${repo} is:issue in:title "${title}" state:open`
             });
-            if (issues.data.total_count === 0) {
+            // Replace strict equality with loose equality
+            if (issues.data.total_count == 0) {
               await github.rest.issues.create({ owner, repo, title, body, labels: ["ingest","watchdog"] });
             } else {
               const number = issues.data.items[0].number;

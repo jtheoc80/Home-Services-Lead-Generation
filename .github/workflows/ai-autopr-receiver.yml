@@ -15,10 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Set token variable
+        run: |
+          # Set token using shell logic instead of logical OR
+          TOKEN="${{ secrets.GITHUB_TOKEN_BOT }}"
+          [ -z "$TOKEN" ] && TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          echo "CHECKOUT_TOKEN=$TOKEN" >> $GITHUB_ENV
+          
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN_BOT || secrets.GITHUB_TOKEN }}
+          token: ${{ env.CHECKOUT_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js 20

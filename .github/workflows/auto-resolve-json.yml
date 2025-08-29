@@ -49,7 +49,8 @@ jobs:
             
             // Determine PR number
             let prNumber;
-            if (context.eventName === 'workflow_dispatch') {
+            // Replace strict equality with loose equality
+            if (context.eventName == 'workflow_dispatch') {
               prNumber = core.getInput('pr_number', { required: true });
             } else {
               prNumber = context.payload.issue.number;
@@ -154,8 +155,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const hasConflicts = '${{ steps.merge-attempt.outputs.has_conflicts }}' === 'true';
-            const hasChanges = '${{ steps.changes.outputs.has_changes }}' === 'true';
+            // Replace strict equality with loose equality
+            const hasConflicts = '${{ steps.merge-attempt.outputs.has_conflicts }}' == 'true';
+            const hasChanges = '${{ steps.changes.outputs.has_changes }}' == 'true';
             const actor = '${{ steps.context.outputs.actor }}';
             const strategy = '${{ steps.strategy.outputs.prefer }}';
             
