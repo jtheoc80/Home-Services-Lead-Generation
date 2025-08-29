@@ -68,7 +68,7 @@ This document lists the required GitHub repository secrets needed for the automa
 
 ---
 
-### 5. `STAGING_SUPABASE_SERVICE_ROLE`
+### 5. `STAGING_SUPABASE_SERVICE_ROLE_KEY`
 
 **Description:** Staging Supabase service role key for backup validation operations.
 
@@ -126,7 +126,7 @@ After adding all secrets, you should see:
 - ✅ `SUPABASE_SERVICE_ROLE_KEY`  
 - ✅ `HC_ISSUED_PERMITS_URL`
 - ✅ `STAGING_SUPABASE_URL`
-- ✅ `STAGING_SUPABASE_SERVICE_ROLE`
+- ✅ `STAGING_SUPABASE_SERVICE_ROLE_KEY`
 - ✅ `CRON_SECRET`
 - ✅ `VERCEL_DOMAIN`
 
@@ -140,7 +140,7 @@ gh secret set SUPABASE_URL
 gh secret set SUPABASE_SERVICE_ROLE_KEY  
 gh secret set HC_ISSUED_PERMITS_URL
 gh secret set STAGING_SUPABASE_URL
-gh secret set STAGING_SUPABASE_SERVICE_ROLE
+gh secret set STAGING_SUPABASE_SERVICE_ROLE_KEY
 gh secret set CRON_SECRET
 gh secret set VERCEL_DOMAIN
 
@@ -149,7 +149,7 @@ gh secret set SUPABASE_URL --body "https://your-project-id.supabase.co"
 gh secret set SUPABASE_SERVICE_ROLE_KEY --body "your-service-role-key-here"
 gh secret set HC_ISSUED_PERMITS_URL --body "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
 gh secret set STAGING_SUPABASE_URL --body "https://your-staging-project-id.supabase.co"
-gh secret set STAGING_SUPABASE_SERVICE_ROLE --body "your-staging-service-role-key-here"
+gh secret set STAGING_SUPABASE_SERVICE_ROLE_KEY --body "your-staging-service-role-key-here"
 gh secret set CRON_SECRET --body "your-secure-cron-secret-here"
 gh secret set VERCEL_DOMAIN --body "your-app.vercel.app"
 ```

@@ -33,7 +33,7 @@ The repository uses GitHub Actions workflows that require various secrets for ex
   - Used by: `monthly-backup-validation.yml`
   - Required for: Backup restoration testing
 
-- **`STAGING_SUPABASE_SERVICE_ROLE`** - Staging Supabase service role key
+- **`STAGING_SUPABASE_SERVICE_ROLE_KEY`** - Staging Supabase service role key
   - Format: `eyJ...` (JWT token)
   - Used by: `monthly-backup-validation.yml`  
   - Required for: Staging database operations during backup validation
@@ -62,9 +62,9 @@ The repository uses GitHub Actions workflows that require various secrets for ex
 ### Monthly Backup Validation (`monthly-backup-validation.yml`)
 **Required secrets:**
 - `SUPABASE_URL` (production)
-- `SUPABASE_SERVICE_ROLE` (production)
+- `SUPABASE_SERVICE_ROLE_KEY` (production)
 - `STAGING_SUPABASE_URL`
-- `STAGING_SUPABASE_SERVICE_ROLE`
+- `STAGING_SUPABASE_SERVICE_ROLE_KEY`
 
 **Optional secrets:**
 - `SLACK_WEBHOOK` (for notifications)
