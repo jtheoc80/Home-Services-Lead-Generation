@@ -2,28 +2,17 @@ name: Nightly Permit Scraper
 
 on:
   schedule:
-    # Run daily at 6 AM UTC (1 AM CST/2 AM CDT)
-    - cron: '0 6 * * *'
+    - cron: "15 6 * * *"  # 06:15 UTC
   workflow_dispatch:
     inputs:
-      source:
-        description: 'Scraper source to run'
-        required: false
-        default: 'city_of_houston'
-        type: choice
-        options:
-          - 'city_of_houston'
-          - 'all'
       days:
-        description: 'Days to look back'
-        required: false
-        default: '1'
-        type: string
+        description: "Days back"
+        default: "1"
       sample_data:
-        description: 'Use sample data (for testing)'
-        required: false
-        default: false
-        type: boolean
+        description: "Sample mode"
+        type: choice
+        options: ["false","true"]
+        default: "false"
 
 jobs:
   scrape-permits:
@@ -58,9 +47,11 @@ jobs:
           # Scheduled run - use defaults
           poetry run python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
         else
-          # Manual run - use inputs
-          SOURCE="${{ github.event.inputs.source }}"
+          # Manual run - use inputs (default to city_of_houston since source input was removed)
           DAYS="${{ github.event.inputs.days }}"
+
+          python -m permit_leads --source city_of_houston --days "$DAYS" --formats csv sqlite jsonl
+
           
           if [ "$SOURCE" = "all" ]; then
             poetry run python -m permit_leads --all --days "$DAYS" --formats csv sqlite jsonl
@@ -88,6 +79,7 @@ jobs:
           python -m permit_leads --all --days "$DAYS" --formats csv sqlite jsonl
         else
           python -m permit_leads --source "$SOURCE" --days "$DAYS" --formats csv sqlite jsonl
+
 
         fi
         
@@ -157,11 +149,16 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Run details:**" >> $GITHUB_STEP_SUMMARY
         
+
+        # Set defaults using shell logic
+        DAYS="${{ github.event.inputs.days }}"
+
         # Set defaults using shell logic for summary
         SOURCE="${{ inputs.source }}"
         [ -z "$SOURCE" ] && SOURCE="city_of_houston"
         
         DAYS="${{ inputs.days }}"
+
         [ -z "$DAYS" ] && DAYS="1"
         
         SAMPLE="${{ inputs.sample_data }}"
@@ -174,7 +171,7 @@ jobs:
           SAMPLE_DISPLAY="No"
         fi
         
-        echo "- Source: $SOURCE" >> $GITHUB_STEP_SUMMARY
+        echo "- Source: city_of_houston" >> $GITHUB_STEP_SUMMARY
         echo "- Days back: $DAYS" >> $GITHUB_STEP_SUMMARY
         echo "- Sample data: $SAMPLE_DISPLAY" >> $GITHUB_STEP_SUMMARY
         echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
