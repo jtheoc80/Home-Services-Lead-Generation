@@ -186,12 +186,15 @@ jobs:
           script: |
             const fs = require('fs');
             
+            // Compute status strings first in JS
+            const deltaOutcome = '${{ steps.supabase-delta-test.outcome }}';
+            const deltaResultText = deltaOutcome === 'success' ? 'passed' : 'failed';
+            const deltaEmoji = deltaOutcome === 'success' ? '✅' : '❌';
+            
             let resultEmoji = '✅';
             let resultText = 'passed';
-            let deltaResultText = '${{ steps.supabase-delta-test.outcome }}' === 'success' ? 'passed' : 'failed';
-            let deltaEmoji = '${{ steps.supabase-delta-test.outcome }}' === 'success' ? '✅' : '❌';
             
-            if ('${{ steps.e2e-test.outcome }}' !== 'success' || '${{ steps.supabase-delta-test.outcome }}' !== 'success') {
+            if ('${{ steps.e2e-test.outcome }}' !== 'success' || deltaOutcome !== 'success') {
               resultEmoji = '❌';
               resultText = 'failed';
             }

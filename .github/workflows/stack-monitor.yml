@@ -417,12 +417,16 @@ jobs:
       - name: Report workflow summary
         if: always()
         run: |
+          # Compute status strings first in bash
+          health_check_str=$([ "${{ steps.health_check.outputs.health_check_failed }}" = "false" ] && echo "✅ Passed" || echo "❌ Failed")
+          auto_remediate_str=$([ "${{ vars.AUTO_REMEDIATE }}" = "true" ] && echo "✅ Enabled" || echo "❌ Disabled")
+          
           echo "## Stack Monitor Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Node Version:** ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Health Check Result:** ${{ steps.health_check.outputs.health_check_failed == 'false' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Auto-remediation:** ${{ vars.AUTO_REMEDIATE == 'true' && '✅ Enabled' || '❌ Disabled' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check Result:** $health_check_str" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auto-remediation:** $auto_remediate_str" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
 

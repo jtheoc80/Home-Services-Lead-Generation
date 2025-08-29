@@ -89,11 +89,14 @@ jobs:
     - name: Workflow Summary
       if: always()
       run: |
+        # Compute status strings first in bash
+        status_str=$([ "${{ steps.ingest.outputs.success }}" = "true" ] && echo "✅ Success" || echo "❌ Failed")
+        
         echo "## TX Permits Ingestion Summary (Vercel API)" >> $GITHUB_STEP_SUMMARY
         echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Source**: ${{ github.event.inputs.source || 'all' }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Target**: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest" >> $GITHUB_STEP_SUMMARY
-        echo "- **Status**: ${{ steps.ingest.outputs.success == 'true' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: $status_str" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ steps.ingest.outputs.success }}" == "true" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY

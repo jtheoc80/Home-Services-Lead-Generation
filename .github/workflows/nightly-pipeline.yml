@@ -192,9 +192,12 @@ jobs:
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🕒 Completed At | $END_TIME |" >> $GITHUB_STEP_SUMMARY
           echo "| 📍 Scope | Houston counties only |" >> $GITHUB_STEP_SUMMARY
+          # Compute status strings first in bash
+          db_status_str=$([ -n "${{ env.DATABASE_URL }}" ] && echo "Connected" || echo "Not configured")
+          
           echo "| 📅 Days Scraped | ${{ github.event.inputs.days || '14' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📋 Leads | $LEAD_COUNT |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🗄️ Database | ${{ env.DATABASE_URL != '' && 'Connected' || 'Not configured' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🗄️ Database | $db_status_str |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔧 Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 

@@ -25,14 +25,17 @@ on:
         default: false
         type: boolean
 
-env:
-  SAMPLE_DATA: ${{ github.event.inputs.sample_data == 'true' && '1' || '0' }}
-
 jobs:
   scrape-permits:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Compute environment variables
+      id: compute_env
+      run: |
+        # Compute environment variables first in bash
+        sample_data_value=$([ "${{ github.event.inputs.sample_data }}" = "true" ] && echo "1" || echo "0")
+        echo "SAMPLE_DATA=$sample_data_value" >> $GITHUB_ENV
     - name: Checkout repository
       uses: actions/checkout@v5
       
@@ -132,9 +135,12 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Run details:**" >> $GITHUB_STEP_SUMMARY
+        # Compute status strings first in bash
+        sample_data_str=$([ "${{ env.SAMPLE_DATA }}" = "1" ] && echo "Yes" || echo "No")
+        
         echo "- Source: ${{ github.event.inputs.source || 'city_of_houston' }}" >> $GITHUB_STEP_SUMMARY
         echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Sample data: ${{ env.SAMPLE_DATA == '1' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Sample data: $sample_data_str" >> $GITHUB_STEP_SUMMARY
         echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         
     - name: Upload data artifacts

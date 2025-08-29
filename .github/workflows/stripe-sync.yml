@@ -40,9 +40,12 @@ jobs:
 
       - name: Generate diff summary
         run: |
+          # Compute status strings first in bash
+          run_type_str=$([ "${{ github.event.inputs.dry_run }}" = "true" ] && echo "Dry Run (Preview)" || echo "Live Sync")
+          
           echo "## Stripe Product Sync Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run Type:** ${{ github.event.inputs.dry_run == 'true' && 'Dry Run (Preview)' || 'Live Sync' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Type:** $run_type_str" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

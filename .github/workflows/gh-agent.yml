@@ -97,11 +97,14 @@ jobs:
       - name: Workflow Summary
         if: always()
         run: |
+          # Compute status strings first in bash
+          status_str=$([ "${{ steps.agent.outcome }}" = "success" ] && echo "✅ Completed" || echo "❌ Failed")
+          
           echo "## GitHub Agent Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Schedule:** Every 15 minutes" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status:** ${{ steps.agent.outcome == 'success' && '✅ Completed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** $status_str" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ steps.agent.outcome }}" = "success" ]; then
             RESPONSE="${{ steps.agent.outputs.response }}"
