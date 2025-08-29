@@ -26,44 +26,44 @@ class RegionAwareAdapter:
         """Get all active jurisdictions from config."""
         return self.config_loader.get_active_jurisdictions()
     
-    def create_scraper(self, jurisdiction: Jurisdiction):
+    def create_scraper(self, jurisdiction: Jurisdiction, max_retries: int = 3):
         """Create appropriate scraper for jurisdiction based on provider type."""
         
         if jurisdiction.provider == 'arcgis':
-            return self._create_arcgis_scraper(jurisdiction)
+            return self._create_arcgis_scraper(jurisdiction, max_retries)
         elif jurisdiction.provider == 'accela':
-            return self._create_accela_scraper(jurisdiction)
+            return self._create_accela_scraper(jurisdiction, max_retries)
         elif jurisdiction.provider == 'opengov':
-            return self._create_opengov_scraper(jurisdiction)
+            return self._create_opengov_scraper(jurisdiction, max_retries)
         elif jurisdiction.provider == 'html':
-            return self._create_html_scraper(jurisdiction)
+            return self._create_html_scraper(jurisdiction, max_retries)
         else:
             raise ValueError(f"Unknown provider type: {jurisdiction.provider}")
     
-    def _create_arcgis_scraper(self, jurisdiction: Jurisdiction):
+    def _create_arcgis_scraper(self, jurisdiction: Jurisdiction, max_retries: int = 3):
         """Create ArcGIS Feature Server scraper."""
         # Use ETL-aware adapter for Harris County to enable state tracking
         if 'harris' in jurisdiction.slug.lower():
             from .adapters.etl_aware_arcgis_adapter import ETLAwareArcGISAdapter
-            return ETLAwareArcGISAdapter(jurisdiction)
+            return ETLAwareArcGISAdapter(jurisdiction, max_retries=max_retries)
         else:
             from .adapters.arcgis_adapter import ArcGISAdapter
-            return ArcGISAdapter(jurisdiction)
+            return ArcGISAdapter(jurisdiction, max_retries=max_retries)
     
-    def _create_accela_scraper(self, jurisdiction: Jurisdiction):
+    def _create_accela_scraper(self, jurisdiction: Jurisdiction, max_retries: int = 3):
         """Create Accela HTML scraper."""
         from .adapters.accela_adapter import AccelaAdapter
-        return AccelaAdapter(jurisdiction)
+        return AccelaAdapter(jurisdiction, max_retries=max_retries)
     
-    def _create_opengov_scraper(self, jurisdiction: Jurisdiction):
+    def _create_opengov_scraper(self, jurisdiction: Jurisdiction, max_retries: int = 3):
         """Create OpenGov API scraper."""
         from .adapters.opengov_adapter import OpenGovAdapter
-        return OpenGovAdapter(jurisdiction)
+        return OpenGovAdapter(jurisdiction, max_retries=max_retries)
     
-    def _create_html_scraper(self, jurisdiction: Jurisdiction):
+    def _create_html_scraper(self, jurisdiction: Jurisdiction, max_retries: int = 3):
         """Create generic HTML scraper."""
         from .adapters.html_adapter import HTMLAdapter
-        return HTMLAdapter(jurisdiction)
+        return HTMLAdapter(jurisdiction, max_retries=max_retries)
     
     def annotate_with_region_info(self, permit: PermitRecord, jurisdiction: Jurisdiction, region: Region) -> PermitRecord:
         """Annotate permit record with region/jurisdiction information."""
@@ -89,7 +89,7 @@ class RegionAwareAdapter:
         
         return PermitRecord(**permit_dict)
     
-    def scrape_jurisdiction(self, jurisdiction_slug: str, since: datetime, limit: Optional[int] = None) -> List[PermitRecord]:
+    def scrape_jurisdiction(self, jurisdiction_slug: str, since: datetime, limit: Optional[int] = None, max_retries: int = 3) -> List[PermitRecord]:
         """Scrape permits for a specific jurisdiction."""
         jurisdiction = self.config_loader.get_jurisdiction(jurisdiction_slug)
         if not jurisdiction:
@@ -106,7 +106,7 @@ class RegionAwareAdapter:
         logger.info(f"Scraping {jurisdiction.name} ({jurisdiction.provider}) since {since}")
         
         try:
-            scraper = self.create_scraper(jurisdiction)
+            scraper = self.create_scraper(jurisdiction, max_retries=max_retries)
             permits = scraper.scrape_permits(since, limit=limit)
             
             # Annotate permits with region information
@@ -122,13 +122,13 @@ class RegionAwareAdapter:
             logger.error(f"Error scraping {jurisdiction.name}: {e}")
             return []
     
-    def scrape_all_jurisdictions(self, since: datetime, limit: Optional[int] = None) -> Dict[str, List[PermitRecord]]:
+    def scrape_all_jurisdictions(self, since: datetime, limit: Optional[int] = None, max_retries: int = 3) -> Dict[str, List[PermitRecord]]:
         """Scrape permits from all active jurisdictions."""
         jurisdictions = self.get_active_jurisdictions()
         results = {}
         
         for jurisdiction in jurisdictions:
-            permits = self.scrape_jurisdiction(jurisdiction.slug, since, limit)
+            permits = self.scrape_jurisdiction(jurisdiction.slug, since, limit, max_retries=max_retries)
             results[jurisdiction.slug] = permits
         
         return results
