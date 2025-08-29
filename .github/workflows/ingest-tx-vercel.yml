@@ -44,7 +44,9 @@ jobs:
     - name: Trigger permit ingestion
       id: ingest
       run: |
-        SOURCE="${{ github.event.inputs.source || 'all' }}"
+        # Set source default using shell logic instead of logical OR
+        SOURCE="${{ github.event.inputs.source }}"
+        [ -z "$SOURCE" ] && SOURCE="all"
         
         echo "🚀 Triggering permit ingestion for source: $SOURCE"
         echo "📡 Target: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest"
@@ -89,11 +91,21 @@ jobs:
     - name: Workflow Summary
       if: always()
       run: |
+        # Set defaults and status using shell logic instead of ternary/logical OR
+        SOURCE="${{ github.event.inputs.source }}"
+        [ -z "$SOURCE" ] && SOURCE="all"
+        
+        if [ "${{ steps.ingest.outputs.success }}" = "true" ]; then
+          STATUS="✅ Success"
+        else
+          STATUS="❌ Failed"
+        fi
+        
         echo "## TX Permits Ingestion Summary (Vercel API)" >> $GITHUB_STEP_SUMMARY
         echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Source**: ${{ github.event.inputs.source || 'all' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Source**: $SOURCE" >> $GITHUB_STEP_SUMMARY
         echo "- **Target**: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest" >> $GITHUB_STEP_SUMMARY
-        echo "- **Status**: ${{ steps.ingest.outputs.success == 'true' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: $STATUS" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ steps.ingest.outputs.success }}" == "true" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY

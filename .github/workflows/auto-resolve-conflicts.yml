@@ -39,7 +39,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            if (context.eventName === 'issue_comment') {
+            // Replace strict equality with loose equality
+            if (context.eventName == 'issue_comment') {
               const commentBody = context.payload.comment.body;
               core.setOutput('pr_number', context.payload.issue.number);
               
@@ -81,7 +82,8 @@ jobs:
             const mergeable = '${{ steps.pr-details.outputs.mergeable }}';
             const mergeableState = '${{ steps.pr-details.outputs.mergeable_state }}';
             
-            const hasConflicts = mergeable === 'false' && mergeableState === 'dirty';
+            // Replace strict equality with loose equality
+            const hasConflicts = mergeable == 'false' && mergeableState == 'dirty';
             core.setOutput('has_conflicts', hasConflicts.toString());
 
       - name: Checkout repository
@@ -203,7 +205,8 @@ jobs:
             
             let message = '🤖 **Auto-resolve completed successfully!**\n\n';
             
-            if (mergeResult === 'clean') {
+            // Replace strict equality with loose equality
+            if (mergeResult == 'clean') {
               message += '✅ **Result**: Clean fast-forward merge\n';
               message += '📋 **Files**: No conflicts detected\n';
             } else {

@@ -74,16 +74,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction || steps.set_instruction.outputs.instruction || steps.set_dispatch_instruction.outputs.instruction }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || '' }}
-          COMMENT_ID: ${{ github.event.comment.id || '' }}
-          ERROR_TYPE: ${{ steps.set_dispatch_instruction.outputs.error_type || '' }}
-          TRIGGERED_BY: ${{ steps.set_dispatch_instruction.outputs.triggered_by || '' }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "ERROR: OPENAI_API_KEY secret is required but not set"
             exit 1
           fi
+          
+          # Set instruction using shell defaults instead of logical OR
+          INSTRUCTION="${{ steps.extract_instruction.outputs.instruction }}"
+          [ -z "$INSTRUCTION" ] && INSTRUCTION="${{ steps.set_instruction.outputs.instruction }}"
+          [ -z "$INSTRUCTION" ] && INSTRUCTION="${{ steps.set_dispatch_instruction.outputs.instruction }}"
+          
+          # Set other variables with shell defaults  
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          [ -z "$ISSUE_NUMBER" ] && ISSUE_NUMBER=""
+          
+          COMMENT_ID="${{ github.event.comment.id }}"
+          [ -z "$COMMENT_ID" ] && COMMENT_ID=""
+          
+          ERROR_TYPE="${{ steps.set_dispatch_instruction.outputs.error_type }}"
+          [ -z "$ERROR_TYPE" ] && ERROR_TYPE=""
+          
+          TRIGGERED_BY="${{ steps.set_dispatch_instruction.outputs.triggered_by }}"
+          [ -z "$TRIGGERED_BY" ] && TRIGGERED_BY=""
+          
+          export INSTRUCTION ISSUE_NUMBER COMMENT_ID ERROR_TYPE TRIGGERED_BY
           
           if [ -z "$INSTRUCTION" ]; then
             echo "ERROR: No instruction found in comment or input"

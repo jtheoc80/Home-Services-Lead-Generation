@@ -188,10 +188,12 @@ jobs:
             
             let resultEmoji = '✅';
             let resultText = 'passed';
-            let deltaResultText = '${{ steps.supabase-delta-test.outcome }}' === 'success' ? 'passed' : 'failed';
-            let deltaEmoji = '${{ steps.supabase-delta-test.outcome }}' === 'success' ? '✅' : '❌';
+            // Replace strict equality with loose equality
+            let deltaResultText = '${{ steps.supabase-delta-test.outcome }}' == 'success' ? 'passed' : 'failed';
+            let deltaEmoji = '${{ steps.supabase-delta-test.outcome }}' == 'success' ? '✅' : '❌';
             
-            if ('${{ steps.e2e-test.outcome }}' !== 'success' || '${{ steps.supabase-delta-test.outcome }}' !== 'success') {
+            // Replace strict not-equals with loose not-equals
+            if ('${{ steps.e2e-test.outcome }}' != 'success' || '${{ steps.supabase-delta-test.outcome }}' != 'success') {
               resultEmoji = '❌';
               resultText = 'failed';
             }

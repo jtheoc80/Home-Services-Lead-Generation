@@ -91,8 +91,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: |
-          # Set default time period
-          SINCE_PERIOD="${{ github.event.inputs.since || '1d' }}"
+          # Set default time period using shell logic instead of logical OR
+          SINCE_PERIOD="${{ github.event.inputs.since }}"
+          [ -z "$SINCE_PERIOD" ] && SINCE_PERIOD="1d"
           echo "Running ETL with --since $SINCE_PERIOD"
           
           # Run the ETL process
@@ -212,10 +213,22 @@ jobs:
       - name: Update job summary
         if: always()
         run: |
+          # Set time period default using shell logic
+          TIME_PERIOD="${{ github.event.inputs.since }}"
+          [ -z "$TIME_PERIOD" ] && TIME_PERIOD="1d"
+          
+          # Set status using shell logic instead of ternary
+          RECORD_COUNT="${{ steps.etl_run.outputs.record_count }}"
+          if [ "$RECORD_COUNT" -gt 0 ]; then
+            STATUS="✅ Success"
+          else
+            STATUS="⚠️ Zero Records"
+          fi
+          
           echo "## ETL Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Time Period**: ${{ github.event.inputs.since || '1d' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Records Processed**: ${{ steps.etl_run.outputs.record_count }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: $([ '${{ steps.etl_run.outputs.record_count }}' -gt 0 ] && echo '✅ Success' || echo '⚠️ Zero Records')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time Period**: $TIME_PERIOD" >> $GITHUB_STEP_SUMMARY
+          echo "- **Records Processed**: $RECORD_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: $STATUS" >> $GITHUB_STEP_SUMMARY
           
           if [ -f etl_output.log ]; then
             echo "### ETL Output (last 20 lines)" >> $GITHUB_STEP_SUMMARY

@@ -17,8 +17,6 @@ name: Expose Railway service and print URL
 
 env:
   RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-  RAILWAY_SERVICE_ID: ${{ inputs.service_id || secrets.RAILWAY_SERVICE_ID }}
-  RAILWAY_ENV_ID: ${{ inputs.environment_id || secrets.RAILWAY_ENV_ID }}
 
 jobs:
   expose-and-url:
@@ -27,6 +25,17 @@ jobs:
       public_url: ${{ steps.expose.outputs.public_url }}
     
     steps:
+      - name: Set environment variables
+        run: |
+          # Set Railway IDs using shell logic instead of logical OR
+          SERVICE_ID="${{ inputs.service_id }}"
+          [ -z "$SERVICE_ID" ] && SERVICE_ID="${{ secrets.RAILWAY_SERVICE_ID }}"
+          echo "RAILWAY_SERVICE_ID=$SERVICE_ID" >> $GITHUB_ENV
+          
+          ENV_ID="${{ inputs.environment_id }}"
+          [ -z "$ENV_ID" ] && ENV_ID="${{ secrets.RAILWAY_ENV_ID }}"
+          echo "RAILWAY_ENV_ID=$ENV_ID" >> $GITHUB_ENV
+          
       - name: Checkout repository
         uses: actions/checkout@v5
       

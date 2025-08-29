@@ -94,7 +94,8 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`;
             const deploymentUrl = '${{ github.event.deployment_status.environment_url }}';
             
-            const success = '${{ job.status }}' === 'success';
+            // Replace strict equality with loose equality
+            const success = '${{ job.status }}' == 'success';
             const emoji = success ? '✅' : '❌';
             const status = success ? 'PASSED' : 'FAILED';
             
@@ -158,7 +159,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const success = '${{ job.status }}' === 'success';
+            // Replace strict equality with loose equality
+            const success = '${{ job.status }}' == 'success';
             const sha = context.payload.deployment_status.deployment.sha;
             
             await github.rest.repos.createCommitStatus({

@@ -193,7 +193,8 @@ jobs:
                 failed.push(dep);
               }
             }
-            if (failed.length === 0) {
+            // Replace strict equality with loose equality
+            if (failed.length == 0) {
               console.log("✅ All npm dependencies import successfully");
             } else {
               console.error("⚠️ NPM dependency compatibility test failed for:", failed.join(", "));

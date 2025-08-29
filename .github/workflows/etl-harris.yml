@@ -76,10 +76,16 @@ jobs:
       
       - name: Run Harris County ETL Delta Test
         env:
-          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || 'https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          # Set URL using shell logic instead of ternary
+          HC_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+          if [ -z "$HC_URL" ]; then
+            HC_URL="https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+          fi
+          export HC_ISSUED_PERMITS_URL="$HC_URL"
+          
           echo "🚀 Starting Harris County ETL Pipeline"
           echo "Harris County URL: $HC_ISSUED_PERMITS_URL"
           echo "Supabase URL: $SUPABASE_URL"
@@ -146,7 +152,8 @@ jobs:
                 
                 console.log(\`Found \${count} records created in last 24 hours\`);
                 
-                if (count === 0) {
+                // Replace strict equality with loose equality
+                if (count == 0) {
                   console.error('❌ No new records in last 24 hours - data may be stale');
                   process.exit(1);
                 } else {

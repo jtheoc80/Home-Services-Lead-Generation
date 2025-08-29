@@ -191,10 +191,17 @@ jobs:
     - name: Pipeline Summary
       if: always()
       run: |
+        # Set defaults using shell logic instead of logical OR
+        SOURCES="${{ github.event.inputs.sources }}"
+        [ -z "$SOURCES" ] && SOURCES="dallas_permits,austin_permits,arlington_permits"
+        
+        FULL_REFRESH="${{ github.event.inputs.full_refresh }}"
+        [ -z "$FULL_REFRESH" ] && FULL_REFRESH="false"
+        
         echo "## TX Permits Pipeline Summary" >> $GITHUB_STEP_SUMMARY
         echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Sources**: ${{ github.event.inputs.sources || 'dallas_permits,austin_permits,arlington_permits' }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Full Refresh**: ${{ github.event.inputs.full_refresh || 'false' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Sources**: $SOURCES" >> $GITHUB_STEP_SUMMARY
+        echo "- **Full Refresh**: $FULL_REFRESH" >> $GITHUB_STEP_SUMMARY
         echo "- **Raw Data Ingestion**: ${{ steps.load_raw.outcome }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Data Normalization**: ${{ steps.normalize.outcome }}" >> $GITHUB_STEP_SUMMARY  
         echo "- **Lead Score Publishing**: ${{ steps.publish.outcome }}" >> $GITHUB_STEP_SUMMARY

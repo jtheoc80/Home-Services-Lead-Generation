@@ -21,7 +21,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CRON_SCRAPE_UTC: ${{ vars.CRON_SCRAPE_UTC || '30 8 * * *' }}
+  # Set default using shell logic in the job instead of logical OR
+  CRON_SCRAPE_UTC: "30 8 * * *"
 
 jobs:
   scrape_and_process:
@@ -72,9 +73,16 @@ jobs:
 
       - name: Run scraper for Houston counties only
         run: |
+
+          # Use input parameter if provided, otherwise default using shell logic
+          DAYS="${{ github.event.inputs.days }}"
+          [ -z "$DAYS" ] && DAYS="14"
+          python permit_leads/main.py --days $DAYS --outdir out
+
           # Use input parameter if provided, otherwise default to 14 days
           DAYS="${{ github.event.inputs.days || '14' }}"
           python main.py --days $DAYS --outdir ../out
+
 
       - name: Export leads to CSV
         run: |
@@ -185,12 +193,18 @@ jobs:
             LEAD_STATUS="⚠️ No leads generated"
           fi
 
-          # Check database operations
+          # Check database operations using shell logic
           if [ "${{ env.DATABASE_URL }}" != "" ]; then
-            DB_STATUS="✅ Database ingestion enabled"
+            DB_STATUS="✅ Database ingestion enabled" 
+            DB_DISPLAY="Connected"
           else
             DB_STATUS="⚠️ No database configured"
+            DB_DISPLAY="Not configured"
           fi
+
+          # Set days scraped using shell default
+          DAYS_SCRAPED="${{ github.event.inputs.days }}"
+          [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="14"
 
           # Determine overall status
           if [ "${{ job.status }}" == "success" ] && [ "$LEAD_COUNT" -gt 0 ]; then
@@ -214,9 +228,9 @@ jobs:
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🕒 Completed At | $END_TIME |" >> $GITHUB_STEP_SUMMARY
           echo "| 📍 Scope | Houston counties only |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📅 Days Scraped | ${{ github.event.inputs.days || '14' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📅 Days Scraped | $DAYS_SCRAPED |" >> $GITHUB_STEP_SUMMARY
           echo "| 📋 Leads | $LEAD_COUNT |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🗄️ Database | ${{ env.DATABASE_URL != '' && 'Connected' || 'Not configured' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🗄️ Database | $DB_DISPLAY |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔧 Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 

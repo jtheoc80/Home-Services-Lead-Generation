@@ -48,8 +48,12 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
-          AUTO_REMEDIATE: ${{ vars.AUTO_REMEDIATE || 'false' }}
         run: |
+          # Set AUTO_REMEDIATE using shell default instead of logical OR
+          AUTO_REMEDIATE="${{ vars.AUTO_REMEDIATE }}"
+          [ -z "$AUTO_REMEDIATE" ] && AUTO_REMEDIATE="false"
+          export AUTO_REMEDIATE
+          
           # Run health check and capture output
           echo "Running stack health check..."
           node scripts/stack-health.js > health-summary.md 2>health-stderr.log || echo "Health check completed with issues"
@@ -143,9 +147,10 @@ jobs:
               direction: 'desc'
             });
             
+            // Replace strict equality with loose equality
             const existingIssue = issues.find(issue => 
-              issue.title === title && 
-              issue.user.type === 'Bot'
+              issue.title == title && 
+              issue.user.type == 'Bot'
             );
             
             if (existingIssue) {
@@ -300,9 +305,10 @@ jobs:
               direction: 'desc'
             });
             
+            // Replace strict equality with loose equality
             const existingIssue = issues.find(issue => 
-              issue.title === title && 
-              issue.user.type === 'Bot'
+              issue.title == title && 
+              issue.user.type == 'Bot'
             );
             
             if (existingIssue) {
@@ -388,9 +394,10 @@ jobs:
               direction: 'desc'
             });
             
+            // Replace strict equality with loose equality
             const stackIssues = issues.filter(issue => 
-              issue.title === title && 
-              issue.user.type === 'Bot'
+              issue.title == title && 
+              issue.user.type == 'Bot'
             );
             
             for (const issue of stackIssues) {
@@ -417,12 +424,25 @@ jobs:
       - name: Report workflow summary
         if: always()
         run: |
+          # Use shell logic instead of ternary expressions
+          if [ "${{ steps.health_check.outputs.health_check_failed }}" = "false" ]; then
+            HEALTH_STATUS="✅ Passed"
+          else
+            HEALTH_STATUS="❌ Failed"
+          fi
+          
+          if [ "${{ vars.AUTO_REMEDIATE }}" = "true" ]; then
+            AUTO_REMEDIATE_STATUS="✅ Enabled"
+          else
+            AUTO_REMEDIATE_STATUS="❌ Disabled"
+          fi
+          
           echo "## Stack Monitor Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Node Version:** ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Health Check Result:** ${{ steps.health_check.outputs.health_check_failed == 'false' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Auto-remediation:** ${{ vars.AUTO_REMEDIATE == 'true' && '✅ Enabled' || '❌ Disabled' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check Result:** $HEALTH_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auto-remediation:** $AUTO_REMEDIATE_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
 

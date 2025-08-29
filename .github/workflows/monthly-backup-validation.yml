@@ -268,14 +268,20 @@ jobs:
             const overallStatus = '${{ steps.summary.outputs.overall_status }}';
             const backupName = '${{ steps.summary.outputs.backup_name }}';
             const timestamp = '${{ steps.summary.outputs.timestamp }}';
-            const restoreStatus = '${{ steps.restore.outputs.restore_status || 'failed' }}';
-            const testsStatus = '${{ steps.smoke_tests.outputs.tests_status || 'failed' }}';
+            
+            // Use JS logic for defaults instead of logical OR
+            const restoreStatusRaw = '${{ steps.restore.outputs.restore_status }}';
+            const restoreStatus = restoreStatusRaw || 'failed';
+            
+            const testsStatusRaw = '${{ steps.smoke_tests.outputs.tests_status }}';
+            const testsStatus = testsStatusRaw || 'failed';
             
             // Compute display strings in JS (no Actions expressions)
-            const useExisting = '${{ steps.check_backup.outputs.use_existing }}' === 'true';
+            // Replace strict equality with loose equality
+            const useExisting = '${{ steps.check_backup.outputs.use_existing }}' == 'true';
             const be = useExisting ? '✅ Used Recent' : '✅ Success';
-            const sr = (restoreStatus === 'success') ? '✅ Success' : '❌ Failed';
-            const st = (testsStatus === 'pass') ? '✅ Pass' : '❌ Fail';
+            const sr = (restoreStatus == 'success') ? '✅ Success' : '❌ Failed';
+            const st = (testsStatus == 'pass') ? '✅ Pass' : '❌ Fail';
             
             const title = 'Monthly Backup Validation Report';
             
@@ -301,7 +307,7 @@ jobs:
             
             ## 📋 Next Steps
             
-            ${testsStatus === 'pass' && restoreStatus === 'success' 
+            ${testsStatus == 'pass' && restoreStatus == 'success' 
               ? '✅ **Backup system validation successful!** Your production backups are restorable and functional. No action required.'
               : '❌ **Backup validation failed!** Please investigate the issues and fix the backup system. Check the workflow logs for details.'}
             
@@ -318,7 +324,8 @@ jobs:
               labels: ['backup-validation', 'automated']
             });
             
-            const existingIssue = issues.find(issue => issue.title === title);
+            // Replace strict equality with loose equality
+            const existingIssue = issues.find(issue => issue.title == title);
             
             if (existingIssue) {
               // Update existing issue
@@ -366,10 +373,11 @@ jobs:
             const slackWebhook = '${{ env.SLACK_WEBHOOK }}';
             const notificationChannel = '${{ github.event.inputs.notification_channel }}';
             
+            // Replace strict equality with loose equality
             const shouldNotify = slackWebhook !== '' && 
-              (notificationChannel === 'slack' || 
-               notificationChannel === 'both' || 
-               notificationChannel === '');
+              (notificationChannel == 'slack' || 
+               notificationChannel == 'both' || 
+               notificationChannel == '');
             
             if (!shouldNotify) {
               console.log('Slack notification skipped - webhook not configured or channel not selected');
@@ -389,8 +397,9 @@ jobs:
             
             const restoreStatus = getStatus('${{ steps.restore.outputs.restore_status }}');
             const testsStatus = getStatus('${{ steps.smoke_tests.outputs.tests_status }}');
-            const sr = restoreStatus === 'success' ? '✅ Success' : '❌ Failed';
-            const st = testsStatus === 'pass' ? '✅ Pass' : '❌ Fail';
+            // Replace strict equality with loose equality
+            const sr = restoreStatus == 'success' ? '✅ Success' : '❌ Failed';
+            const st = testsStatus == 'pass' ? '✅ Pass' : '❌ Fail';
             
             const payload = {
               "text": `${statusEmoji} Monthly Backup Validation ${overallStatus.includes('PASS') ? 'Completed Successfully' : 'Failed'}`,

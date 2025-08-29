@@ -15,10 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Set token variable
+        run: |
+          # Set token using shell logic instead of logical OR
+          TOKEN="${{ secrets.GITHUB_TOKEN_BOT }}"
+          [ -z "$TOKEN" ] && TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          echo "CHECKOUT_TOKEN=$TOKEN" >> $GITHUB_ENV
+          
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN_BOT || secrets.GITHUB_TOKEN }}
+          token: ${{ env.CHECKOUT_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js 20
@@ -45,10 +52,13 @@ jobs:
 
       - name: Run AI Auto-PR script
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_BOT || secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction }}
         run: |
+          # Set token using shell logic instead of logical OR
+          GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN_BOT }}"
+          [ -z "$GITHUB_TOKEN" ] && GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          export GITHUB_TOKEN
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "ERROR: OPENAI_API_KEY secret is required but not set"
             exit 1
