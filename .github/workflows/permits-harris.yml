@@ -248,6 +248,37 @@ jobs:
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${RECENT_FILES} recent Harris County files"
         
+    - name: Preflight checks
+      id: preflight
+      run: |
+        # Validate environment variables
+        if [ -z "$SUPABASE_URL" ]; then
+          echo "❌ SUPABASE_URL not set"
+          exit 1
+        fi
+        if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+          echo "❌ SUPABASE_SERVICE_ROLE_KEY not set"
+          exit 1
+        fi
+        echo "✅ Environment variables validated"
+        echo "ok=1" >> $GITHUB_OUTPUT
+        
+    - name: "Preflight: test Supabase REST"
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+          echo "::warning title=Supabase REST check failed::HTTP $code"
+        fi
+        
     - name: Run Harris County permit scraper
       if: ${{ steps.preflight.outputs.ok == '1' }}
       id: scrape
