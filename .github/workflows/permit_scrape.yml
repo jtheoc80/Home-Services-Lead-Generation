@@ -33,15 +33,6 @@ jobs:
         working-directory: permit_leads
     
     steps:
-    - name: Set environment variables 
-      run: |
-        # Set SAMPLE_DATA using shell logic instead of ternary
-        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
-          echo "SAMPLE_DATA=1" >> $GITHUB_ENV
-        else
-          echo "SAMPLE_DATA=0" >> $GITHUB_ENV
-        fi
-        
     - name: Checkout repository
       uses: actions/checkout@v5
       
@@ -62,6 +53,7 @@ jobs:
         
     - name: Run permit scraper
       run: |
+
         if [ "${{ github.event_name }}" = "schedule" ]; then
           # Scheduled run - use defaults
           poetry run python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
@@ -75,6 +67,28 @@ jobs:
           else
             poetry run python -m permit_leads --source "$SOURCE" --days "$DAYS" --formats csv sqlite jsonl
           fi
+
+        # Set defaults in bash for cron-safe execution
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        SOURCE="${{ inputs.source }}"
+        [ -z "$SOURCE" ] && SOURCE="city_of_houston"
+        
+        # Set sample data environment variable
+        if [ "$SAMPLE" = "true" ]; then
+          export SAMPLE_DATA=1
+        else
+          export SAMPLE_DATA=0
+        fi
+        
+        # Run scraper with bash variables
+        if [ "$SOURCE" = "all" ]; then
+          python -m permit_leads --all --days "$DAYS" --formats csv sqlite jsonl
+        else
+          python -m permit_leads --source "$SOURCE" --days "$DAYS" --formats csv sqlite jsonl
+
         fi
         
     - name: Check for new data
@@ -143,15 +157,18 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Run details:**" >> $GITHUB_STEP_SUMMARY
         
-        # Set defaults using shell logic instead of logical OR
-        SOURCE="${{ github.event.inputs.source }}"
+        # Set defaults using shell logic for summary
+        SOURCE="${{ inputs.source }}"
         [ -z "$SOURCE" ] && SOURCE="city_of_houston"
         
-        DAYS="${{ github.event.inputs.days }}"
+        DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         
-        # Set sample data display using shell logic instead of ternary
-        if [ "${{ env.SAMPLE_DATA }}" = "1" ]; then
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set sample data display using shell logic
+        if [ "$SAMPLE" = "true" ]; then
           SAMPLE_DISPLAY="Yes"
         else
           SAMPLE_DISPLAY="No"

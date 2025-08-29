@@ -35,6 +35,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SODA_APP_TOKEN: ${{ secrets.SODA_APP_TOKEN }}
+      run: |
+        ok=1
+        for v in DATABASE_URL SODA_APP_TOKEN; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+      
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -68,13 +88,19 @@ jobs:
     - name: Run raw data ingestion
       id: load_raw
       run: |
-        if [ "${{ github.event.inputs.sources }}" != "" ]; then
-          SOURCES_ARG="--only ${{ github.event.inputs.sources }}"
+        # Set defaults in bash for cron-safe execution
+        SOURCES="${{ inputs.sources }}"
+        [ -z "$SOURCES" ] && SOURCES=""
+        FULL_REFRESH="${{ inputs.full_refresh }}"
+        [ -z "$FULL_REFRESH" ] && FULL_REFRESH="false"
+        
+        if [ "$SOURCES" != "" ]; then
+          SOURCES_ARG="--only $SOURCES"
         else
           SOURCES_ARG="--only dallas_permits,austin_permits,arlington_permits"
         fi
         
-        if [ "${{ github.event.inputs.full_refresh }}" == "true" ]; then
+        if [ "$FULL_REFRESH" == "true" ]; then
           SINCE_ARG="--since 2024-01-01"
         else
           SINCE_ARG=""
@@ -191,11 +217,11 @@ jobs:
     - name: Pipeline Summary
       if: always()
       run: |
-        # Set defaults using shell logic instead of logical OR
-        SOURCES="${{ github.event.inputs.sources }}"
+        # Set defaults using shell logic
+        SOURCES="${{ inputs.sources }}"
         [ -z "$SOURCES" ] && SOURCES="dallas_permits,austin_permits,arlington_permits"
         
-        FULL_REFRESH="${{ github.event.inputs.full_refresh }}"
+        FULL_REFRESH="${{ inputs.full_refresh }}"
         [ -z "$FULL_REFRESH" ] && FULL_REFRESH="false"
         
         echo "## TX Permits Pipeline Summary" >> $GITHUB_STEP_SUMMARY

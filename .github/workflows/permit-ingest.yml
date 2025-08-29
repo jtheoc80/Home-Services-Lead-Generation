@@ -32,17 +32,20 @@ jobs:
           
       - name: Trigger permit ingest
         run: |
-          # Set source default using shell logic instead of logical OR
-          source="${{ github.event.inputs.source }}"
+          # Set defaults in bash for cron-safe execution
+          source="${{ inputs.source }}"
           [ -z "$source" ] && source="austin,dallas"
+          DRY_RUN="${{ inputs.dry_run }}"
+          [ -z "$DRY_RUN" ] && DRY_RUN="false"
+          
           dry_param=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$DRY_RUN" = "true" ]; then
             dry_param="&dry=1"
             echo "Running in DRY RUN mode - no database writes will occur"
           fi
           
           # If running from schedule or source is 'all', run both Austin and Dallas
-          if [ "$source" = "all" ] || [ -z "${{ github.event.inputs.source }}" ]; then
+          if [ "$source" = "all" ] || [ -z "$source" ]; then
             sources="austin dallas"
           else
             sources="$source"

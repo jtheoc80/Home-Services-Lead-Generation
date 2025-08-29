@@ -73,14 +73,13 @@ jobs:
 
       - name: Run scraper for Houston counties only
         run: |
-
-          # Use input parameter if provided, otherwise default using shell logic
-          DAYS="${{ github.event.inputs.days }}"
+          # Set defaults in bash for cron-safe execution
+          DAYS="${{ inputs.days }}"
           [ -z "$DAYS" ] && DAYS="14"
+          
           python permit_leads/main.py --days $DAYS --outdir out
 
-          # Use input parameter if provided, otherwise default to 14 days
-          DAYS="${{ github.event.inputs.days || '14' }}"
+
           python main.py --days $DAYS --outdir ../out
 
 
@@ -203,7 +202,7 @@ jobs:
           fi
 
           # Set days scraped using shell default
-          DAYS_SCRAPED="${{ github.event.inputs.days }}"
+          DAYS_SCRAPED="${{ inputs.days }}"
           [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="14"
 
           # Determine overall status
