@@ -23,23 +23,32 @@ jobs:
       matrix:
         source: [austin, dallas]
     steps:
-      - name: Validate environment
-        run: |
-          if [ -z "$INGEST_URL" ]; then
-            echo "::error::INGEST_URL secret not configured"
-            exit 1
-          fi
-          if [ -z "$CRON_SECRET" ]; then
-            echo "::error::CRON_SECRET secret not configured"
-            exit 1
-          fi
-          echo "✅ Environment validated for ${{ matrix.source }}"
+      - name: "Preflight: verify required secrets"
+        id: preflight
+        shell: bash
         env:
           INGEST_URL: ${{ secrets.INGEST_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
+        run: |
+          ok=1
+          for v in INGEST_URL CRON_SECRET DEBUG_URL; do
+            val="${!v}"
+            if [ -z "$val" ]; then
+              echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+              ok=0
+            else
+              echo "::add-mask::$val"
+            fi
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          [ "$ok" -eq 1 ]
 
       - name: Dry run ${{ matrix.source }}
         id: dry
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -e
           RESP=$(curl -sS -X POST "$INGEST_URL?source=${{ matrix.source }}&dry=1" \
@@ -75,18 +84,29 @@ jobs:
     timeout-minutes: 10
     needs: ingest
     steps:
-      - name: Validate environment
-        run: |
-          if [ -z "$DEBUG_URL" ]; then
-            echo "::error::DEBUG_URL secret not configured"
-            exit 1
-          fi
-          echo "✅ Environment validated for verification"
+      - name: "Preflight: verify required secrets"
+        id: preflight
+        shell: bash
         env:
           DEBUG_URL: ${{ secrets.DEBUG_URL }}
+        run: |
+          ok=1
+          for v in DEBUG_URL; do
+            val="${!v}"
+            if [ -z "$val" ]; then
+              echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+              ok=0
+            else
+              echo "::add-mask::$val"
+            fi
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          [ "$ok" -eq 1 ]
 
       - name: Check Supabase counts
         id: check
+        env:
+          DEBUG_URL: ${{ secrets.DEBUG_URL }}
         run: |
           set -e
           RESP=$(curl -sS "$DEBUG_URL")

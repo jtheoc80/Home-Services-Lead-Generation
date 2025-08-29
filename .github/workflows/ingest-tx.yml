@@ -35,6 +35,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SODA_APP_TOKEN: ${{ secrets.SODA_APP_TOKEN }}
+      run: |
+        ok=1
+        for v in DATABASE_URL SODA_APP_TOKEN; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+      
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
