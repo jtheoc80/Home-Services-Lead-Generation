@@ -186,14 +186,21 @@ jobs:
           script: |
             const fs = require('fs');
             
+            // Assign GitHub expressions to variables for safer evaluation
+            const e2eOutcome = '${{ steps.e2e-test.outcome }}';
+            const supabaseOutcome = '${{ steps.supabase-delta-test.outcome }}';
+            
             let resultEmoji = '✅';
             let resultText = 'passed';
-            // Replace strict equality with loose equality
-            let deltaResultText = '${{ steps.supabase-delta-test.outcome }}' == 'success' ? 'passed' : 'failed';
-            let deltaEmoji = '${{ steps.supabase-delta-test.outcome }}' == 'success' ? '✅' : '❌';
             
-            // Replace strict not-equals with loose not-equals
-            if ('${{ steps.e2e-test.outcome }}' != 'success' || '${{ steps.supabase-delta-test.outcome }}' != 'success') {
+            let deltaResultText = supabaseOutcome == 'success' ? 'passed' : 'failed';
+            let deltaEmoji = supabaseOutcome == 'success' ? '✅' : '❌';
+            
+            // Move OR logic to separate variables for clarity
+            const e2eFailed = e2eOutcome != 'success';
+            const supabaseFailed = supabaseOutcome != 'success';
+            
+            if (e2eFailed || supabaseFailed) {
               resultEmoji = '❌';
               resultText = 'failed';
             }

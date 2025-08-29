@@ -73,6 +73,7 @@ jobs:
       - name: Run scraper for Houston counties only
         run: |
 
+
           # Use input parameter if provided, otherwise default using shell logic
           DAYS="${{ github.event.inputs.days }}"
           [ -z "$DAYS" ] && DAYS="1"
@@ -80,6 +81,14 @@ jobs:
 
           # Use input parameter if provided, otherwise default to 1 day
           DAYS="${{ github.event.inputs.days || '1' }}"
+
+          # Set defaults in bash for cron-safe execution
+          DAYS="${{ inputs.days }}"
+          [ -z "$DAYS" ] && DAYS="14"
+          
+          python permit_leads/main.py --days $DAYS --outdir out
+
+
           python main.py --days $DAYS --outdir ../out
 
 
@@ -151,12 +160,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: etl-artifacts-${{ github.run_id }}
+          name: etl-${{ github.run_id }}
           path: |
             artifacts/**/*.csv
             logs/**/*.log
             logs/etl_output.log
           if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload leads artifact (audit only)
         uses: actions/upload-artifact@v4
@@ -202,8 +212,13 @@ jobs:
           fi
 
           # Set days scraped using shell default
+
           DAYS_SCRAPED="${{ github.event.inputs.days }}"
           [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="1"
+
+          DAYS_SCRAPED="${{ inputs.days }}"
+          [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="14"
+
 
           # Determine overall status
           if [ "${{ job.status }}" == "success" ] && [ "$LEAD_COUNT" -gt 0 ]; then

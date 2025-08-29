@@ -178,13 +178,13 @@ def run_region_aware_scraper(
         if args.jurisdiction:
             # Scrape specific jurisdiction
             logger.info(f"Scraping jurisdiction: {args.jurisdiction}")
-            permits = adapter.scrape_jurisdiction(args.jurisdiction, since, limit=args.limit)
+            permits = adapter.scrape_jurisdiction(args.jurisdiction, since, limit=args.limit, max_retries=getattr(args, 'retries', 3))
             # Return permits and a dict mapping the jurisdiction to its permits
             return permits, {args.jurisdiction: permits}
         else:
             # Scrape all active jurisdictions
             logger.info("Scraping all active jurisdictions")
-            results = adapter.scrape_all_jurisdictions(since, limit=args.limit)
+            results = adapter.scrape_all_jurisdictions(since, limit=args.limit, max_retries=getattr(args, 'retries', 3))
             permits = []
             for jurisdiction_permits in results.values():
                 permits.extend(jurisdiction_permits)
@@ -205,7 +205,7 @@ def run_legacy_scraper(source_name: str, args: argparse.Namespace, output_paths:
     scraper = scraper_class(
         user_agent=args.user_agent,
         delay_seconds=args.sleep,
-        max_retries=3
+        max_retries=getattr(args, 'retries', 3)
     )
     if not args.no_robots:
         if not check_robots_txt(scraper.base_url, args.user_agent):
@@ -277,6 +277,7 @@ Examples:
     parser.add_argument("--dry-run", action="store_true", help="Parse data but don't persist to files")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     parser.add_argument("--sleep", type=float, default=2.0, help="Delay between requests seconds (default: 2.0)")
+    parser.add_argument("--retries", type=int, default=3, help="Maximum number of retry attempts for HTTP requests (default: 3)")
     parser.add_argument("--user-agent", default="PermitLeadBot/1.0 (+contact@example.com)", help="User-Agent string for requests")
     
     subparsers = parser.add_subparsers(dest="command")
@@ -296,6 +297,7 @@ Examples:
     scrape.add_argument("--dry-run", action="store_true", help="Parse data but don't persist to files")
     scrape.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     scrape.add_argument("--sleep", type=float, default=2.0, help="Delay between requests seconds (default: 2.0)")
+    scrape.add_argument("--retries", type=int, default=3, help="Maximum number of retry attempts for HTTP requests (default: 3)")
     scrape.add_argument("--user-agent", default="PermitLeadBot/1.0 (+contact@example.com)", help="User-Agent string for requests")
 
     export = subparsers.add_parser("export-leads", help="Generate scored lead CSVs from existing permits DB")

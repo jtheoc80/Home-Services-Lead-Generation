@@ -29,6 +29,27 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
+        CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      run: |
+        ok=1
+        for v in VERCEL_DOMAIN CRON_SECRET; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+        
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -37,17 +58,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install requests psycopg2-binary python-dotenv
-    - name: Validate environment
-      run: |
-        if [ -z "${{ env.CRON_SECRET }}" ]; then
-          echo "❌ CRON_SECRET secret not configured"
-          exit 1
-        fi
-        if [ -z "${{ env.VERCEL_DOMAIN }}" ]; then
-          echo "❌ VERCEL_DOMAIN secret not configured"
-          exit 1
-        fi
-        echo "✅ Environment validated for nightly ingest"
     - name: Determine sources to process
       id: sources
       run: |
@@ -70,6 +80,9 @@ jobs:
         done
     - name: Execute nightly ingest
       id: ingest
+      env:
+        VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
+        CRON_SECRET: ${{ secrets.CRON_SECRET }}
       run: |
         # Set dry run default using shell logic instead of logical OR
         DRY_RUN="${{ github.event.inputs.dry_run }}"
@@ -78,14 +91,14 @@ jobs:
         TOTAL_UPSERTS=0
         TOTAL_ERRORS=0
         for source in ${{ steps.sources.outputs.sources }}; do
-          URL="https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest?source=$source"
+          URL="https://$VERCEL_DOMAIN/api/permits/ingest?source=$source"
           if [ "$DRY_RUN" == "true" ]; then
             URL="$URL&dry=1"
           fi
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
-            -H "x-cron-secret: ${{ env.CRON_SECRET }}" \
+            -H "x-cron-secret: $CRON_SECRET" \
             "$URL" | tee "logs/ingest-$source.log")
           HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
           RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
@@ -108,5 +121,14 @@ jobs:
         cat > logs/summary.json << EOF
         {"timestamp": "$(date -u)", "total_fetched": "${{ steps.ingest.outputs.total_fetched }}", "total_upserts": "${{ steps.ingest.outputs.total_upserts }}", "total_errors": "${{ steps.ingest.outputs.total_errors }}"}
         EOF
-    - name: Upload artifact
+    - name: Upload ETL artifacts
+      if: always()
       uses: actions/upload-artifact@v4
+      with:
+        name: etl-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        retention-days: 14
