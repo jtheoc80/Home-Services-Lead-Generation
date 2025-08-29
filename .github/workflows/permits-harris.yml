@@ -156,14 +156,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r permit_leads/requirements.txt
         
-    - name: Verify environment and connectivity
-      run: |
-        echo "🔍 Verifying Supabase connectivity after preflight..."
-        python scripts/workflow-preflight.py
-        if [ $? -ne 0 ]; then
-          echo "❌ Post-preflight connectivity check failed"
-          exit 1
-        fi
         
     - name: Create data directory
       run: |
