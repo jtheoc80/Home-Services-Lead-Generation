@@ -42,7 +42,16 @@ jobs:
         run: |
           echo "## Stripe Product Sync Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run Type:** ${{ github.event.inputs.dry_run == 'true' && 'Dry Run (Preview)' || 'Live Sync' }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Set run type using shell logic instead of ternary
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          if [ "$DRY_RUN" = "true" ]; then
+            RUN_TYPE="Dry Run (Preview)"
+          else
+            RUN_TYPE="Live Sync"
+          fi
+          echo "- **Run Type:** $RUN_TYPE" >> $GITHUB_STEP_SUMMARY
+          
           echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

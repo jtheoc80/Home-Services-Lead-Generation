@@ -173,7 +173,8 @@ jobs:
           let comment = '## 🤖 OpenAPI Client Generation Results\n\n';
           comment += '✅ OpenAPI specification validated successfully\n';
           
-          if ('${{ steps.check-changes.outputs.changes }}' === 'true') {
+          // Replace strict equality with loose equality
+          if ('${{ steps.check-changes.outputs.changes }}' == 'true') {
             comment += '📝 Generated clients have changes - they will be updated when merged\n';
             comment += '\n**Generated files:**\n';
             comment += '- `frontend/src/lib/api-client.ts` - TypeScript client\n';
