@@ -102,6 +102,45 @@ jobs:
       run: |
         mkdir -p data/permits/{raw,aggregate}
         
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      run: |
+        ok=1
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY HC_ISSUED_PERMITS_URL; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+
+    - name: "Preflight: test Supabase connectivity"
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      id: supa
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "http_code=$code" >> "$GITHUB_OUTPUT"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+          echo "::warning title=Supabase REST check failed::HTTP $code"
+        fi
+        
     - name: Check for 24h zero results
       id: check_recent
       run: |
@@ -118,7 +157,12 @@ jobs:
         echo "Found ${RECENT_FILES} recent Harris County files"
         
     - name: Run Harris County permit scraper
+      if: ${{ steps.preflight.outputs.ok == '1' }}
       id: scrape
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
       run: |
         DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
         [ "${{ inputs.sample_data }}" = "true" ] && export SAMPLE_DATA=1 || export SAMPLE_DATA=0
@@ -163,67 +207,13 @@ jobs:
         git push
         
 
-    - name: Generate summary
-      if: always()
+    - name: Write job summary
       run: |
-        echo "## 🏠 Harris County Permit Scraping Summary" >> $GITHUB_STEP_SUMMARY
+        echo "### scrape-harris-permits summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ steps.scrape.outputs.new_permits }}" -gt 0 ]; then
-          echo "✅ **Success**: Found ${{ steps.scrape.outputs.new_permits }} new permits" >> $GITHUB_STEP_SUMMARY
-          
-          # Show latest data files
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📁 Files Updated:" >> $GITHUB_STEP_SUMMARY
-          TODAY=$(date +%Y-%m-%d)
-          find data \( -name "*${TODAY}*" -name "*harris*" \) -o \( -name "*${TODAY}*" -name "permits_*" \) | head -5 | while read file; do
-            if [ -f "$file" ]; then
-              SIZE=$(stat -c%s "$file" 2>/dev/null || echo "0")
-              echo "- \`$file\` (${SIZE} bytes)" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🎯 **Harris County permits processed**: ${{ steps.scrape.outputs.new_permits }}" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "ℹ️ **No new data**: No Harris County permits found" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.check_recent.outputs.recent_files }}" -eq 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Warning**: No recent data found in last 24 hours" >> $GITHUB_STEP_SUMMARY
-          fi
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
-        echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
-        echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
-        if [ "${SAMPLE_DATA}" = "1" ]; then
-          echo "- Sample data: Yes" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "- Sample data: No" >> $GITHUB_STEP_SUMMARY
-        fi
-        echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Run time: $(date)" >> $GITHUB_STEP_SUMMARY
-        
-        # Show environment status
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Environment Status:**" >> $GITHUB_STEP_SUMMARY
-        if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
-          echo "- Supabase URL: ✅ Set" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "- Supabase URL: ❌ Not set" >> $GITHUB_STEP_SUMMARY
-        fi
-        if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
-          echo "- Supabase Service Key: ✅ Set" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "- Supabase Service Key: ❌ Not set" >> $GITHUB_STEP_SUMMARY
-        fi
-        if [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
-          echo "- HC Permits URL: ✅ Set" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "- HC Permits URL: ❌ Not set" >> $GITHUB_STEP_SUMMARY
-        fi
+        echo "- Supabase URL: $([ -n \"${{ secrets.SUPABASE_URL }}\" ] && echo ✅ Set || echo ❌ Not set)" >> $GITHUB_STEP_SUMMARY
+        echo "- Supabase Service Key: $([ -n \"${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\" ] && echo ✅ Set || echo ❌ Not set)" >> $GITHUB_STEP_SUMMARY
+        echo "- HC Permits URL: $([ -n \"${{ secrets.HC_ISSUED_PERMITS_URL }}\" ] && echo ✅ Set || echo ❌ Not set)" >> $GITHUB_STEP_SUMMARY
 
 
     - name: Set date output
