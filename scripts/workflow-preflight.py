@@ -146,7 +146,11 @@ def check_harris_county_endpoint(hc_url):
                 
     except urllib.error.HTTPError as e:
         log_warning(f"Harris County endpoint HTTP error: {e.code} - {e.reason}")
-        return True  # HTTP errors might be acceptable for data endpoints
+        # Only accept certain HTTP errors as non-fatal (e.g., 403 Forbidden, 404 Not Found)
+        if e.code in (403, 404):
+            return True
+        else:
+            return False
     except urllib.error.URLError as e:
         log_error(f"Harris County endpoint connection error: {e.reason}")
         return False
