@@ -166,6 +166,9 @@ jobs:
     - name: Generate summary
       if: always()
       run: |
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        
         echo "## 🏠 Harris County Permit Scraping Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
@@ -197,7 +200,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Jurisdiction: Harris County (tx-harris)" >> $GITHUB_STEP_SUMMARY
-        echo "- Days back: ${{ github.event.inputs.days || '1' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Days back: ${DAYS}" >> $GITHUB_STEP_SUMMARY
         if [ "${SAMPLE_DATA}" = "1" ]; then
           echo "- Sample data: Yes" >> $GITHUB_STEP_SUMMARY
         else
