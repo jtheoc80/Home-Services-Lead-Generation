@@ -214,6 +214,35 @@ jobs:
         echo "ok=$ok" >> "$GITHUB_OUTPUT"
         [ "$ok" -eq 1 ]
 
+
+    - name: "Preflight: Supabase REST check"
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+          echo "::error title=Supabase REST failed::HTTP $code from $SUPABASE_URL"
+          exit 1
+        fi
+
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          "$SUPABASE_URL")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "404" ]; then
+          echo "::error title=Supabase connectivity failed::HTTP $code from $SUPABASE_URL"
+          exit 1
+        fi
     - name: Checkout repository
       uses: actions/checkout@v5
       
@@ -223,6 +252,7 @@ jobs:
         python-version: '3.11'
         
     - name: Install dependencies
+
       run: |
         cd ..
         python -m pip install --upgrade pip
