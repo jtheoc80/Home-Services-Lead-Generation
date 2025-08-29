@@ -32,7 +32,9 @@ jobs:
           
       - name: Trigger permit ingest
         run: |
-          source="${{ github.event.inputs.source || 'austin,dallas' }}"
+          # Set source default using shell logic instead of logical OR
+          source="${{ github.event.inputs.source }}"
+          [ -z "$source" ] && source="austin,dallas"
           dry_param=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             dry_param="&dry=1"

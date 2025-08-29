@@ -121,7 +121,13 @@ jobs:
       id: scrape
       run: |
         DAYS="${{ inputs.days }}" ; [ -z "$DAYS" ] && DAYS="1"
-        [ "${{ inputs.sample_data }}" = "true" ] && export SAMPLE_DATA=1 || export SAMPLE_DATA=0
+        
+        # Set SAMPLE_DATA using if/then for consistency
+        if [ "${{ inputs.sample_data }}" = "true" ]; then
+          export SAMPLE_DATA=1
+        else
+          export SAMPLE_DATA=0
+        fi
         
         echo "Scraping Harris County permits for the last ${DAYS} days..."
         echo "Sample data mode: ${SAMPLE_DATA}"

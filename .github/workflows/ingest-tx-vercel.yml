@@ -44,7 +44,9 @@ jobs:
     - name: Trigger permit ingestion
       id: ingest
       run: |
-        SOURCE="${{ github.event.inputs.source || 'all' }}"
+        # Set source default using shell logic instead of logical OR
+        SOURCE="${{ github.event.inputs.source }}"
+        [ -z "$SOURCE" ] && SOURCE="all"
         
         echo "🚀 Triggering permit ingestion for source: $SOURCE"
         echo "📡 Target: https://${{ env.VERCEL_DOMAIN }}/api/permits/ingest"

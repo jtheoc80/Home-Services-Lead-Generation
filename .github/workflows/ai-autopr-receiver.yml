@@ -51,8 +51,11 @@ jobs:
           fi
 
       - name: Run AI Auto-PR script
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_BOT || secrets.GITHUB_TOKEN }}
+        run: |
+          # Set token using shell logic instead of logical OR
+          GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN_BOT }}"
+          [ -z "$GITHUB_TOKEN" ] && GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          export GITHUB_TOKEN
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction }}
         run: |

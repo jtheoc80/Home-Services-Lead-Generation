@@ -192,7 +192,8 @@ jobs:
             let deltaResultText = '${{ steps.supabase-delta-test.outcome }}' == 'success' ? 'passed' : 'failed';
             let deltaEmoji = '${{ steps.supabase-delta-test.outcome }}' == 'success' ? '✅' : '❌';
             
-            if ('${{ steps.e2e-test.outcome }}' !== 'success' || '${{ steps.supabase-delta-test.outcome }}' !== 'success') {
+            // Replace strict not-equals with loose not-equals
+            if ('${{ steps.e2e-test.outcome }}' != 'success' || '${{ steps.supabase-delta-test.outcome }}' != 'success') {
               resultEmoji = '❌';
               resultText = 'failed';
             }

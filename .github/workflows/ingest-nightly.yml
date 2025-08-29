@@ -51,7 +51,9 @@ jobs:
     - name: Determine sources to process
       id: sources
       run: |
-        SOURCE="${{ github.event.inputs.source || 'all' }}"
+        # Set source default using shell logic instead of logical OR
+        SOURCE="${{ github.event.inputs.source }}"
+        [ -z "$SOURCE" ] && SOURCE="all"
         if [ "$SOURCE" = "all" ]; then
           echo "sources=austin dallas houston" >> $GITHUB_OUTPUT
         else
@@ -69,7 +71,9 @@ jobs:
     - name: Execute nightly ingest
       id: ingest
       run: |
-        DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+        # Set dry run default using shell logic instead of logical OR
+        DRY_RUN="${{ github.event.inputs.dry_run }}"
+        [ -z "$DRY_RUN" ] && DRY_RUN="false"
         TOTAL_FETCHED=0
         TOTAL_UPSERTS=0
         TOTAL_ERRORS=0
