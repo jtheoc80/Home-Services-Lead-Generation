@@ -248,25 +248,6 @@ jobs:
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${RECENT_FILES} recent Harris County files"
         
-
-    - name: "Preflight: test Supabase REST"
-      if: ${{ steps.preflight.outputs.ok == '1' }}
-      id: supabase_test
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
-          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "HTTP=$code"
-        echo "code=$code" >> $GITHUB_OUTPUT
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::warning title=Supabase REST check failed::HTTP $code"
-        fi
-        
     - name: Run Harris County permit scraper
       if: ${{ steps.preflight.outputs.ok == '1' }}
       id: scrape
@@ -363,6 +344,6 @@ jobs:
         
         echo "### Scrape Summary" >> $GITHUB_STEP_SUMMARY
         echo "- Secrets: $([ '${{ steps.preflight.outputs.ok }}' = '1' ] && echo '✅ present' || echo '❌ missing')" >> $GITHUB_STEP_SUMMARY
-        echo "- Supabase REST: $([ \"${{ steps.supabase_test.outputs.code }}\" = '200' -o \"${{ steps.supabase_test.outputs.code }}\" = '206' ] && echo '✅ ok' || echo '❌ failed')" >> $GITHUB_STEP_SUMMARY
+        echo "- Supabase REST: $([ \"${{ steps.supa.outputs.http_code }}\" = '200' -o \"${{ steps.supa.outputs.http_code }}\" = '206' ] && echo '✅ ok' || echo '❌ failed')" >> $GITHUB_STEP_SUMMARY
         echo "- Days: ${DAYS:-unset}, Sample: ${SAMPLE:-unset}" >> $GITHUB_STEP_SUMMARY
         echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
