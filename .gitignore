@@ -98,3 +98,6 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+actionlint
+LICENSE.txt
+*.tar.gz
