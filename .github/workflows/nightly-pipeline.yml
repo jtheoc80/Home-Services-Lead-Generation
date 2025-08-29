@@ -26,6 +26,9 @@ env:
 jobs:
   scrape_and_process:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: permit_leads
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -47,34 +50,40 @@ jobs:
 
       - name: Install permit_leads dependencies
         run: |
+          cd ..
           python -m pip install --upgrade pip
           pip install -r permit_leads/requirements.txt
 
       - name: Install backend dependencies
         run: |
+          cd ..
           pip install -r backend/requirements.txt
 
       - name: Redis smoketest
         if: env.REDIS_URL != ''
-        run: python scripts/redis_smoketest.py
+        run: |
+          cd ..
+          python scripts/redis_smoketest.py
 
       - name: Create output directory
         run: |
+          cd ..
           mkdir -p out
 
       - name: Run scraper for Houston counties only
         run: |
           # Use input parameter if provided, otherwise default to 14 days
           DAYS="${{ github.event.inputs.days || '14' }}"
-          python permit_leads/main.py --days $DAYS --outdir out
+          python main.py --days $DAYS --outdir ../out
 
       - name: Export leads to CSV
         run: |
-          python permit_leads/export_leads.py
+          python export_leads.py
 
       - name: Setup database schema
         if: env.DATABASE_URL != ''
         run: |
+          cd ..
           python -c "
           import psycopg2
           import os
@@ -98,13 +107,15 @@ jobs:
           "
 
       - name: Ingest leads to PostgreSQL
-        if: env.DATABASE_URL != '' && hashFiles('out/leads_recent.csv') != ''
+        if: env.DATABASE_URL != '' && hashFiles('../out/leads_recent.csv') != ''
         run: |
+          cd ..
           python backend/app/ingest.py out/leads_recent.csv
 
       - name: Process notifications (if enabled)
         if: env.DATABASE_URL != ''
         run: |
+          cd ..
           python -c "
           import os
           import sys
@@ -129,11 +140,22 @@ jobs:
               print(f'Error processing notifications: {e}')
           "
 
+      - name: Upload ETL artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-artifacts-${{ github.run_id }}
+          path: |
+            artifacts/**/*.csv
+            logs/**/*.log
+            logs/etl_output.log
+          if-no-files-found: warn
+
       - name: Upload leads artifact (audit only)
         uses: actions/upload-artifact@v4
         with:
           name: leads-recent-${{ github.run_number }}
-          path: out/leads_recent.csv
+          path: ../out/leads_recent.csv
           if-no-files-found: warn
           retention-days: 30
 
@@ -143,8 +165,8 @@ jobs:
         with:
           name: processing-logs-${{ github.run_number }}
           path: |
-            out/*.log
-            *.log
+            ../out/*.log
+            logs/**/*.log
           if-no-files-found: ignore
           retention-days: 7
 
@@ -155,8 +177,8 @@ jobs:
           END_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           # Count leads processed
-          if [ -f "out/leads_recent.csv" ]; then
-            LEAD_COUNT=$(tail -n +2 out/leads_recent.csv | wc -l)
+          if [ -f "../out/leads_recent.csv" ]; then
+            LEAD_COUNT=$(tail -n +2 ../out/leads_recent.csv | wc -l)
             LEAD_STATUS="✅ $LEAD_COUNT leads processed"
           else
             LEAD_COUNT=0
