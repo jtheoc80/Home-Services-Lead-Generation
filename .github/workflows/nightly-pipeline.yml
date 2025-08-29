@@ -79,8 +79,7 @@ jobs:
           [ -z "$DAYS" ] && DAYS="14"
           python permit_leads/main.py --days $DAYS --outdir out
 
-          # Use input parameter if provided, otherwise default to 14 days
-          DAYS="${{ github.event.inputs.days || '14' }}"
+          # Use same logic for second python script
           python main.py --days $DAYS --outdir ../out
 
 
