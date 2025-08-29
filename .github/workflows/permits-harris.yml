@@ -479,5 +479,5 @@ jobs:
           SUPABASE_REST_STATUS="❌ failed"
         fi
         echo "- Supabase REST: ${SUPABASE_REST_STATUS}" >> $GITHUB_STEP_SUMMARY
-        echo "- Days: ${DAYS:-unset}, Sample: ${SAMPLE:-unset}" >> $GITHUB_STEP_SUMMARY
+        echo "- Days: $DAYS, Sample: $SAMPLE" >> $GITHUB_STEP_SUMMARY
         echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
