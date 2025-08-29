@@ -81,11 +81,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r permit_leads/requirements.txt
         
-    - name: Supabase health check
-      run: |
-        echo "🔍 Performing additional Supabase health validation..."
-        python scripts/workflow-preflight.py
-        
     - name: Create directories
       run: |
         mkdir -p data/permits/{raw,aggregate}
