@@ -27,6 +27,9 @@ jobs:
   ingest-tx-permits:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: pipelines
     
     steps:
     - name: Checkout code
@@ -51,10 +54,13 @@ jobs:
         key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
         
     - name: Install dependencies
-      run: poetry install --no-dev
+      run: |
+        cd ..
+        poetry install --no-dev
       
     - name: Apply database migrations
       run: |
+        cd ..
         poetry run make db-migrate
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -75,7 +81,7 @@ jobs:
         fi
         
         echo "Running: poetry run python -m pipelines.load_raw $SOURCES_ARG $SINCE_ARG"
-        poetry run python -m pipelines.load_raw $SOURCES_ARG $SINCE_ARG
+        cd .. && poetry run python -m pipelines.load_raw $SOURCES_ARG $SINCE_ARG
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         SODA_APP_TOKEN: ${{ secrets.SODA_APP_TOKEN }}
@@ -84,7 +90,7 @@ jobs:
       id: normalize
       run: |
         echo "Normalizing permit data to gold.permits schema..."
-        poetry run python -m pipelines.normalize_permits
+        cd .. && poetry run python -m pipelines.normalize_permits
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
@@ -92,7 +98,7 @@ jobs:
       id: publish
       run: |
         echo "Computing and publishing lead scores..."
-        poetry run python -m pipelines.publish
+        cd .. && poetry run python -m pipelines.publish
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
@@ -100,7 +106,7 @@ jobs:
       id: quality_check
       run: |
         echo "Running Great Expectations data quality checks..."
-        poetry run python great_expectations/permits_validation.py
+        cd .. && poetry run python great_expectations/permits_validation.py
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
       continue-on-error: true  # Don't fail pipeline on quality check failures
@@ -108,10 +114,10 @@ jobs:
     - name: Generate sample data artifact
       run: |
         echo "Generating sample data for verification..."
-        mkdir -p artifacts
+        mkdir -p ../artifacts
         
         # Export sample of recent permits
-        poetry run python -c "
+        cd .. && poetry run python -c "
         import psycopg2
         import csv
         import os
@@ -155,11 +161,22 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
+    - name: Upload ETL artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-artifacts-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        
     - name: Upload sample data artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tx-permits-sample-${{ github.run_number }}
-        path: artifacts/
+        path: ../artifacts/
         retention-days: 7
         
     - name: Post to Slack on failure
@@ -183,13 +200,13 @@ jobs:
         echo "- **Lead Score Publishing**: ${{ steps.publish.outcome }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Data Quality Checks**: ${{ steps.quality_check.outcome }}" >> $GITHUB_STEP_SUMMARY
         
-        if [ -f "artifacts/recent_permits_sample.csv" ]; then
-          PERMIT_COUNT=$(wc -l < artifacts/recent_permits_sample.csv)
+        if [ -f "../artifacts/recent_permits_sample.csv" ]; then
+          PERMIT_COUNT=$(wc -l < ../artifacts/recent_permits_sample.csv)
           echo "- **Recent Permits Processed**: $((PERMIT_COUNT - 1))" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [ -f "artifacts/recent_lead_scores_sample.csv" ]; then
-          SCORE_COUNT=$(wc -l < artifacts/recent_lead_scores_sample.csv)
+        if [ -f "../artifacts/recent_lead_scores_sample.csv" ]; then
+          SCORE_COUNT=$(wc -l < ../artifacts/recent_lead_scores_sample.csv)
           echo "- **Lead Scores Generated**: $((SCORE_COUNT - 1))" >> $GITHUB_STEP_SUMMARY
         fi
         

@@ -61,14 +61,8 @@ jobs:
           SINCE_PERIOD="${{ github.event.inputs.since || '1d' }}"
           echo "Running ETL with --since $SINCE_PERIOD"
           
-          # Create logs and artifacts directories
-          mkdir -p logs artifacts
-          
           # Run the ETL process
           cd .. && poetry run python -m permit_leads --since "$SINCE_PERIOD" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
-          
-          # Move CSV files to artifacts directory if they exist
-          find . -name "*.csv" -not -path "./permit_leads/*" -exec mv {} permit_leads/artifacts/ \; 2>/dev/null || true
           
           # Check if any records were processed
           RECORD_COUNT=$(grep -o "Processed [0-9]* records" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]*" || echo "0")
@@ -78,17 +72,15 @@ jobs:
           # Save output for later use
           echo "ETL completed with $RECORD_COUNT records"
 
-      - name: Upload logs
+      - name: Upload ETL artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: etl-logs
-          path: permit_leads/logs/**/*.log
-
-      - name: Upload csv output
-        uses: actions/upload-artifact@v4
-        with:
-          name: etl-artifacts
-          path: permit_leads/artifacts/**/*.csv
+          name: etl-artifacts-${{ github.run_id }}
+          path: |
+            artifacts/**/*.csv
+            logs/**/*.log
+            logs/etl_output.log
+          if-no-files-found: warn
 
       - name: Run data ingestion
         if: steps.etl_run.outputs.record_count > 0 || github.event.inputs.force == 'true'
@@ -177,10 +169,11 @@ jobs:
         with:
           name: etl-results-${{ github.run_id }}
           path: |
-            *.csv
-            *.log
-            etl_output.log
+            artifacts/**/*.csv
+            logs/**/*.log
+            logs/etl_output.log
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Update job summary
         if: always()

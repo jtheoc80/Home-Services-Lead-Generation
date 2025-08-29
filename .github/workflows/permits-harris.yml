@@ -58,7 +58,13 @@ jobs:
   dryrun:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
+
+    defaults:
+      run:
+        working-directory: permit_leads
+
     needs: preflight
+
     
     env:
       ETL_ALLOW_EMPTY: 1
@@ -78,13 +84,14 @@ jobs:
         
     - name: Install dependencies
       run: |
+        cd ..
         python -m pip install --upgrade pip
         pip install -r permit_leads/requirements.txt
         
     - name: Create directories
       run: |
+        cd ..
         mkdir -p data/permits/{raw,aggregate}
-        mkdir -p logs artifacts
         
     - name: Run Harris County permit scraper (dry-run with sample data)
       run: |
@@ -101,7 +108,18 @@ jobs:
         # Continue regardless of scraper result
         
         # Ensure artifacts are created even when empty
-        [ -f scripts/ensure_artifacts.py ] && python scripts/ensure_artifacts.py || true
+        [ -f ../scripts/ensure_artifacts.py ] && python ../scripts/ensure_artifacts.py || true
+        
+    - name: Upload ETL artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-artifacts-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
         
     - name: Generate dryrun summary
       if: always()
@@ -128,6 +146,13 @@ jobs:
       with:
         name: harris-dryrun-logs-${{ github.run_number }}
         path: |
+          ../logs/
+          ../data/
+          ../artifacts/
+        retention-days: 7
+      with:
+        name: harris-dryrun-logs-${{ github.run_number }}
+        path: |
           logs/
           data/
           artifacts/
@@ -135,12 +160,18 @@ jobs:
     
   scrape-harris-permits:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: permit_leads
+
     needs: preflight
     
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+
     
     steps:
     - name: Checkout repository
@@ -153,12 +184,14 @@ jobs:
         
     - name: Install dependencies
       run: |
+        cd ..
         python -m pip install --upgrade pip
         pip install -r permit_leads/requirements.txt
         
         
     - name: Create data directory
       run: |
+        cd ..
         mkdir -p data/permits/{raw,aggregate}
         
     - name: "Preflight: verify required secrets"
@@ -208,8 +241,8 @@ jobs:
         TODAY=$(date +%Y-%m-%d)
         
         RECENT_FILES=0
-        if [ -d "data/permits" ]; then
-          RECENT_FILES=$(find data/permits -name "*harris*" -name "*${YESTERDAY}*" -o -name "*harris*" -name "*${TODAY}*" | wc -l)
+        if [ -d "../data/permits" ]; then
+          RECENT_FILES=$(find ../data/permits -name "*harris*" -name "*${YESTERDAY}*" -o -name "*harris*" -name "*${TODAY}*" | wc -l)
         fi
         
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
@@ -235,8 +268,8 @@ jobs:
         NEW_PERMITS=0
         
         # Check CSV files for permit count
-        if [ -f "data/permits/aggregate/permits_${TODAY}.csv" ]; then
-          NEW_PERMITS=$(tail -n +2 "data/permits/aggregate/permits_${TODAY}.csv" | wc -l)
+        if [ -f "../data/permits/aggregate/permits_${TODAY}.csv" ]; then
+          NEW_PERMITS=$(tail -n +2 "../data/permits/aggregate/permits_${TODAY}.csv" | wc -l)
         fi
         
         echo "new_permits=${NEW_PERMITS}" >> $GITHUB_OUTPUT
@@ -252,6 +285,7 @@ jobs:
     - name: Commit and push data
       if: ${{ steps.scrape.outputs.new_permits != '0' }}
       run: |
+        cd ..
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add data/
@@ -296,7 +330,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📁 Files Updated:" >> $GITHUB_STEP_SUMMARY
           TODAY=$(date +%Y-%m-%d)
-          find data \( -name "*${TODAY}*" -name "*harris*" \) -o \( -name "*${TODAY}*" -name "permits_*" \) | head -5 | while read file; do
+          find ../data \( -name "*${TODAY}*" -name "*harris*" \) -o \( -name "*${TODAY}*" -name "permits_*" \) | head -5 | while read file; do
             if [ -f "$file" ]; then
               SIZE=$(stat -c%s "$file" 2>/dev/null || echo "0")
               echo "- \`$file\` (${SIZE} bytes)" >> $GITHUB_STEP_SUMMARY
@@ -359,10 +393,21 @@ jobs:
       id: set_date
       run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
         
+    - name: Upload ETL artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-artifacts-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        
     - name: Upload data artifacts
       if: ${{ steps.scrape.outputs.new_permits != '0' }}
       uses: actions/upload-artifact@v4
       with:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}
-        path: data/
+        path: ../data/
         retention-days: 30

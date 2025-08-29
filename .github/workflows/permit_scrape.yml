@@ -31,6 +31,9 @@ env:
 jobs:
   scrape-permits:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: permit_leads
     
     steps:
     - name: Checkout repository
@@ -43,16 +46,17 @@ jobs:
         
     - name: Install dependencies
       run: |
+        cd ..
         python -m pip install --upgrade pip
         pip install -r permit_leads/requirements.txt
         
     - name: Create data directory
       run: |
+        cd ..
         mkdir -p data/permits/{raw,aggregate}
         
     - name: Run permit scraper
       run: |
-        cd permit_leads
         if [ "${{ github.event_name }}" = "schedule" ]; then
           # Scheduled run - use defaults
           python -m permit_leads --source city_of_houston --days 1 --formats csv sqlite jsonl
@@ -73,13 +77,14 @@ jobs:
       run: |
         # Check if any files were created today
         TODAY=$(date +%Y-%m-%d)
-        NEW_FILES=$(find data -name "*${TODAY}*" -type f | wc -l)
+        NEW_FILES=$(find ../data -name "*${TODAY}*" -type f | wc -l)
         echo "new_files=${NEW_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${NEW_FILES} new files for ${TODAY}"
         
     - name: Commit and push data
       if: steps.check_data.outputs.new_files > 0
       run: |
+        cd ..
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
@@ -116,13 +121,13 @@ jobs:
           # Show latest data
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Latest Files Created:" >> $GITHUB_STEP_SUMMARY
-          find data -name "$(date +%Y-%m-%d)*" -type f | head -5 | while read file; do
+          find ../data -name "$(date +%Y-%m-%d)*" -type f | head -5 | while read file; do
             echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
           done
           
           # Show permit counts if CSV exists
-          if [ -f "data/permits/aggregate/permits_$(date +%Y-%m-%d).csv" ]; then
-            PERMIT_COUNT=$(tail -n +2 "data/permits/aggregate/permits_$(date +%Y-%m-%d).csv" | wc -l)
+          if [ -f "../data/permits/aggregate/permits_$(date +%Y-%m-%d).csv" ]; then
+            PERMIT_COUNT=$(tail -n +2 "../data/permits/aggregate/permits_$(date +%Y-%m-%d).csv" | wc -l)
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "📋 **Permits processed today**: $PERMIT_COUNT" >> $GITHUB_STEP_SUMMARY
           fi
@@ -137,10 +142,21 @@ jobs:
         echo "- Sample data: ${{ env.SAMPLE_DATA == '1' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
         echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         
+    - name: Upload ETL artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-artifacts-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        
     - name: Upload data artifacts
       if: steps.check_data.outputs.new_files > 0
       uses: actions/upload-artifact@v4
       with:
         name: permit-data-$(date +%Y-%m-%d)
-        path: data/
+        path: ../data/
         retention-days: 30
