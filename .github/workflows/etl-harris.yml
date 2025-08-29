@@ -40,6 +40,40 @@ jobs:
           cd ..
           npm ci
       
+      - name: Preflight checks
+        id: preflight
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Validate environment variables
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "❌ SUPABASE_URL not set"
+            exit 1
+          fi
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "❌ SUPABASE_SERVICE_ROLE_KEY not set"
+            exit 1
+          fi
+          echo "✅ Environment variables validated"
+          echo "ok=1" >> $GITHUB_OUTPUT
+          
+      - name: "Preflight: test Supabase REST"
+        if: ${{ steps.preflight.outputs.ok == '1' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Prefer: count=exact, head=true" \
+            "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+          echo "HTTP=$code"
+          if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+            echo "::warning title=Supabase REST check failed::HTTP $code"
+          fi
+      
       - name: Run Harris County ETL Delta Test
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -56,14 +90,8 @@ jobs:
           echo "Harris County URL: $HC_ISSUED_PERMITS_URL"
           echo "Supabase URL: $SUPABASE_URL"
           
-          # Create logs and artifacts directories
-          mkdir -p logs artifacts
-          
           # Run the ETL delta test with JSON output for monitoring
           cd .. && npx tsx scripts/etlDelta.ts 2>&1 | tee scripts/logs/etl-output.log
-          
-          # Move any CSV files to artifacts directory
-          find . -name "*.csv" -not -path "./scripts/*" -exec mv {} scripts/artifacts/ \; 2>/dev/null || true
           
           # Check exit code
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -87,17 +115,15 @@ jobs:
             echo '{"error": "No log file found"}' > logs/etl-summary.json
           fi
       
-      - name: Upload logs
+      - name: Upload ETL artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: etl-logs
-          path: scripts/logs/**/*.log
-
-      - name: Upload csv output
-        uses: actions/upload-artifact@v4
-        with:
-          name: etl-artifacts
-          path: scripts/artifacts/**/*.csv
+          name: etl-artifacts-${{ github.run_id }}
+          path: |
+            artifacts/**/*.csv
+            logs/**/*.log
+            logs/etl_output.log
+          if-no-files-found: warn
 
       - name: Check for stale data (24h failure protection)
         if: always()

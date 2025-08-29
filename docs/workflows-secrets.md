@@ -2,6 +2,14 @@
 
 This document lists the required GitHub repository secrets needed for the automated workflows in this project. These secrets must be configured in **GitHub → Settings → Secrets and variables → Actions** for the workflows to function properly.
 
+## 📋 Quick Reference
+
+| Secret | Where used | Notes |
+| --- | --- | --- |
+| SUPABASE_URL | permits-harris.yml | e.g., https://YOUR-PROJECT.supabase.co |
+| SUPABASE_SERVICE_ROLE_KEY | permits-harris.yml | service role key (server-only) |
+| HC_ISSUED_PERMITS_URL | permits-harris.yml | Source endpoint for Harris permits |
+
 ## 🔑 Required Secrets
 
 ### 1. `SUPABASE_URL`
