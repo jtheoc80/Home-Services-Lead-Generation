@@ -1,0 +1,11 @@
+.github/workflows/etl-harris.yml
+.github/workflows/etl.yml
+.github/workflows/ingest-tx.yml
+.github/workflows/nightly-pipeline.yml
+.github/workflows/permit_scrape.yml
+.github/workflows/permits-harris.yml
+.github/workflows/workflow-lint.yml
+.gitignore
+README.md
+docs/workflows-secrets.md
+scripts/workflow-preflight.py
