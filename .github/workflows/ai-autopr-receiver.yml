@@ -51,14 +51,14 @@ jobs:
           fi
 
       - name: Run AI Auto-PR script
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction }}
         run: |
           # Set token using shell logic instead of logical OR
           GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN_BOT }}"
           [ -z "$GITHUB_TOKEN" ] && GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           export GITHUB_TOKEN
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          INSTRUCTION: ${{ steps.extract_instruction.outputs.instruction }}
-        run: |
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "ERROR: OPENAI_API_KEY secret is required but not set"
             exit 1
