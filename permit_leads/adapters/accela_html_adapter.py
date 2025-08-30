@@ -3,6 +3,7 @@ import datetime as dt
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
+
 class AccelaHTMLAdapter:
     """
     Very generic Accela/CitizenAccess results scraper.
@@ -19,6 +20,7 @@ class AccelaHTMLAdapter:
       - next_selector: "a[title='Next >']"  (optional; site-specific)
       - max_pages: 5
     """
+
     def __init__(self, cfg: Dict[str, Any], session=None):
         self.cfg = cfg
         self.session = session
@@ -43,7 +45,9 @@ class AccelaHTMLAdapter:
             rows.append(row)
         return rows
 
-    def fetch_since(self, since: dt.datetime, limit: int = 3000) -> Iterable[Dict[str, Any]]:
+    def fetch_since(
+        self, since: dt.datetime, limit: int = 3000
+    ) -> Iterable[Dict[str, Any]]:
         url = self.cfg["url"]
         next_sel = self.cfg.get("next_selector")
         max_pages = int(self.cfg.get("max_pages", 5))
