@@ -544,9 +544,15 @@ Found **13 workflow files** matching criteria.
 ## 🚨 CRITICAL SECURITY FINDINGS
 
 ### 1. **Unsafe Ternary Expressions**
-- `_scrape-python.yml` Line 100: `${{ inputs.sample_data == 'true' && '1' || '0' }}`
-- `permits-harris.yml` Line 20: `${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}`
-- `scrape-dallas.yml` Line 20: `${{ secrets.DALLAS_PERMITS_URL != '' && secrets.DALLAS_PERMITS_URL || secrets.SOURCE_URL }}`
+- `scrape-dallas.yml` Line 20: **REPLACE** with a shell step that sets an output, e.g.:
+  ```yaml
+  - id: set-permits-url
+    run: |
+      if [ -n "${{ secrets.DALLAS_PERMITS_URL }}" ]; then
+        echo "url=${{ secrets.DALLAS_PERMITS_URL }}" >> $GITHUB_OUTPUT
+      else
+        echo "url=${{ secrets.SOURCE_URL }}" >> $GITHUB_OUTPUT
+      fi
 
 ### 2. **Logical Operators in Secret Expressions**
 - Multiple files use `||` operator with secrets, which could lead to unintended exposure
