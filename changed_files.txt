@@ -1,0 +1,3 @@
+permit_leads/main.py
+permit_leads/sinks/supabase_sink.py
+supabase/migrations/add_unique_permits_source_key.sql
