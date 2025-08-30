@@ -1,0 +1,8 @@
+backend/.env.example
+backend/app/supabase_client.py
+backend/tests/test_cors_configuration.py
+backend/tests/test_healthz.py
+backend/tests/test_ingest_copy.py
+backend/tests/test_permit_integration.py
+backend/tests/test_rate_limit_lock.py
+backend/tests/test_supabase_integration.py
