@@ -101,3 +101,4 @@ playwright/.cache/
 actionlint
 LICENSE.txt
 *.tar.gz
+.github/workflows/_scrape-python.yml.backup
