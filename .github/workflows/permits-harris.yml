@@ -45,11 +45,31 @@ jobs:
         python scripts/workflow-preflight.py
         if [ $? -eq 0 ]; then
           echo "status=success" >> $GITHUB_OUTPUT
+          echo "ok=1" >> $GITHUB_OUTPUT
           echo "✅ Preflight checks passed"
         else
           echo "status=failed" >> $GITHUB_OUTPUT
+          echo "ok=0" >> $GITHUB_OUTPUT
           echo "❌ Preflight checks failed"
           exit 1
+        fi
+
+    - name: "Preflight: Supabase REST check"
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      id: supa
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact" \
+          "$SUPABASE_URL/rest/v1/permits?select=id&limit=1")
+        echo "http_code=$code" >> "$GITHUB_OUTPUT"
+        if [ "$code" != "200" ]; then
+          echo "::error title=Supabase REST failed::HTTP $code"; exit 1
         fi
 
   dryrun:
@@ -196,13 +216,13 @@ jobs:
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || secrets.AUSTIN_PERMITS_URL || '' }}
       run: |
         ok=1
         for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
           val="${!v}"
           if [ -z "$val" ]; then
-            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            echo "::error title=$v missing::Set this in GitHub → Settings → Secrets and variables → Actions"
             ok=0
           else
             echo "::add-mask::$val"
@@ -460,10 +480,14 @@ jobs:
       if: always()
       run: |
         # Set up variables
-        DAYS="${{ github.event.inputs.days }}"
+        DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         
-        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set sample data using shell logic
+        if [ "$SAMPLE" = "true" ]; then
           SAMPLE="1"
         else
           SAMPLE="0"

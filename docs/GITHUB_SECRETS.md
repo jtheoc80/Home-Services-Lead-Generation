@@ -19,6 +19,12 @@ The repository uses GitHub Actions workflows that require various secrets for ex
   - Used by: `permits-harris.yml`, `monthly-backup-validation.yml`, `etl-harris.yml`
   - ⚠️ **Critical**: This key has full database access - keep secure
 
+- **`SUPABASE_DB_URL`** - PostgreSQL connection string for direct database access
+  - Format: `postgresql://postgres:YOUR_DB_PASSWORD@db.YOUR-REF.supabase.co:5432/postgres?sslmode=require`
+  - Used by: `db-migrate.yml`
+  - Required for: Database migrations and schema changes
+  - ⚠️ **Critical**: Contains database password - keep secure
+
 ### Harris County Data Source
 - **`HC_ISSUED_PERMITS_URL`** - Harris County permits API endpoint
   - Format: `https://cohgispub.hctx.net/arcgis/rest/services/...`
@@ -75,6 +81,16 @@ The repository uses GitHub Actions workflows that require various secrets for ex
 - Scrapes Dallas County permit data daily
 - Stores data in Supabase database
 - Creates artifacts with permit data
+
+### Database Migrations (`db-migrate.yml`)
+**Required secrets:**
+- `SUPABASE_DB_URL`
+
+**What it does:**
+- Applies Supabase database schema migrations
+- Runs dry-run on pull requests for validation
+- Executes live migrations on main branch
+- Manages database schema evolution
 
 ### Monthly Backup Validation (`monthly-backup-validation.yml`)
 **Required secrets:**

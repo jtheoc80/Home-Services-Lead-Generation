@@ -196,13 +196,13 @@ jobs:
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL || secrets.SOURCE_URL }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || secrets.AUSTIN_PERMITS_URL || '' }}
       run: |
         ok=1
         for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
           val="${!v}"
           if [ -z "$val" ]; then
-            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            echo "::error title=$v missing::Set this in GitHub → Settings → Secrets and variables → Actions"
             ok=0
           else
             echo "::add-mask::$val"
@@ -440,10 +440,14 @@ jobs:
       if: always()
       run: |
         # Set up variables
-        DAYS="${{ github.event.inputs.days }}"
+        DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         
-        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set sample data using shell logic
+        if [ "$SAMPLE" = "true" ]; then
           SAMPLE="1"
         else
           SAMPLE="0"
