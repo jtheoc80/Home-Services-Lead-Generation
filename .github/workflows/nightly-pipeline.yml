@@ -72,24 +72,16 @@ jobs:
 
       - name: Run scraper for Houston counties only
         run: |
-
-
-          # Use input parameter if provided, otherwise default using shell logic
-          DAYS="${{ github.event.inputs.days }}"
-          [ -z "$DAYS" ] && DAYS="1"
-          python permit_leads/main.py --days $DAYS --outdir out
-
-          # Use input parameter if provided, otherwise default to 1 day
-          DAYS="${{ github.event.inputs.days || '1' }}"
-
           # Set defaults in bash for cron-safe execution
           DAYS="${{ inputs.days }}"
-          [ -z "$DAYS" ] && DAYS="14"
+          [ -z "$DAYS" ] && DAYS="1"
+          SAMPLE="${{ inputs.sample_data }}"
+          [ -z "$SAMPLE" ] && SAMPLE="false"
+          
+          echo "Running permit scraper for the last ${DAYS} days..."
+          echo "Sample data mode: ${SAMPLE}"
           
           python permit_leads/main.py --days $DAYS --outdir out
-
-
-          python main.py --days $DAYS --outdir ../out
 
 
       - name: Export leads to CSV
@@ -212,12 +204,8 @@ jobs:
           fi
 
           # Set days scraped using shell default
-
-          DAYS_SCRAPED="${{ github.event.inputs.days }}"
-          [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="1"
-
           DAYS_SCRAPED="${{ inputs.days }}"
-          [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="14"
+          [ -z "$DAYS_SCRAPED" ] && DAYS_SCRAPED="1"
 
 
           # Determine overall status

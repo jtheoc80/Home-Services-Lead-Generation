@@ -461,10 +461,14 @@ jobs:
       if: always()
       run: |
         # Set up variables
-        DAYS="${{ github.event.inputs.days }}"
+        DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         
-        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set sample data using shell logic
+        if [ "$SAMPLE" = "true" ]; then
           SAMPLE="1"
         else
           SAMPLE="0"
