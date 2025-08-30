@@ -240,26 +240,6 @@ jobs:
           echo "::error title=Supabase connectivity failed::HTTP $code from $SUPABASE_URL"
           exit 1
         fi
-    - name: Checkout repository
-      uses: actions/checkout@v5
-      
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-
-      run: |
-        cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
-        
-    - name: Create data directory
-      run: |
-        cd ..
-        mkdir -p data/permits/{raw,aggregate}
-        
     - name: Check for 24h zero results
       id: check_recent
       run: |
