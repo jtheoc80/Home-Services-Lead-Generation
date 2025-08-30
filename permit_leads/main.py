@@ -3,6 +3,7 @@ import logging
 import os
 import json
 import hashlib
+import uuid
 from pathlib import Path
 from typing import List, Dict, Tuple, Union
 import datetime as dt
@@ -112,7 +113,7 @@ def write_supabase_output(permits: List[PermitRecord], jurisdiction: str = None)
     if not permits:
         return
     
-    # Determine table name based on jurisdiction
+    # Determine table name based on jurisdiction (keeping existing logic for compatibility)
     jurisdiction_table_map = {
         'tx-harris': 'permits_raw_harris',
         'tx-fort-bend': 'permits_raw_fort_bend',
@@ -121,34 +122,50 @@ def write_supabase_output(permits: List[PermitRecord], jurisdiction: str = None)
         'tx-dallas': 'permits_raw_dallas'
     }
     
-    # Default to Harris County table for backward compatibility
-    table_name = jurisdiction_table_map.get(jurisdiction, 'permits_raw_harris')
+    # Default to permits table for new upsert behavior
+    table_name = jurisdiction_table_map.get(jurisdiction, 'permits')
     
     try:
-        # Initialize SupabaseSink with jurisdiction-specific table
+        # Initialize SupabaseSink - use "permits" table for RPC calls
         sink = SupabaseSink(
-            upsert_table=table_name,
-            conflict_col="event_id",
+            upsert_table="permits",
+            conflict_col="source,source_record_id",  # Updated for new upsert strategy
             chunk_size=500
         )
         
-        # Convert PermitRecord objects to dictionaries
+        # Convert PermitRecord objects to the required payload format
         permit_dicts = []
         for permit in permits:
             permit_dict = permit.dict()
-            # Add event_id if not present (use permit_id as fallback)
-            if 'event_id' not in permit_dict:
-                if 'permit_id' in permit_dict and permit_dict['permit_id']:
-                    permit_dict['event_id'] = permit_dict['permit_id']
-                else:
-                    # Use a deterministic hash of the permit data as fallback
-                    permit_json = json.dumps(permit_dict, sort_keys=True, default=str)
-                    permit_hash = hashlib.sha256(permit_json.encode('utf-8')).hexdigest()
-                    permit_dict['event_id'] = f"permit_{permit_hash}"
-            permit_dicts.append(permit_dict)
+            
+            # Generate UUID for id field
+            record_id = str(uuid.uuid4())
+            
+            # Extract source and source_record_id 
+            source = jurisdiction or permit_dict.get('jurisdiction', 'unknown')
+            source_record_id = permit_dict.get('permit_id', permit_dict.get('event_id'))
+            
+            # If no source_record_id available, generate one from permit data
+            if not source_record_id:
+                permit_json = json.dumps(permit_dict, sort_keys=True, default=str)
+                permit_hash = hashlib.sha256(permit_json.encode('utf-8')).hexdigest()
+                source_record_id = f"permit_{permit_hash[:16]}"
+            
+            # Create payload with required fields plus permit data
+            payload = {
+                "id": record_id,
+                "source": source,
+                "source_record_id": str(source_record_id),
+                "jurisdiction": jurisdiction or permit_dict.get('jurisdiction', 'unknown'),
+                "created_at": "now()",
+                # Include all permit data for the upsert function to process
+                **permit_dict
+            }
+            
+            permit_dicts.append(payload)
         
-        # Upsert to Supabase
-        result = sink.upsert_records(permit_dicts)
+        # Upsert to Supabase using RPC endpoint for proper (source, source_record_id) conflict resolution
+        result = sink.upsert_records(permit_dicts, use_rpc=True)
         logger.info(f"Supabase upsert completed: {result['success']} success, {result['failed']} failed")
         
     except ImportError:
