@@ -2,8 +2,6 @@
 create or replace view public.public_leads as
 select
   id,
-  source as jurisdiction,
-  source,
   source_record_id,
   created_at
 from permits;
