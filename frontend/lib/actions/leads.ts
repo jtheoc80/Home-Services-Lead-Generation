@@ -1,3 +1,4 @@
+
 // Server action to fetch leads using the exact query from the problem statement
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { LeadForPermitsView, LeadsApiResponse } from '@/types';
@@ -9,6 +10,22 @@ export async function getLeads(): Promise<LeadsApiResponse> {
     const { data: leads, error } = await supabase
       .from('leads')
       .select('id, created_at, name, email, phone, address, city, state, county, status, service, value, source')
+
+// Server action to fetch leads using the exact schema from the leads table
+import { createServerSupabase } from '@/lib/supabase/clients';
+import type { Lead } from '@/types/supabase';
+
+// Re-export the Lead type for convenience
+export type { Lead } from '@/types/supabase';
+
+export async function getLeads(): Promise<{ data: Lead[] | null; error: string | null }> {
+  try {
+    // Query leads table with relevant fields for the demo
+    const supabase = createServerSupabase();
+    const { data: leads, error } = await supabase
+      .from('leads')
+      .select('id, name, phone, email, address, city, state, county, status, source, lead_score, value, created_at')
+
       .order('created_at', { ascending: false })
       .limit(50);
 
