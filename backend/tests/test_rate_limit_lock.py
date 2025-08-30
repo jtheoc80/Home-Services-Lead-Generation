@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch, AsyncMock
 # Set required environment variables for testing
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret'
 os.environ['SUPABASE_URL'] = 'https://test.supabase.co'
-os.environ['SUPABASE_SERVICE_ROLE'] = 'test_service_role'
+os.environ['SUPABASE_SERVICE_ROLE_KEY'] = 'test_service_role'
 
 # Import after setting environment variables
 from app.redis_client import rate_limit, with_lock, ping_ms, cache_get, cache_setex, dedupe_sadd

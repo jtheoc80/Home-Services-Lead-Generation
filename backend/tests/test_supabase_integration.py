@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 # Set required environment variables for testing
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret'
 os.environ['SUPABASE_URL'] = 'https://test.supabase.co'
-os.environ['SUPABASE_SERVICE_ROLE'] = 'test_service_role'
+os.environ['SUPABASE_SERVICE_ROLE_KEY'] = 'test_service_role'
 
 def test_insert_lead_validation():
     """Test insert_lead function input validation."""
@@ -111,7 +111,7 @@ def test_supabase_client_env_validation():
     
     # Save original values
     original_url = os.environ.get('SUPABASE_URL')
-    original_key = os.environ.get('SUPABASE_SERVICE_ROLE')
+    original_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
     
     try:
         # Test missing URL
@@ -121,10 +121,10 @@ def test_supabase_client_env_validation():
         
         # Restore URL, remove key
         os.environ['SUPABASE_URL'] = 'https://test.supabase.co'
-        del os.environ['SUPABASE_SERVICE_ROLE']
+        del os.environ['SUPABASE_SERVICE_ROLE_KEY']
         reset_client()
         
-        with pytest.raises(ValueError, match="SUPABASE_SERVICE_ROLE environment variable is required"):
+        with pytest.raises(ValueError, match="SUPABASE_SERVICE_ROLE_KEY environment variable is required"):
             get_supabase_client()
             
     finally:
@@ -132,7 +132,7 @@ def test_supabase_client_env_validation():
         if original_url:
             os.environ['SUPABASE_URL'] = original_url
         if original_key:
-            os.environ['SUPABASE_SERVICE_ROLE'] = original_key
+            os.environ['SUPABASE_SERVICE_ROLE_KEY'] = original_key
         reset_client()
 
 
