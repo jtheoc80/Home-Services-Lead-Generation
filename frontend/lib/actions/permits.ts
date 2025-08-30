@@ -1,34 +1,23 @@
-// Server action to fetch permits using the exact query from the problem statement
+// Server action to fetch leads using a similar pattern to the original permits action
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { LeadForPermitsView, LeadsApiResponse } from '@/types';
 
-// Types for permits data based on the problem statement query
-export interface Permit {
-  id: string;
-  jurisdiction: string;
-  county: string;
-  permit_type: string;
-  value: number | null;
-  status: string;
-  issued_date: string;
-  address: string;
-}
-
-export async function getPermits(): Promise<{ data: Permit[] | null; error: string | null }> {
+export async function getLeads(): Promise<LeadsApiResponse> {
   try {
-    // This is the exact query from the problem statement
+    // Query leads table instead of permits, mapping fields appropriately
     const supabase = createSupabaseServerClient();
-    const { data: permits, error } = await supabase
-      .from('permits')
-      .select('id, jurisdiction, county, permit_type, value, status, issued_date, address')
-      .order('issued_date', { ascending: false })
+    const { data: leads, error } = await supabase
+      .from('leads')
+      .select('id, city, county, service, value, status, created_at, address')
+      .order('created_at', { ascending: false })
       .limit(50);
 
-    return { data: permits, error: error?.message || null };
+    return { data: leads, error: error?.message || null };
   } catch (err) {
-    console.error('Error fetching permits:', err);
+    console.error('Error fetching leads:', err);
     return { 
       data: null, 
-      error: err instanceof Error ? err.message : 'Failed to fetch permits'
+      error: err instanceof Error ? err.message : 'Failed to fetch leads'
     };
   }
 }
