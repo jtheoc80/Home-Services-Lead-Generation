@@ -177,15 +177,13 @@ export default function PermitsDemo() {
             <div className="bg-green-50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-green-900 mb-2">Avg Score</h3>
               <p className="text-3xl font-bold text-green-600">
-                {leads.length > 0 
-                  ? Math.round(
-                      leads
-                        .filter((lead: Lead) => lead.lead_score)
-                        .reduce((sum: number, lead: Lead) => sum + (lead.lead_score || 0), 0) / 
-                      leads.filter((lead: Lead) => lead.lead_score).length
-                    ) || 'N/A'
-                  : 'N/A'
-                }
+                {(() => {
+                  if (leads.length === 0) return 'N/A';
+                  const scoredLeads = leads.filter((lead: Lead) => lead.lead_score);
+                  if (scoredLeads.length === 0) return 'N/A';
+                  const avg = scoredLeads.reduce((sum: number, lead: Lead) => sum + (lead.lead_score || 0), 0) / scoredLeads.length;
+                  return Number.isNaN(avg) ? 'N/A' : Math.round(avg);
+                })()}
               </p>
             </div>
             <div className="bg-purple-50 rounded-lg p-6">
