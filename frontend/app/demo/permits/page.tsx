@@ -1,59 +1,36 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-// Types for permits data based on the problem statement query
-interface Permit {
-  id: string;
-  jurisdiction: string;
-  county: string;
-  permit_type: string;
-  value: number | null;
-  status: string;
-  issued_date: string;
-  address: string;
-}
+import { getLeads, type Lead } from '@/lib/actions/leads';
 
 export default function PermitsDemo() {
-  const [permits, setPermits] = useState<Permit[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPermits = async () => {
+    const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Check if Supabase is configured
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-          throw new Error('Supabase configuration is missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
-        }
-
-        // Dynamic import to avoid build-time issues
-        const { supabase } = await import('@/lib/supabaseClient');
-
-        // This is the exact query from the problem statement
-        const { data: permits, error } = await supabase
-          .from('permits')
-          .select('id, jurisdiction, county, permit_type, value, status, issued_date, address')
-          .order('issued_date', { ascending: false })
-          .limit(50);
+        // Use the leads server action instead of direct Supabase query
+        const { data: leads, error } = await getLeads();
 
         if (error) {
-          throw error;
+          throw new Error(error);
         }
 
-        setPermits(permits || []);
+        setLeads(leads || []);
       } catch (err) {
-        console.error('Error fetching permits:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch permits');
+        console.error('Error fetching leads:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch leads');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPermits();
+    fetchLeads();
   }, []);
 
   // Format currency
@@ -82,10 +59,10 @@ export default function PermitsDemo() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Permits Demo
+            Leads Demo
           </h1>
           <p className="text-gray-600">
-            Testing the permits table query with the expected schema
+            Testing the leads table query with proper TypeScript types
           </p>
         </div>
 
@@ -96,7 +73,7 @@ export default function PermitsDemo() {
               <strong>Error:</strong> {error}
             </div>
             <div className="text-red-600 text-sm mt-2">
-              Make sure the permits view has been created and the database schema is set up correctly.
+              Make sure the leads table exists and the database schema is set up correctly.
             </div>
           </div>
         )}
@@ -105,7 +82,7 @@ export default function PermitsDemo() {
         {loading && (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-600">Loading permits data...</p>
+            <p className="mt-2 text-gray-600">Loading leads data...</p>
           </div>
         )}
 
@@ -114,7 +91,7 @@ export default function PermitsDemo() {
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">
-                Recent Permits ({permits.length})
+                Recent Leads ({leads.length})
               </h2>
             </div>
             <div className="overflow-x-auto">
@@ -122,64 +99,64 @@ export default function PermitsDemo() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
+                      Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jurisdiction
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       County
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Value
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Issued
+                      Source
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Address
+                      Score
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {permits.length === 0 ? (
+                  {leads.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                        No permits found
+                        No leads found
                       </td>
                     </tr>
                   ) : (
-                    permits.map((permit, index) => (
-                      <tr key={permit.id || index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {permit.id}
-                        </td>
+                    leads.map((lead, index) => (
+                      <tr key={lead.id || index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {permit.jurisdiction}
+                          {lead.name || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {permit.county}
+                          {lead.phone || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {permit.permit_type || 'N/A'}
+                          {lead.email || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(permit.value)}
+                          {lead.county || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {permit.status}
+                          {lead.status || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(permit.issued_date)}
+                          {lead.source || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {permit.address}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {lead.lead_score || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(lead.created_at || '')}
                         </td>
                       </tr>
                     ))
@@ -194,33 +171,31 @@ export default function PermitsDemo() {
         {!loading && !error && (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-blue-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Permits</h3>
-              <p className="text-3xl font-bold text-blue-600">{permits.length}</p>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Total Leads</h3>
+              <p className="text-3xl font-bold text-blue-600">{leads.length}</p>
             </div>
             <div className="bg-green-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-green-900 mb-2">Avg Value</h3>
+              <h3 className="text-lg font-semibold text-green-900 mb-2">Avg Score</h3>
               <p className="text-3xl font-bold text-green-600">
-                {permits.length > 0 
-                  ? formatCurrency(
-                      permits
-                        .filter(p => p.value)
-                        .reduce((sum, p) => sum + (p.value || 0), 0) / 
-                      permits.filter(p => p.value).length
-                    )
-                  : 'N/A'
-                }
+                {(() => {
+                  if (leads.length === 0) return 'N/A';
+                  const scoredLeads = leads.filter((lead: Lead) => lead.lead_score);
+                  if (scoredLeads.length === 0) return 'N/A';
+                  const avg = scoredLeads.reduce((sum: number, lead: Lead) => sum + (lead.lead_score || 0), 0) / scoredLeads.length;
+                  return Number.isNaN(avg) ? 'N/A' : Math.round(avg);
+                })()}
               </p>
             </div>
             <div className="bg-purple-50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-purple-900 mb-2">Counties</h3>
               <p className="text-3xl font-bold text-purple-600">
-                {new Set(permits.map(p => p.county).filter(Boolean)).size}
+                {new Set(leads.map((lead: Lead) => lead.county).filter(Boolean)).size}
               </p>
             </div>
             <div className="bg-yellow-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-yellow-900 mb-2">Jurisdictions</h3>
+              <h3 className="text-lg font-semibold text-yellow-900 mb-2">Sources</h3>
               <p className="text-3xl font-bold text-yellow-600">
-                {new Set(permits.map(p => p.jurisdiction).filter(Boolean)).size}
+                {new Set(leads.map((lead: Lead) => lead.source).filter(Boolean)).size}
               </p>
             </div>
           </div>
@@ -230,9 +205,9 @@ export default function PermitsDemo() {
         <div className="mt-8 bg-gray-100 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Technical Details</h3>
           <div className="text-sm text-gray-600 space-y-2">
-            <p><strong>Query:</strong> <code>supabase.from(&apos;permits&apos;).select(&apos;id, jurisdiction, county, permit_type, value, status, issued_date, address&apos;)</code></p>
-            <p><strong>Expected Schema:</strong> The permits view should map to the gold.permits table with proper column aliases</p>
-            <p><strong>Dependencies:</strong> Requires 2025-setup.sql and create_permits_view.sql to be applied</p>
+            <p><strong>Query:</strong> <code>supabase.from(&apos;leads&apos;).select(&apos;id, name, phone, email, address, city, state, county, status, source, lead_score, value, created_at&apos;)</code></p>
+            <p><strong>TypeScript Types:</strong> Using proper Lead interface from types/supabase.ts for full type safety</p>
+            <p><strong>Dependencies:</strong> Requires leads table and RLS policies to be configured</p>
           </div>
         </div>
       </div>
