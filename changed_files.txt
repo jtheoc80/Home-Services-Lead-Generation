@@ -1,0 +1,5 @@
+frontend/src/lib/supabaseClient.ts
+supabase/config.toml
+supabase/migrations/0002_public_leads_view.sql
+supabase/seed/.gitkeep
+supabase/types/.gitkeep
