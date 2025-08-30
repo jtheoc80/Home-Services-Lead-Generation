@@ -22,6 +22,8 @@ on:
 env:
   VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
   CRON_SECRET: ${{ secrets.CRON_SECRET }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 jobs:
   nightly-ingest:
     runs-on: ubuntu-latest
@@ -36,9 +38,11 @@ jobs:
       env:
         VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
         CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         ok=1
-        for v in VERCEL_DOMAIN CRON_SECRET; do
+        for v in VERCEL_DOMAIN CRON_SECRET SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
           val="${!v}"
           if [ -z "$val" ]; then
             echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
@@ -71,6 +75,23 @@ jobs:
         fi
     - name: Create logs directory
       run: mkdir -p logs
+      
+    - name: Supabase REST check
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+          echo "::error title=Supabase not reachable::HTTP $code"
+          exit 1
+        fi
+        
     - name: Run pre-ingest validation
       run: |
         echo "🔍 Running pre-ingest validation..."
