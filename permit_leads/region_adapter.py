@@ -37,6 +37,8 @@ class RegionAwareAdapter:
             return self._create_opengov_scraper(jurisdiction, max_retries)
         elif jurisdiction.provider == 'html':
             return self._create_html_scraper(jurisdiction, max_retries)
+        elif jurisdiction.provider == 'socrata':
+            return self._create_socrata_scraper(jurisdiction, max_retries)
         else:
             raise ValueError(f"Unknown provider type: {jurisdiction.provider}")
     
@@ -64,6 +66,11 @@ class RegionAwareAdapter:
         """Create generic HTML scraper."""
         from .adapters.html_adapter import HTMLAdapter
         return HTMLAdapter(jurisdiction, max_retries=max_retries)
+    
+    def _create_socrata_scraper(self, jurisdiction: Jurisdiction, max_retries: int = 3):
+        """Create Socrata API scraper."""
+        from .adapters.socrata_adapter import SocrataAdapter
+        return SocrataAdapter(jurisdiction, max_retries=max_retries)
     
     def annotate_with_region_info(self, permit: PermitRecord, jurisdiction: Jurisdiction, region: Region) -> PermitRecord:
         """Annotate permit record with region/jurisdiction information."""
