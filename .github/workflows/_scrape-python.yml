@@ -242,19 +242,19 @@ jobs:
             pip install -e .
           fi
 
-      - name: "Preflight: verify secrets"
+      - name: "Preflight: verify required secrets"
         id: preflight
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+          SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || secrets.AUSTIN_PERMITS_URL || '' }}
         run: |
           ok=1
           for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
             val="${!v}"
             if [ -z "$val" ]; then
-              echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+              echo "::error title=$v missing::Set this in GitHub → Settings → Secrets and variables → Actions"
               ok=0
             else
               echo "::add-mask::$val"
