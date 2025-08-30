@@ -170,25 +170,19 @@ jobs:
           exit 1
         fi
         
-    - name: Upload data artifacts
+    - name: Upload ETL artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ inputs.name }}-data-${{ github.run_number }}
+        name: ${{ inputs.name }}-etl-${{ github.run_id }}
         path: |
-          data/
-          logs/
+          artifacts/**/*.csv
+          data/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+          ${{ inputs.artifacts_glob }}
         if-no-files-found: warn
         retention-days: 14
-        
-    - name: Upload additional artifacts
-      if: inputs.artifacts_glob != '' && always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.name }}-extra-${{ github.run_number }}
-        path: ${{ inputs.artifacts_glob }}
-        if-no-files-found: warn
-        retention-days: 7
         
     - name: Generate summary
       if: always()
@@ -209,6 +203,7 @@ jobs:
         fi
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "📁 **Artifacts**: Available in workflow artifacts section" >> $GITHUB_STEP_SUMMARY
+
 
 
     timeout-minutes: 30
@@ -369,4 +364,5 @@ jobs:
           echo "- Source URL: $([ -n \"${{ secrets.SOURCE_URL }}\" ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
           echo "- Supabase REST: $([ \"${{ steps.supa.outputs.http_code }}\" = \"200\" -o \"${{ steps.supa.outputs.http_code }}\" = \"206\" ] && echo ✅ OK || echo ❌ Failed)" >> $GITHUB_STEP_SUMMARY
           echo "- Days: ${{ steps.args.outputs.days }} | Sample: ${{ steps.args.outputs.sample }}" >> $GITHUB_STEP_SUMMARY
+
 
