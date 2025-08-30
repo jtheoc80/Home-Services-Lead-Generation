@@ -157,8 +157,14 @@ jobs:
       if: steps.run_module.outputs.success != 'true' && inputs.entry_fallback != ''
       run: |
         echo "🔄 Running fallback script: ${{ inputs.entry_fallback }}"
+        # Build fallback script arguments
+        fallback_args="--days \"${{ inputs.days }}\""
+        if [ "${{ inputs.sample_data }}" = "true" ]; then
+          fallback_args="$fallback_args --sample"
+        fi
         if [ -f "${{ inputs.entry_fallback }}" ]; then
-          python "${{ inputs.entry_fallback }}" --days "${{ inputs.days }}"
+          # shellcheck disable=SC2086
+          python "${{ inputs.entry_fallback }}" $fallback_args
         else
           echo "::error::Fallback script not found: ${{ inputs.entry_fallback }}"
           exit 1
