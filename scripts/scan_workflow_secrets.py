@@ -11,7 +11,6 @@ Scans .github/workflows for specified patterns:
 Lists each file + secret name + whether it's required (fail if missing) or optional.
 """
 
-import os
 import re
 import yaml
 import argparse
