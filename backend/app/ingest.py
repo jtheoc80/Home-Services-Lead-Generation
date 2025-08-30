@@ -20,7 +20,7 @@ import psycopg2
 from .supabase_client import get_supabase_client
 
 # Import ingest logging
-from .ingest_logger import IngestTracer, log_ingest_step
+from .ingest_logger import log_ingest_step
 
 # Import Redis deduplication
 
@@ -28,23 +28,24 @@ from .ingest_logger import IngestTracer, log_ingest_step
 try:
     from .metrics import track_ingestion
     from .settings import settings
+
     METRICS_AVAILABLE = True
-    
+
     def is_metrics_enabled():
         """Check if metrics are enabled."""
-        return getattr(settings, 'enable_metrics', False)
-        
+        return getattr(settings, "enable_metrics", False)
+
 except ImportError:
     METRICS_AVAILABLE = False
     track_ingestion = lambda x, y, z: None
-    
+
     def is_metrics_enabled():
         return False
 
+
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -52,85 +53,107 @@ logger = logging.getLogger(__name__)
 class LeadIngestor:
     def __init__(self, db_url: str, use_copy: bool = True):
         """Initialize ingestor with database connection.
-        
+
         Args:
             db_url: PostgreSQL connection URL
             use_copy: Whether to use PostgreSQL COPY for bulk inserts (default: True)
         """
         self.db_url = db_url
         self.use_copy = use_copy
-        
+
     def connect_db(self):
         """Create database connection."""
         return psycopg2.connect(self.db_url)
-    
+
     def parse_csv_row(self, row: Dict[str, str]) -> Dict[str, Any]:
         """Parse a CSV row and convert types appropriately."""
         parsed = {}
-        
+
         # String fields (keep as-is or None for empty)
         string_fields = [
-            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
-            'category', 'status', 'applicant', 'owner', 'apn', 'land_use',
-            'owner_kind', 'budget_band', 'scoring_version', 'state'
+            "jurisdiction",
+            "permit_id",
+            "address",
+            "description",
+            "work_class",
+            "category",
+            "status",
+            "applicant",
+            "owner",
+            "apn",
+            "land_use",
+            "owner_kind",
+            "budget_band",
+            "scoring_version",
+            "state",
         ]
-        
+
         for field in string_fields:
-            value = row.get(field, '').strip()
+            value = row.get(field, "").strip()
             parsed[field] = value if value else None
-            
+
         # UUID fields for region/jurisdiction references
-        uuid_fields = ['jurisdiction_id', 'region_id']
+        uuid_fields = ["jurisdiction_id", "region_id"]
         for field in uuid_fields:
-            value = row.get(field, '').strip()
-            parsed[field] = value if value and value != 'None' else None
-            
+            value = row.get(field, "").strip()
+            parsed[field] = value if value and value != "None" else None
+
         # Numeric fields (including new lat/lon fields)
         numeric_fields = [
-            'value', 'latitude', 'longitude', 'lat', 'lon', 'heated_sqft', 'lot_size',
-            'lead_score', 'score_recency', 'score_trade_match', 'score_value',
-            'score_parcel_age', 'score_inspection'
+            "value",
+            "latitude",
+            "longitude",
+            "lat",
+            "lon",
+            "heated_sqft",
+            "lot_size",
+            "lead_score",
+            "score_recency",
+            "score_trade_match",
+            "score_value",
+            "score_parcel_age",
+            "score_inspection",
         ]
-        
+
         for field in numeric_fields:
-            value = row.get(field, '').strip()
-            if value and value != 'None':
+            value = row.get(field, "").strip()
+            if value and value != "None":
                 try:
                     parsed[field] = float(value)
                 except (ValueError, TypeError):
                     parsed[field] = None
             else:
                 parsed[field] = None
-                
+
         # Integer fields
-        integer_fields = ['year_built']
+        integer_fields = ["year_built"]
         for field in integer_fields:
-            value = row.get(field, '').strip()
-            if value and value != 'None':
+            value = row.get(field, "").strip()
+            if value and value != "None":
                 try:
                     parsed[field] = int(float(value))  # handle case where it's "2020.0"
                 except (ValueError, TypeError):
                     parsed[field] = None
             else:
                 parsed[field] = None
-                
+
         # Boolean fields
-        bool_value = row.get('is_residential', '').strip().lower()
-        if bool_value in ['true', '1', 'yes']:
-            parsed['is_residential'] = True
-        elif bool_value in ['false', '0', 'no']:
-            parsed['is_residential'] = False
+        bool_value = row.get("is_residential", "").strip().lower()
+        if bool_value in ["true", "1", "yes"]:
+            parsed["is_residential"] = True
+        elif bool_value in ["false", "0", "no"]:
+            parsed["is_residential"] = False
         else:
-            parsed['is_residential'] = None
-            
+            parsed["is_residential"] = None
+
         # Date fields
-        date_fields = ['issue_date', 'start_by_estimate']
+        date_fields = ["issue_date", "start_by_estimate"]
         for field in date_fields:
-            value = row.get(field, '').strip()
-            if value and value != 'None':
+            value = row.get(field, "").strip()
+            if value and value != "None":
                 try:
                     # Try parsing various date formats
-                    for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%Y-%m-%d %H:%M:%S']:
+                    for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S"]:
                         try:
                             parsed[field] = datetime.strptime(value, fmt).date()
                             break
@@ -142,63 +165,71 @@ class LeadIngestor:
                     parsed[field] = None
             else:
                 parsed[field] = None
-                
+
         # Timestamp fields
-        timestamp_value = row.get('scraped_at', '').strip()
-        if timestamp_value and timestamp_value != 'None':
+        timestamp_value = row.get("scraped_at", "").strip()
+        if timestamp_value and timestamp_value != "None":
             try:
                 # Try parsing various timestamp formats
-                for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d']:
+                for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]:
                     try:
-                        parsed['scraped_at'] = datetime.strptime(timestamp_value, fmt)
+                        parsed["scraped_at"] = datetime.strptime(timestamp_value, fmt)
                         break
                     except ValueError:
                         continue
                 else:
-                    parsed['scraped_at'] = None
+                    parsed["scraped_at"] = None
             except (ValueError, TypeError):
-                parsed['scraped_at'] = None
+                parsed["scraped_at"] = None
         else:
-            parsed['scraped_at'] = None
-            
+            parsed["scraped_at"] = None
+
         # Array fields (trade_tags)
-        trade_tags_value = row.get('trade_tags', '').strip()
-        if trade_tags_value and trade_tags_value != 'None':
+        trade_tags_value = row.get("trade_tags", "").strip()
+        if trade_tags_value and trade_tags_value != "None":
             try:
                 # Handle various formats: "['tag1', 'tag2']" or "tag1,tag2"
-                if trade_tags_value.startswith('[') and trade_tags_value.endswith(']'):
+                if trade_tags_value.startswith("[") and trade_tags_value.endswith("]"):
                     # Remove brackets and split by comma, clean quotes
-                    tags = trade_tags_value[1:-1].split(',')
-                    parsed['trade_tags'] = [tag.strip().strip('\'"') for tag in tags if tag.strip()]
+                    tags = trade_tags_value[1:-1].split(",")
+                    parsed["trade_tags"] = [
+                        tag.strip().strip("'\"") for tag in tags if tag.strip()
+                    ]
                 else:
                     # Simple comma-separated
-                    parsed['trade_tags'] = [tag.strip() for tag in trade_tags_value.split(',') if tag.strip()]
+                    parsed["trade_tags"] = [
+                        tag.strip()
+                        for tag in trade_tags_value.split(",")
+                        if tag.strip()
+                    ]
             except:
-                parsed['trade_tags'] = None
+                parsed["trade_tags"] = None
         else:
-            parsed['trade_tags'] = None
-            
+            parsed["trade_tags"] = None
+
         return parsed
-    
-    def ingest_csv_with_copy(self, csv_file_path: str, trace_id: Optional[str] = None) -> int:
+
+    def ingest_csv_with_copy(
+        self, csv_file_path: str, trace_id: Optional[str] = None
+    ) -> int:
         """
         Ingest leads from CSV file using PostgreSQL COPY for better performance.
-        
+
         This method uses COPY FROM with a temporary table approach to handle
         conflicts and provide transaction safety.
-        
+
         Returns:
             Number of records successfully ingested
         """
         if not os.path.exists(csv_file_path):
             raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
-            
+
         logger.info(f"Starting COPY-based ingest from {csv_file_path}")
-        
+
         conn = self.connect_db()
         try:
             cur = conn.cursor()
-            
+
             # Create temporary table with same structure as leads table
             temp_table_sql = """
                 CREATE TEMPORARY TABLE temp_leads (
@@ -236,79 +267,140 @@ class LeadIngestor:
                 )
             """
             cur.execute(temp_table_sql)
-            
+
             # Prepare cleaned data for COPY
             copy_buffer = StringIO()
             records_processed = 0
-            
-            with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
+
+            with open(csv_file_path, "r", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
-                
+
                 for row in reader:
                     try:
                         parsed_row = self.parse_csv_row(row)
-                        
+
                         # Format row for COPY (tab-separated, handling NULL values)
                         row_values = []
                         for field in [
-                            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
-                            'category', 'status', 'issue_date', 'applicant', 'owner', 'value',
-                            'is_residential', 'scraped_at', 'latitude', 'longitude', 'apn',
-                            'year_built', 'heated_sqft', 'lot_size', 'land_use', 'owner_kind',
-                            'trade_tags', 'budget_band', 'start_by_estimate', 'lead_score',
-                            'score_recency', 'score_trade_match', 'score_value', 'score_parcel_age',
-                            'score_inspection', 'scoring_version'
+                            "jurisdiction",
+                            "permit_id",
+                            "address",
+                            "description",
+                            "work_class",
+                            "category",
+                            "status",
+                            "issue_date",
+                            "applicant",
+                            "owner",
+                            "value",
+                            "is_residential",
+                            "scraped_at",
+                            "latitude",
+                            "longitude",
+                            "apn",
+                            "year_built",
+                            "heated_sqft",
+                            "lot_size",
+                            "land_use",
+                            "owner_kind",
+                            "trade_tags",
+                            "budget_band",
+                            "start_by_estimate",
+                            "lead_score",
+                            "score_recency",
+                            "score_trade_match",
+                            "score_value",
+                            "score_parcel_age",
+                            "score_inspection",
+                            "scoring_version",
                         ]:
                             value = parsed_row.get(field)
                             if value is None:
-                                row_values.append('\\N')  # PostgreSQL NULL representation
-                            elif field == 'trade_tags' and isinstance(value, list):
+                                row_values.append(
+                                    "\\N"
+                                )  # PostgreSQL NULL representation
+                            elif field == "trade_tags" and isinstance(value, list):
                                 # Format array for PostgreSQL
-                                formatted_array = '{' + ','.join(f'"{tag}"' for tag in value) + '}'
+                                formatted_array = (
+                                    "{" + ",".join(f'"{tag}"' for tag in value) + "}"
+                                )
                                 row_values.append(formatted_array)
                             elif isinstance(value, bool):
-                                row_values.append('t' if value else 'f')
+                                row_values.append("t" if value else "f")
                             elif isinstance(value, (int, float)):
                                 row_values.append(str(value))
                             elif isinstance(value, datetime):
-                                row_values.append(value.strftime('%Y-%m-%d %H:%M:%S'))
+                                row_values.append(value.strftime("%Y-%m-%d %H:%M:%S"))
                             else:
                                 # Escape tabs and newlines in string values
-                                escaped_value = str(value).replace('\t', '\t').replace('\n', '\n').replace('\r', '\r')
+                                escaped_value = (
+                                    str(value)
+                                    .replace("\t", "\t")
+                                    .replace("\n", "\n")
+                                    .replace("\r", "\r")
+                                )
                                 row_values.append(escaped_value)
-                        
-                        copy_buffer.write('\t'.join(row_values) + '\n')
+
+                        copy_buffer.write("\t".join(row_values) + "\n")
                         records_processed += 1
-                        
+
                         if records_processed % 1000 == 0:
-                            logger.info(f"Prepared {records_processed} records for COPY...")
-                            
+                            logger.info(
+                                f"Prepared {records_processed} records for COPY..."
+                            )
+
                     except Exception as e:
-                        logger.error(f"Error processing row {records_processed + 1}: {e}")
+                        logger.error(
+                            f"Error processing row {records_processed + 1}: {e}"
+                        )
                         logger.error(f"Row data: {row}")
                         continue
-            
+
             # Reset buffer to beginning
             copy_buffer.seek(0)
-            
+
             # Perform COPY operation
             logger.info(f"Executing COPY operation for {records_processed} records...")
             cur.copy_from(
                 copy_buffer,
-                'temp_leads',
-                sep='\t',
-                null='\\N',
+                "temp_leads",
+                sep="\t",
+                null="\\N",
                 columns=[
-                    'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
-                    'category', 'status', 'issue_date', 'applicant', 'owner', 'value',
-                    'is_residential', 'scraped_at', 'latitude', 'longitude', 'apn',
-                    'year_built', 'heated_sqft', 'lot_size', 'land_use', 'owner_kind',
-                    'trade_tags', 'budget_band', 'start_by_estimate', 'lead_score',
-                    'score_recency', 'score_trade_match', 'score_value', 'score_parcel_age',
-                    'score_inspection', 'scoring_version'
-                ]
+                    "jurisdiction",
+                    "permit_id",
+                    "address",
+                    "description",
+                    "work_class",
+                    "category",
+                    "status",
+                    "issue_date",
+                    "applicant",
+                    "owner",
+                    "value",
+                    "is_residential",
+                    "scraped_at",
+                    "latitude",
+                    "longitude",
+                    "apn",
+                    "year_built",
+                    "heated_sqft",
+                    "lot_size",
+                    "land_use",
+                    "owner_kind",
+                    "trade_tags",
+                    "budget_band",
+                    "start_by_estimate",
+                    "lead_score",
+                    "score_recency",
+                    "score_trade_match",
+                    "score_value",
+                    "score_parcel_age",
+                    "score_inspection",
+                    "scoring_version",
+                ],
             )
-            
+
             # Insert from temporary table with conflict resolution
             insert_from_temp_sql = """
                 INSERT INTO leads (
@@ -354,111 +446,132 @@ class LeadIngestor:
                     updated_at = now()
             """
             cur.execute(insert_from_temp_sql)
-            
+
             # Get count of affected rows
             rows_affected = cur.rowcount
-            
+
             # Commit the transaction
             conn.commit()
-            
+
             # Get the total count in the database
             cur.execute("SELECT COUNT(*) FROM leads")
             total_records = cur.fetchone()[0]
-            
+
             logger.info("COPY ingest completed successfully!")
             logger.info(f"Records processed: {records_processed}")
             logger.info(f"Rows affected (inserted/updated): {rows_affected}")
             logger.info(f"Total records in database: {total_records}")
-            
+
             # Log successful completion
             if trace_id:
-                log_ingest_step(trace_id, "upsert", True, {
-                    "method": "copy",
-                    "records_processed": records_processed,
-                    "rows_affected": rows_affected,
-                    "total_records": total_records
-                })
-            
+                log_ingest_step(
+                    trace_id,
+                    "upsert",
+                    True,
+                    {
+                        "method": "copy",
+                        "records_processed": records_processed,
+                        "rows_affected": rows_affected,
+                        "total_records": total_records,
+                    },
+                )
+
             # Track metrics if enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
-                track_ingestion('csv_copy', records_processed, 'success')
-            
+                track_ingestion("csv_copy", records_processed, "success")
+
             copy_buffer.close()
             return records_processed
-            
+
         except Exception as e:
             conn.rollback()
             logger.error(f"Error during COPY ingest: {e}")
-            
+
             # Log failure
             if trace_id:
-                log_ingest_step(trace_id, "upsert", False, {
-                    "method": "copy",
-                    "error": str(e),
-                    "records_processed": records_processed
-                })
-            
+                log_ingest_step(
+                    trace_id,
+                    "upsert",
+                    False,
+                    {
+                        "method": "copy",
+                        "error": str(e),
+                        "records_processed": records_processed,
+                    },
+                )
+
             # Track failed ingestion if metrics enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
-                track_ingestion('csv_copy', 0, 'error')
-            
+                track_ingestion("csv_copy", 0, "error")
+
             raise
         finally:
             conn.close()
-    
+
     def ingest_csv(self, csv_file_path: str, trace_id: Optional[str] = None) -> int:
         """
         Ingest leads from CSV file into PostgreSQL database.
-        
+
         Uses PostgreSQL COPY for better performance when enabled, otherwise
         falls back to individual INSERT statements.
-        
+
         Args:
             csv_file_path: Path to the CSV file to ingest
             trace_id: Optional trace ID for logging ingest steps
-        
+
         Returns:
             Number of records successfully ingested
         """
         # Log upsert stage
         if trace_id:
-            log_ingest_step(trace_id, "upsert", True, {
-                "csv_file": csv_file_path,
-                "method": "copy" if self.use_copy else "insert"
-            })
-        
+            log_ingest_step(
+                trace_id,
+                "upsert",
+                True,
+                {
+                    "csv_file": csv_file_path,
+                    "method": "copy" if self.use_copy else "insert",
+                },
+            )
+
         if self.use_copy:
             try:
                 return self.ingest_csv_with_copy(csv_file_path, trace_id)
             except Exception as e:
-                logger.warning(f"COPY method failed: {e}. Falling back to INSERT method.")
+                logger.warning(
+                    f"COPY method failed: {e}. Falling back to INSERT method."
+                )
                 if trace_id:
-                    log_ingest_step(trace_id, "upsert", False, {
-                        "error": str(e),
-                        "fallback": "INSERT method"
-                    })
+                    log_ingest_step(
+                        trace_id,
+                        "upsert",
+                        False,
+                        {"error": str(e), "fallback": "INSERT method"},
+                    )
                 self.use_copy = False
-        
+
         return self.ingest_csv_with_insert(csv_file_path, trace_id)
-    
-    def ingest_csv_with_insert(self, csv_file_path: str, trace_id: Optional[str] = None) -> int:
+
+    def ingest_csv_with_insert(
+        self, csv_file_path: str, trace_id: Optional[str] = None
+    ) -> int:
         """
         Ingest leads from CSV file using individual INSERT statements.
-        
+
         This is the fallback method when COPY is not available or fails.
-        
+
         Returns:
             Number of records successfully ingested
         """
         if not os.path.exists(csv_file_path):
             raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
-            
+
         logger.info(f"Starting ingest from {csv_file_path}")
-        
+
         conn = self.connect_db()
         try:
             cur = conn.cursor()
-            
+
             # Prepare the INSERT statement
             insert_sql = """
                 INSERT INTO leads (
@@ -516,20 +629,20 @@ class LeadIngestor:
                     scoring_version = EXCLUDED.scoring_version,
                     updated_at = now()
             """
-            
+
             records_processed = 0
             records_inserted = 0
-            
-            with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
+
+            with open(csv_file_path, "r", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
-                
+
                 for row in reader:
                     try:
                         parsed_row = self.parse_csv_row(row)
-                        
+
                         # Create unique ID for deduplication
                         unique_id = f"{parsed_row.get('jurisdiction', '')}:{parsed_row.get('permit_id', '')}"
-                        
+
                         # Check Redis deduplication (use asyncio.run for sync context)
                         try:
                             # For sync context, we skip Redis deduplication and rely on database constraints
@@ -540,59 +653,73 @@ class LeadIngestor:
                             #     continue
                         except Exception as e:
                             # If Redis fails, continue with database-level deduplication
-                            logger.warning(f"Redis deduplication failed for {unique_id}: {e}")
-                        
+                            logger.warning(
+                                f"Redis deduplication failed for {unique_id}: {e}"
+                            )
+
                         cur.execute(insert_sql, parsed_row)
                         records_processed += 1
-                        
+
                         if records_processed % 100 == 0:
                             logger.info(f"Processed {records_processed} records...")
-                            
+
                     except Exception as e:
-                        logger.error(f"Error processing row {records_processed + 1}: {e}")
+                        logger.error(
+                            f"Error processing row {records_processed + 1}: {e}"
+                        )
                         logger.error(f"Row data: {row}")
                         continue
-                        
+
             conn.commit()
-            
+
             # Get the count of records actually inserted/updated
             cur.execute("SELECT COUNT(*) FROM leads")
             total_records = cur.fetchone()[0]
-            
+
             logger.info("Ingest completed successfully!")
             logger.info(f"Records processed: {records_processed}")
             logger.info(f"Total records in database: {total_records}")
-            
+
             # Log successful completion
             if trace_id:
-                log_ingest_step(trace_id, "upsert", True, {
-                    "method": "insert",
-                    "records_processed": records_processed,
-                    "total_records": total_records
-                })
-            
+                log_ingest_step(
+                    trace_id,
+                    "upsert",
+                    True,
+                    {
+                        "method": "insert",
+                        "records_processed": records_processed,
+                        "total_records": total_records,
+                    },
+                )
+
             # Track metrics if enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
-                track_ingestion('csv_insert', records_processed, 'success')
-            
+                track_ingestion("csv_insert", records_processed, "success")
+
             return records_processed
-            
+
         except Exception as e:
             conn.rollback()
             logger.error(f"Error during ingest: {e}")
-            
+
             # Log failure
             if trace_id:
-                log_ingest_step(trace_id, "upsert", False, {
-                    "method": "insert",
-                    "error": str(e),
-                    "records_processed": records_processed
-                })
-            
+                log_ingest_step(
+                    trace_id,
+                    "upsert",
+                    False,
+                    {
+                        "method": "insert",
+                        "error": str(e),
+                        "records_processed": records_processed,
+                    },
+                )
+
             # Track failed ingestion if metrics enabled
             if METRICS_AVAILABLE and is_metrics_enabled():
-                track_ingestion('csv_insert', 0, 'error')
-            
+                track_ingestion("csv_insert", 0, "error")
+
             raise
         finally:
             conn.close()
@@ -601,10 +728,10 @@ class LeadIngestor:
 def insert_lead(lead: dict, trace_id: Optional[str] = None) -> dict:
     """
     Insert a lead into the Supabase 'leads' table.
-    
+
     This function uses the Supabase service client to insert a lead record
     into the leads table and returns the inserted data or raises an error.
-    
+
     Args:
         lead: Dictionary containing lead data with the following expected fields:
             - jurisdiction (str): The jurisdiction/region
@@ -639,10 +766,10 @@ def insert_lead(lead: dict, trace_id: Optional[str] = None) -> dict:
             - score_inspection (float, optional): Inspection score component
             - scoring_version (str, optional): Version of scoring algorithm used
         trace_id: Optional trace ID for logging ingest steps
-    
+
     Returns:
         dict: The inserted lead record as returned by Supabase
-        
+
     Raises:
         ValueError: If required fields are missing
         Exception: If insertion fails
@@ -650,45 +777,70 @@ def insert_lead(lead: dict, trace_id: Optional[str] = None) -> dict:
     # Validate required fields
     if not isinstance(lead, dict):
         if trace_id:
-            log_ingest_step(trace_id, "db_insert", False, {"error": "Lead must be a dictionary"})
+            log_ingest_step(
+                trace_id, "db_insert", False, {"error": "Lead must be a dictionary"}
+            )
         raise ValueError("Lead must be a dictionary")
-    
-    if not lead.get('jurisdiction'):
+
+    if not lead.get("jurisdiction"):
         if trace_id:
-            log_ingest_step(trace_id, "db_insert", False, {"error": "jurisdiction is required"})
+            log_ingest_step(
+                trace_id, "db_insert", False, {"error": "jurisdiction is required"}
+            )
         raise ValueError("jurisdiction is required")
-    
-    if not lead.get('permit_id'):
+
+    if not lead.get("permit_id"):
         if trace_id:
-            log_ingest_step(trace_id, "db_insert", False, {"error": "permit_id is required"})
+            log_ingest_step(
+                trace_id, "db_insert", False, {"error": "permit_id is required"}
+            )
         raise ValueError("permit_id is required")
-    
+
     try:
         # Get Supabase client
         supabase = get_supabase_client()
-        
+
         # Prepare lead data for insertion
         # Clean up the data to match expected types
         clean_lead = {}
-        
+
         # String fields
         string_fields = [
-            'jurisdiction', 'permit_id', 'address', 'description', 'work_class',
-            'category', 'status', 'applicant', 'owner', 'apn', 'land_use',
-            'owner_kind', 'budget_band', 'scoring_version'
+            "jurisdiction",
+            "permit_id",
+            "address",
+            "description",
+            "work_class",
+            "category",
+            "status",
+            "applicant",
+            "owner",
+            "apn",
+            "land_use",
+            "owner_kind",
+            "budget_band",
+            "scoring_version",
         ]
-        
+
         for field in string_fields:
             value = lead.get(field)
             clean_lead[field] = str(value) if value is not None else None
-        
+
         # Numeric fields
         numeric_fields = [
-            'value', 'latitude', 'longitude', 'heated_sqft', 'lot_size',
-            'lead_score', 'score_recency', 'score_trade_match', 'score_value',
-            'score_parcel_age', 'score_inspection'
+            "value",
+            "latitude",
+            "longitude",
+            "heated_sqft",
+            "lot_size",
+            "lead_score",
+            "score_recency",
+            "score_trade_match",
+            "score_value",
+            "score_parcel_age",
+            "score_inspection",
         ]
-        
+
         for field in numeric_fields:
             value = lead.get(field)
             if value is not None:
@@ -698,71 +850,85 @@ def insert_lead(lead: dict, trace_id: Optional[str] = None) -> dict:
                     clean_lead[field] = None
             else:
                 clean_lead[field] = None
-        
+
         # Integer fields
-        year_built = lead.get('year_built')
+        year_built = lead.get("year_built")
         if year_built is not None:
             try:
-                clean_lead['year_built'] = int(year_built)
+                clean_lead["year_built"] = int(year_built)
             except (ValueError, TypeError):
-                clean_lead['year_built'] = None
+                clean_lead["year_built"] = None
         else:
-            clean_lead['year_built'] = None
-        
+            clean_lead["year_built"] = None
+
         # Boolean field
-        is_residential = lead.get('is_residential')
+        is_residential = lead.get("is_residential")
         if is_residential is not None:
-            clean_lead['is_residential'] = bool(is_residential)
+            clean_lead["is_residential"] = bool(is_residential)
         else:
-            clean_lead['is_residential'] = None
-        
+            clean_lead["is_residential"] = None
+
         # Date/timestamp fields - expect ISO format strings
-        date_fields = ['issue_date', 'start_by_estimate', 'scraped_at']
+        date_fields = ["issue_date", "start_by_estimate", "scraped_at"]
         for field in date_fields:
             value = lead.get(field)
             clean_lead[field] = value if value else None
-        
+
         # Array field (trade_tags)
-        trade_tags = lead.get('trade_tags')
+        trade_tags = lead.get("trade_tags")
         if trade_tags is not None:
             if isinstance(trade_tags, list):
-                clean_lead['trade_tags'] = trade_tags
+                clean_lead["trade_tags"] = trade_tags
             elif isinstance(trade_tags, str):
                 # Try to parse as comma-separated values
-                clean_lead['trade_tags'] = [tag.strip() for tag in trade_tags.split(',') if tag.strip()]
+                clean_lead["trade_tags"] = [
+                    tag.strip() for tag in trade_tags.split(",") if tag.strip()
+                ]
             else:
-                clean_lead['trade_tags'] = None
+                clean_lead["trade_tags"] = None
         else:
-            clean_lead['trade_tags'] = None
-        
+            clean_lead["trade_tags"] = None
+
         # Insert the lead into Supabase
-        result = supabase.table('leads').insert(clean_lead).execute()
-        
+        result = supabase.table("leads").insert(clean_lead).execute()
+
         # Check if insertion was successful
         if result.data:
-            logger.info(f"Successfully inserted lead: {clean_lead.get('jurisdiction')}/{clean_lead.get('permit_id')}")
+            logger.info(
+                f"Successfully inserted lead: {clean_lead.get('jurisdiction')}/{clean_lead.get('permit_id')}"
+            )
             if trace_id:
-                log_ingest_step(trace_id, "db_insert", True, {
-                    "jurisdiction": clean_lead.get('jurisdiction'),
-                    "permit_id": clean_lead.get('permit_id'),
-                    "lead_id": result.data[0].get('id') if result.data else None
-                })
+                log_ingest_step(
+                    trace_id,
+                    "db_insert",
+                    True,
+                    {
+                        "jurisdiction": clean_lead.get("jurisdiction"),
+                        "permit_id": clean_lead.get("permit_id"),
+                        "lead_id": result.data[0].get("id") if result.data else None,
+                    },
+                )
             return result.data[0]  # Return the first (and only) inserted record
         else:
             error_msg = "No data returned from Supabase insert operation"
             if trace_id:
                 log_ingest_step(trace_id, "db_insert", False, {"error": error_msg})
             raise Exception(error_msg)
-            
+
     except Exception as e:
         logger.error(f"Failed to insert lead via Supabase: {e}")
         logger.error(f"Lead data: {lead}")
         if trace_id:
-            log_ingest_step(trace_id, "db_insert", False, {
-                "error": str(e),
-                "jurisdiction": lead.get('jurisdiction'),
-                "permit_id": lead.get('permit_id')
-            })
+            log_ingest_step(
+                trace_id,
+                "db_insert",
+                False,
+                {
+                    "error": str(e),
+                    "jurisdiction": lead.get("jurisdiction"),
+                    "permit_id": lead.get("permit_id"),
+                },
+            )
         raise Exception(f"Failed to insert lead: {e}")
 
 
@@ -770,26 +936,26 @@ def main():
     """Main entry point for the ingest script."""
     # Default path if no argument provided
     default_csv_path = "permit_leads/out/leads_recent.csv"
-    
+
     if len(sys.argv) > 2:
         print("Usage: python -m backend.app.ingest [csv_file_path]")
         print(f"Example: python -m backend.app.ingest {default_csv_path}")
         print("If no path is provided, defaults to permit_leads/out/leads_recent.csv")
         sys.exit(1)
-    
+
     csv_file_path = sys.argv[1] if len(sys.argv) == 2 else default_csv_path
-    
+
     # Get database URL from environment
-    db_url = os.environ.get('DATABASE_URL')
+    db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         logger.error("DATABASE_URL environment variable not set")
         sys.exit(1)
-        
+
     try:
         ingestor = LeadIngestor(db_url)
         records_processed = ingestor.ingest_csv(csv_file_path)
         logger.info(f"Successfully ingested {records_processed} records")
-        
+
     except Exception as e:
         logger.error(f"Ingest failed: {e}")
         sys.exit(1)

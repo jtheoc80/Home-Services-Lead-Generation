@@ -6,4 +6,10 @@ from .opengov_adapter import OpenGovAdapter
 from .html_adapter import HTMLAdapter
 from .socrata_adapter import SocrataAdapter
 
-__all__ = ['ArcGISAdapter', 'AccelaAdapter', 'OpenGovAdapter', 'HTMLAdapter', 'SocrataAdapter']
+__all__ = [
+    "ArcGISAdapter",
+    "AccelaAdapter",
+    "OpenGovAdapter",
+    "HTMLAdapter",
+    "SocrataAdapter",
+]
