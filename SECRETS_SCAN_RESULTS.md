@@ -1,6 +1,6 @@
 # GitHub Workflows Secret Patterns Scan Results
 
-**Scan Date:** $(date)  
+**Scan Date:** 2024-06-13 14:30 UTC  
 **Target Patterns:** `secrets.SUPABASE_*`, `secrets.*_PERMITS_URL`, `VERCEL_TOKEN`, `RAILWAY_TOKEN`  
 **Files Scanned:** 45 workflow files in `.github/workflows/`
 
