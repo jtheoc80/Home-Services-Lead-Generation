@@ -1,0 +1,59 @@
+name: Supabase Heartbeat
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Preflight: secrets"
+        id: pre
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ok=1
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+
+            [ -z "${!v}" ] && echo "::error title=$v missing::Set it in repo Secrets" && ok=0 || echo "::add-mask::${!v}"
+    [ -z "${!v}" ] && echo "::error title=$v missing::Set it in repo Secrets" && ok=0 || \
+              echo "::add-mask::${!v}"
+
+          done
+          echo "ok=$ok" >> $GITHUB_OUTPUT
+          [ "$ok" -eq 1 ]
+
+      - name: REST probe
+        id: probe
+        if: ${{ steps.pre.outputs.ok == '1' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Prefer: count=exact, head=true" \
+            "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+          echo "code=$code" >> $GITHUB_OUTPUT
+          [ "$code" = "200" -o "$code" = "206" ]
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Supabase Heartbeat" >> $GITHUB_STEP_SUMMARY
+
+          echo "- URL secret: $([ -n '${{ secrets.SUPABASE_URL }}' ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- Key secret: $([ -n '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- REST probe: $([ '${{ steps.probe.outputs.code }}' = '200' -o '${{ steps.probe.outputs.code }}' = '206' ] && echo ✅ OK || echo ❌ Fail)" >> $GITHUB_STEP_SUMMARY
+
+          echo "- URL secret: $([ -n '${{ secrets.SUPABASE_URL }}' ] && echo ✅ Set || \
+            echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- Key secret: $([ -n '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' ] && \
+            echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- REST probe: $([ '${{ steps.probe.outputs.code }}' = '200' -o \
+            '${{ steps.probe.outputs.code }}' = '206' ] && echo ✅ OK || \
+            echo ❌ Fail)" >> $GITHUB_STEP_SUMMARY
+

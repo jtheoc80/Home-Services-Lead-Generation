@@ -1,0 +1,347 @@
+
+name: Reusable Python Scraper
+
+name: _Scrape Python (Reusable)
+
+
+on:
+  workflow_call:
+    inputs:
+      name:
+
+        description: "Scraper name/identifier"
+
+        description: "Human-readable scraper name (e.g., tx-harris)"
+
+        required: true
+        type: string
+      module:
+        description: "Python module to run (e.g., permit_leads.harris.scrape)"
+        required: true
+        type: string
+      entry_fallback:
+
+        description: "Fallback script path if module fails"
+        required: false
+        type: string
+        default: ""
+      days:
+        description: "Days back to scrape"
+        required: false
+        type: string
+        default: "1"
+      sample_data:
+        description: "Use sample data mode"
+        required: false
+        type: string
+        default: "false"
+      artifacts_glob:
+        description: "Additional artifacts to upload (glob pattern)"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      SUPABASE_URL:
+        description: "Supabase project URL"
+        required: true
+      SUPABASE_SERVICE_ROLE_KEY:
+        description: "Supabase service role key"
+        required: true
+      SOURCE_URL:
+        description: "Source data URL"
+        required: false
+
+        description: "Fallback script path if module not importable"
+        required: false
+        default: scripts/scrape.py
+        type: string
+      days:
+        description: "Days back to scrape"
+        required: false
+        default: "1"
+        type: string
+      sample_data:
+        description: "Use sample mode (no writes)"
+        required: false
+        default: "false"
+        type: string
+      artifacts_glob:
+        description: "Additional artifact glob(s)"
+        required: false
+        default: ""
+        type: string
+      python_version:
+        description: "Python version"
+        required: false
+        default: "3.11"
+        type: string
+    secrets:
+      SUPABASE_URL:
+        required: true
+      SUPABASE_SERVICE_ROLE_KEY:
+        required: true
+      SOURCE_URL:
+        required: true
+
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    
+    defaults:
+      run:
+        working-directory: .
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets.SOURCE_URL }}
+      SAMPLE_DATA: ${{ inputs.sample_data == 'true' && '1' || '0' }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r permit_leads/requirements.txt
+        
+    - name: Create data directory
+      run: |
+        mkdir -p data/permits/{raw,aggregate}
+        
+    - name: Validate secrets
+      run: |
+        echo "🔍 Validating required secrets..."
+        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "::error::SUPABASE_URL secret is required"
+          exit 1
+        fi
+        if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+          echo "::error::SUPABASE_SERVICE_ROLE_KEY secret is required"
+          exit 1
+        fi
+        echo "✅ Required secrets are present"
+        
+    - name: Run Python module
+      id: run_module
+      run: |
+        echo "🚀 Running Python module: ${{ inputs.module }}"
+        echo "📅 Days: ${{ inputs.days }}"
+        echo "🧪 Sample data: ${{ inputs.sample_data }}"
+        
+        # Build module arguments
+        module_args="--days ${{ inputs.days }}"
+        if [ "${{ inputs.sample_data }}" = "true" ]; then
+          module_args="$module_args --sample"
+        fi
+        
+        # Try running the Python module first
+        if python -m ${{ inputs.module }} $module_args; then
+          echo "✅ Module ${{ inputs.module }} executed successfully"
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ Module ${{ inputs.module }} failed or not found"
+          echo "success=false" >> $GITHUB_OUTPUT
+        fi
+      continue-on-error: true
+        
+    - name: Run fallback script
+      if: steps.run_module.outputs.success != 'true' && inputs.entry_fallback != ''
+      run: |
+        echo "🔄 Running fallback script: ${{ inputs.entry_fallback }}"
+        # Build fallback script arguments
+        fallback_args="--days \"${{ inputs.days }}\""
+        if [ "${{ inputs.sample_data }}" = "true" ]; then
+          fallback_args="$fallback_args --sample"
+        fi
+        if [ -f "${{ inputs.entry_fallback }}" ]; then
+          # shellcheck disable=SC2086
+          python "${{ inputs.entry_fallback }}" $fallback_args
+        else
+          echo "::error::Fallback script not found: ${{ inputs.entry_fallback }}"
+          exit 1
+        fi
+        
+    - name: Upload data artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}-data-${{ github.run_number }}
+        path: |
+          data/
+          logs/
+        if-no-files-found: warn
+        retention-days: 14
+        
+    - name: Upload additional artifacts
+      if: inputs.artifacts_glob != '' && always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}-extra-${{ github.run_number }}
+        path: ${{ inputs.artifacts_glob }}
+        if-no-files-found: warn
+        retention-days: 7
+        
+    - name: Generate summary
+      if: always()
+      run: |
+        echo "## 🐍 Python Scraper Summary: ${{ inputs.name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Module**: \`${{ inputs.module }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Days**: ${{ inputs.days }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Sample data**: ${{ inputs.sample_data }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Fallback**: \`${{ inputs.entry_fallback }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Execution" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.run_module.outputs.success }}" = "true" ]; then
+          echo "✅ **Module execution**: Successful" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Module execution**: Failed (fallback used)" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📁 **Artifacts**: Available in workflow artifacts section" >> $GITHUB_STEP_SUMMARY
+
+    timeout-minutes: 30
+    concurrency:
+      group: scrape-${{ inputs.name }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+          cache-dependency-path: |
+            **/requirements*.txt
+            pyproject.toml
+            poetry.lock
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -e
+          if [ -f "poetry.lock" ]; then
+            pipx install poetry
+            poetry install --no-interaction --no-ansi
+          elif [ -f "requirements.txt" ]; then
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+          else
+            python -m pip install --upgrade pip
+            pip install -e .
+          fi
+
+      - name: "Preflight: verify secrets"
+        id: preflight
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+        run: |
+          ok=1
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
+            val="${!v}"
+            if [ -z "$val" ]; then
+              echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+              ok=0
+            else
+              echo "::add-mask::$val"
+            fi
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          [ "$ok" -eq 1 ]
+
+      - name: "Preflight: Supabase REST"
+        if: ${{ steps.preflight.outputs.ok == '1' }}
+        id: supa
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Prefer: count=exact, head=true" \
+            "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+            echo "::error title=Supabase REST failed::HTTP $code"
+            exit 1
+          fi
+
+      - name: "Prepare args (cron-safe)"
+        id: args
+        shell: bash
+        run: |
+          DAYS="${{ inputs.days }}"; [ -z "$DAYS" ] && DAYS="1"
+          SAMPLE="${{ inputs.sample_data }}"; [ -z "$SAMPLE" ] && SAMPLE="false"
+          echo "days=$DAYS" >> "$GITHUB_OUTPUT"
+          echo "sample=$SAMPLE" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure output dirs
+        run: mkdir -p logs artifacts data
+
+      - name: Run scraper
+        id: run
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+        run: |
+          set -e
+          echo "Name: ${{ inputs.name }}  Days: ${{ steps.args.outputs.days }}  Sample: ${{ steps.args.outputs.sample }}"
+          # Try to import module; fallback to script path
+          if python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('${{ inputs.module }}') else 1)"; then
+            python -m ${{ inputs.module }} \
+              --days "${{ steps.args.outputs.days }}" \
+              --source "$SOURCE_URL" \
+              --sample "${{ steps.args.outputs.sample }}" | tee -a logs/etl_output.log
+          else
+            if [ ! -f "${{ inputs.entry_fallback }}" ]; then
+              echo "::error title=Entry not found::${{ inputs.module }} nor ${{ inputs.entry_fallback }}"
+              exit 1
+            fi
+            python "${{ inputs.entry_fallback }}" \
+              --days "${{ steps.args.outputs.days }}" \
+              --source "$SOURCE_URL" \
+              --sample "${{ steps.args.outputs.sample }}" | tee -a logs/etl_output.log
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.name }}-etl-${{ github.run_id }}
+          path: |
+            artifacts/**/*.csv
+            data/**/*.csv
+            logs/**/*.log
+            logs/etl_output.log
+            ${{ inputs.artifacts_glob }}
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Scrape Summary — ${{ inputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Supabase URL secret: $([ -n \"${{ secrets.SUPABASE_URL }}\" ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- Service role key: $([ -n \"${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\" ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- Source URL: $([ -n \"${{ secrets.SOURCE_URL }}\" ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- Supabase REST: $([ \"${{ steps.supa.outputs.http_code }}\" = \"200\" -o \"${{ steps.supa.outputs.http_code }}\" = \"206\" ] && echo ✅ OK || echo ❌ Failed)" >> $GITHUB_STEP_SUMMARY
+          echo "- Days: ${{ steps.args.outputs.days }} | Sample: ${{ steps.args.outputs.sample }}" >> $GITHUB_STEP_SUMMARY
+
