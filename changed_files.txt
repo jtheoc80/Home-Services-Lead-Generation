@@ -1,0 +1,7 @@
+.github/workflows/_scrape-python.yml
+.github/workflows/nightly-pipeline.yml
+.github/workflows/permit_scrape.yml
+.github/workflows/permits-harris.yml
+.github/workflows/scrape-dallas.yml
+scripts/remediate-supabase.js
+scripts/stack-health.js
