@@ -1,17 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-import type { LeadForPermitsView } from '@/types';
-
-export default function PermitsDemo() {
-  const [leads, setLeads] = useState<LeadForPermitsView[]>([]);
-
 import { getLeads, type Lead } from '@/lib/actions/leads';
+
 
 export default function PermitsDemo() {
   const [leads, setLeads] = useState<Lead[]>([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
