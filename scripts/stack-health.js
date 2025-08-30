@@ -10,7 +10,7 @@
  * - VERCEL_TOKEN: Vercel API token
  * - RAILWAY_TOKEN: Railway API token  
  * - SUPABASE_URL: Supabase project URL
- * - SUPABASE_SERVICE_ROLE: Supabase service role key
+ * - SUPABASE_SERVICE_ROLE_KEY: Supabase service role key
  * - FRONTEND_URL: Frontend URL (required for frontend health check; used as fallback for Vercel)
  * - RAILWAY_SERVICE_ID: Railway service ID (optional for GraphQL queries)
  */
@@ -327,10 +327,10 @@ class StackHealthChecker {
     
     try {
       const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE;
+      const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
       if (!supabaseUrl || !supabaseServiceRole) {
-        throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE not provided');
+        throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not provided');
       }
 
       // Step 1: HEAD request to /auth/v1/health as specified in requirements

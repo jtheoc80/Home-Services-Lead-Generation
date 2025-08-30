@@ -9,10 +9,10 @@ console.log('🔧 Starting Supabase remediation...');
 
 async function remediateSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
   if (!supabaseUrl || !serviceRoleKey) {
-    console.log('❌ SUPABASE_URL or SUPABASE_SERVICE_ROLE not configured - cannot remediate');
+    console.log('❌ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured - cannot remediate');
     process.exit(1);
   }
 

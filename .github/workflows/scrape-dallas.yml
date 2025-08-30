@@ -196,13 +196,13 @@ jobs:
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL || secrets.SOURCE_URL }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || secrets.AUSTIN_PERMITS_URL || '' }}
       run: |
         ok=1
         for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
           val="${!v}"
           if [ -z "$val" ]; then
-            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            echo "::error title=$v missing::Set this in GitHub → Settings → Secrets and variables → Actions"
             ok=0
           else
             echo "::add-mask::$val"
@@ -255,43 +255,42 @@ jobs:
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${RECENT_FILES} recent Dallas County files"
         
-    - name: Run Dallas County permit scraper
+    - name: Run scraper
       if: ${{ steps.preflight.outputs.ok == '1' }}
       id: scrape
+      shell: bash
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL || secrets.SOURCE_URL }}
+        SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL || secrets.HC_ISSUED_PERMITS_URL || '' }}
       run: |
+        set -e
+        mkdir -p logs artifacts data
         DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         SAMPLE="${{ inputs.sample_data }}"
         [ -z "$SAMPLE" ] && SAMPLE="false"
-        
-        # Set SAMPLE_DATA using bash default pattern
-        if [ "$SAMPLE" = "true" ]; then
-          export SAMPLE_DATA=1
+        echo "DAYS=$DAYS SAMPLE=$SAMPLE"
+        # try python -m module; else script path
+        if python - <<'PY'
+        import importlib.util, sys
+        sys.exit(0 if importlib.util.find_spec("permit_leads.dallas.scrape") else 1)
+        PY
+        then
+          if [ "$SAMPLE" = "true" ]; then
+            python -m permit_leads.dallas.scrape --days "$DAYS" --sample | tee -a logs/etl_output.log
+          else
+            python -m permit_leads.dallas.scrape --days "$DAYS" | tee -a logs/etl_output.log
+          fi
+        elif [ -f "scripts/dallas_scrape.py" ]; then
+          if [ "$SAMPLE" = "true" ]; then
+            python scripts/dallas_scrape.py --since "${DAYS}d" --sample | tee -a logs/etl_output.log
+          else
+            python scripts/dallas_scrape.py --since "${DAYS}d" | tee -a logs/etl_output.log
+          fi
         else
-          export SAMPLE_DATA=0
+          echo "::error title=Scraper entry not found::module permit_leads.dallas.scrape or scripts/dallas_scrape.py"; exit 1
         fi
-        
-        echo "Scraping Dallas County permits for the last ${DAYS} days..."
-        echo "Sample data mode: ${SAMPLE_DATA}"
-
-        python -m permit_leads scrape --jurisdiction tx-dallas --days "${DAYS}" --formats csv sqlite jsonl --verbose --retries 5
-
-        
-        # Count new permits from today's run
-        TODAY=$(date +%Y-%m-%d)
-        NEW_PERMITS=0
-        
-        # Check CSV files for permit count
-        if [ -f "../data/permits/aggregate/permits_${TODAY}.csv" ]; then
-          NEW_PERMITS=$(tail -n +2 "../data/permits/aggregate/permits_${TODAY}.csv" | wc -l)
-        fi
-        
-        echo "new_permits=${NEW_PERMITS}" >> $GITHUB_OUTPUT
-        echo "Found ${NEW_PERMITS} new permits today"
         
     - name: Fail if zero results for 24h
       if: steps.check_recent.outputs.recent_files == '0' && steps.scrape.outputs.new_permits == '0'
@@ -441,10 +440,14 @@ jobs:
       if: always()
       run: |
         # Set up variables
-        DAYS="${{ github.event.inputs.days }}"
+        DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         
-        if [ "${{ github.event.inputs.sample_data }}" = "true" ]; then
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set sample data using shell logic
+        if [ "$SAMPLE" = "true" ]; then
           SAMPLE="1"
         else
           SAMPLE="0"
