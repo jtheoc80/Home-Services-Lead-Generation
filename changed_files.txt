@@ -1,0 +1,6 @@
+SECRETS_SCAN_RESULTS.md
+WORKFLOW_SECRETS_ANALYSIS.md
+scripts/scan_workflow_secrets.py
+tests/test_workflow_secrets_scanner.py
+workflow-secrets-scan-report.csv
+workflow-secrets-scan-report.md
