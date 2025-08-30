@@ -65,7 +65,7 @@ jobs:
         code=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
           -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
+          -H "Prefer: count=exact" \
           "$SUPABASE_URL/rest/v1/permits?select=id&limit=1")
         echo "http_code=$code" >> "$GITHUB_OUTPUT"
         if [ "$code" != "200" ] && [ "$code" != "206" ]; then
