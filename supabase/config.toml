@@ -1,14 +1,8 @@
-# Supabase Configuration for GitHub Agent
-
-# Optional: Supabase config file for function deployment
-# This file helps with local development and deployment
+[project]
+ref = "wsbnbncapkrdovrrghlh"
 
 [api]
 enabled = true
-port = 54321
-schemas = ["public", "gold", "meta"]
 
-[functions]
-# gh-agent function configuration
-[functions."gh-agent"]
-verify_jwt = false  # We use custom X-Agent-Secret authentication
+[db]
+shadow_port = 54323
