@@ -1,0 +1,8 @@
+.github/workflows/_scrape-python.yml
+.github/workflows/ingest-nightly.yml
+.github/workflows/scrape-harris.yml
+.github/workflows/supabase-heartbeat.yml
+README.md
+permit_leads/harris/__init__.py
+permit_leads/harris/scrape.py
+scripts/harris_scrape.py
