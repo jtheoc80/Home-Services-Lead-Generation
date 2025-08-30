@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 # Set required environment variables for testing
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret'
 os.environ['SUPABASE_URL'] = 'https://test.supabase.co'
-os.environ['SUPABASE_SERVICE_ROLE'] = 'test_service_role'
+os.environ['SUPABASE_SERVICE_ROLE_KEY'] = 'test_service_role'
 
 class TestHealthzEndpoint:
     """Test cases for the healthz endpoint."""
