@@ -22,8 +22,14 @@ The repository uses GitHub Actions workflows that require various secrets for ex
 ### Harris County Data Source
 - **`HC_ISSUED_PERMITS_URL`** - Harris County permits API endpoint
   - Format: `https://cohgispub.hctx.net/arcgis/rest/services/...`
-  - Used by: `permits-harris.yml`
+  - Used by: `permits-harris.yml`, `scrape-metro.yml`
   - Required for: Fetching Harris County permit data
+
+### Dallas County Data Source
+- **`DALLAS_PERMITS_URL`** - Dallas County permits API endpoint
+  - Format: `https://dallas.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0`
+  - Used by: `scrape-metro.yml`
+  - Required for: Fetching Dallas County permit data
 
 ## 🧪 Staging Environment Secrets
 
