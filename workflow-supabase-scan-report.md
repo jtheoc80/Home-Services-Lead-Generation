@@ -243,10 +243,7 @@ Scanned `.github/workflows/` for any job that references `SUPABASE_URL`, `SUPABA
   - `etl-harris.yml`: REST check depends on preflight success
 
 ### rest/v1 References
-Found in 3 workflows, all in Supabase REST API health checks:
-- `permits-harris.yml`: Line 226
-- `etl.yml`: Line 80  
-- `etl-harris.yml`: Line 71
+- `etl-harris.yml`: Line 71  <!-- TODO: Verify this line number against the actual etl-harris.yml file and update if necessary -->
 
 ---
 
