@@ -92,7 +92,7 @@ class WorkflowSecretsScanner:
                 is_required = self._determine_if_required(line, secret_name, line_num, all_lines)
                 
                 usage = SecretUsage(
-                    file_path=str(file_path.relative_to(file_path.parent.parent.parent)),
+                    file_path=str(file_path.relative_to(self.workflows_dir)),
                     secret_name=secret_name,
                     pattern_type=pattern_type,
                     is_required=is_required,
