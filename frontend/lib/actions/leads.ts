@@ -1,9 +1,9 @@
 // Server action to fetch leads using the exact schema from the leads table
 import { createServerSupabase } from '@/lib/supabase/clients';
-import type { Lead } from '../../../types/supabase';
+import type { Lead } from '@/types/supabase';
 
 // Re-export the Lead type for convenience
-export type { Lead } from '../../../types/supabase';
+export type { Lead } from '@/types/supabase';
 
 export async function getLeads(): Promise<{ data: Lead[] | null; error: string | null }> {
   try {
