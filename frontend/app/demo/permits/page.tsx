@@ -34,25 +34,14 @@ export default function PermitsDemo() {
           throw new Error('Failed to initialize Supabase client');
         }
 
-        // Query leads table instead of permits, mapping fields appropriately
-        const { data: leadsData, error } = await supabase
-          .from('leads')
-          .select('id, city, county, service, value, status, created_at, address')
-          .order('created_at', { ascending: false })
-          .limit(50);
-
         // Use the leads server action instead of direct Supabase query
-        const { data: leads, error } = await getLeads();
-
+        const { data: leadsData, error } = await getLeads();
 
         if (error) {
           throw new Error(error);
         }
 
         setLeads(leadsData || []);
-
-        setLeads(leads || []);
-
       } catch (err) {
         console.error('Error fetching leads:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch leads');
