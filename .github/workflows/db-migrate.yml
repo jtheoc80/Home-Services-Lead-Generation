@@ -1,0 +1,21 @@
+name: DB Migrations
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+      - name: Apply migrations (dry-run on PR, live on main)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }} # postgres connection string (service role)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+          else
+            supabase db push --db-url "$SUPABASE_DB_URL"
+          fi
