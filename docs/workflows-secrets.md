@@ -174,11 +174,7 @@ gh secret set CRON_SECRET
 gh secret set VERCEL_DOMAIN
 
 # Or set values directly
-gh secret set SUPABASE_URL --body 'https://YOUR-REF.supabase.co'
-gh secret set SUPABASE_SERVICE_ROLE_KEY --body 'YOUR_SERVICE_ROLE_KEY'
-gh secret set SUPABASE_DB_URL --body 'postgresql://postgres:YOUR_DB_PASSWORD@db.YOUR-REF.supabase.co:5432/postgres?sslmode=require'
-gh secret set HC_ISSUED_PERMITS_URL --body 'https://<harris-county-source-endpoint>'
-# Add more cities as needed:
+# Add more city permit secrets as needed:
 gh secret set DALLAS_PERMITS_URL --body 'https://<dallas-source-endpoint>'
 gh secret set STAGING_SUPABASE_URL --body "https://your-staging-project-id.supabase.co"
 gh secret set STAGING_SUPABASE_SERVICE_ROLE_KEY --body "your-staging-service-role-key-here"
