@@ -1,0 +1,23 @@
+name: Scrape — Harris County
+on:
+  schedule:
+    - cron: "15 6 * * *"   # daily 06:15 UTC
+  workflow_dispatch:
+    inputs:
+      days: { description: "Days back", default: "1" }
+      sample_data: { description: "Sample mode", type: choice, options: ["false","true"], default: "false" }
+
+jobs:
+  run:
+    uses: ./.github/workflows/_scrape-python.yml
+    with:
+      name: tx-harris
+      module: permit_leads.harris.scrape
+      entry_fallback: scripts/harris_scrape.py
+      days: ${{ inputs.days }}
+      sample_data: ${{ inputs.sample_data }}
+      artifacts_glob: ""
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}

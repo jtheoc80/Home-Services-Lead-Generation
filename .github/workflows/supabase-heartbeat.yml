@@ -16,7 +16,11 @@ jobs:
         run: |
           ok=1
           for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+
             [ -z "${!v}" ] && echo "::error title=$v missing::Set it in repo Secrets" && ok=0 || echo "::add-mask::${!v}"
+    [ -z "${!v}" ] && echo "::error title=$v missing::Set it in repo Secrets" && ok=0 || \
+              echo "::add-mask::${!v}"
+
           done
           echo "ok=$ok" >> $GITHUB_OUTPUT
           [ "$ok" -eq 1 ]
@@ -40,6 +44,16 @@ jobs:
         if: always()
         run: |
           echo "### Supabase Heartbeat" >> $GITHUB_STEP_SUMMARY
+
           echo "- URL secret: $([ -n '${{ secrets.SUPABASE_URL }}' ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
           echo "- Key secret: $([ -n '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' ] && echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
           echo "- REST probe: $([ '${{ steps.probe.outputs.code }}' = '200' -o '${{ steps.probe.outputs.code }}' = '206' ] && echo ✅ OK || echo ❌ Fail)" >> $GITHUB_STEP_SUMMARY
+
+          echo "- URL secret: $([ -n '${{ secrets.SUPABASE_URL }}' ] && echo ✅ Set || \
+            echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- Key secret: $([ -n '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' ] && \
+            echo ✅ Set || echo ❌ Missing)" >> $GITHUB_STEP_SUMMARY
+          echo "- REST probe: $([ '${{ steps.probe.outputs.code }}' = '200' -o \
+            '${{ steps.probe.outputs.code }}' = '206' ] && echo ✅ OK || \
+            echo ❌ Fail)" >> $GITHUB_STEP_SUMMARY
+
