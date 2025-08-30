@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { LeadForPermitsView } from '@/types';
 
-export default function PermitsDemo() {
+export default function LeadsDemo() {
   const [leads, setLeads] = useState<LeadForPermitsView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export default function PermitsDemo() {
         }
 
         // Query leads table instead of permits, mapping fields appropriately
-        const { data: leadsData, error } = await supabase
+        const { data: leads, error } = await supabase
           .from('leads')
           .select('id, city, county, service, value, status, created_at, address')
           .order('created_at', { ascending: false })
@@ -37,7 +37,7 @@ export default function PermitsDemo() {
           throw error;
         }
 
-        setLeads(leadsData || []);
+        setLeads(leads || []);
       } catch (err) {
         console.error('Error fetching leads:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch leads');
@@ -75,10 +75,10 @@ export default function PermitsDemo() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Permits Demo (Now Using Leads)
+            Leads Demo
           </h1>
           <p className="text-gray-600">
-            Testing the leads table query with fields mapped to permits structure
+            Testing the leads table query with fields mapped from permits structure
           </p>
         </div>
 

@@ -1,14 +1,14 @@
-// Server action to fetch leads using a similar pattern to the original permits action
+// Server action to fetch leads using the exact query from the problem statement
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { LeadForPermitsView, LeadsApiResponse } from '@/types';
 
 export async function getLeads(): Promise<LeadsApiResponse> {
   try {
-    // Query leads table instead of permits, mapping fields appropriately
+    // Query leads with fields that map to the permits demo structure
     const supabase = createSupabaseServerClient();
     const { data: leads, error } = await supabase
       .from('leads')
-      .select('id, city, county, service, value, status, created_at, address')
+      .select('id, created_at, name, email, phone, address, city, state, county, status, service, value, source')
       .order('created_at', { ascending: false })
       .limit(50);
 
