@@ -19,7 +19,7 @@ from typing import Dict, List
 # Set test environment variables
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret_key_for_testing_only'
 os.environ['SUPABASE_URL'] = 'https://test.supabase.co'
-os.environ['SUPABASE_SERVICE_ROLE'] = 'test_service_role_key'
+os.environ['SUPABASE_SERVICE_ROLE_KEY'] = 'test_service_role_key'
 os.environ['NEXT_PUBLIC_SUPABASE_URL'] = 'https://test.supabase.co'
 os.environ['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = 'test_anon_key'
 

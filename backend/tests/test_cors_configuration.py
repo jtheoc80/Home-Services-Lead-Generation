@@ -8,7 +8,7 @@ import pytest
 # Set required environment variables before any imports
 os.environ['SUPABASE_JWT_SECRET'] = 'test_secret'
 os.environ['SUPABASE_URL'] = 'https://test.supabase.co'  
-os.environ['SUPABASE_SERVICE_ROLE'] = 'test_role'
+os.environ['SUPABASE_SERVICE_ROLE_KEY'] = 'test_role'
 
 # Add the app directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))

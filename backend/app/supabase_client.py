@@ -43,13 +43,13 @@ def get_supabase_client() -> Client:
     
     # Get environment variables
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_service_role = os.getenv("SUPABASE_SERVICE_ROLE")
+    supabase_service_role = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     
     if not supabase_url:
         raise ValueError("SUPABASE_URL environment variable is required")
     
     if not supabase_service_role:
-        raise ValueError("SUPABASE_SERVICE_ROLE environment variable is required")
+        raise ValueError("SUPABASE_SERVICE_ROLE_KEY environment variable is required")
     
     try:
         # Create Supabase client with service role key
