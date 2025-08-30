@@ -116,7 +116,8 @@ def write_supabase_output(permits: List[PermitRecord], jurisdiction: str = None)
         'tx-harris': 'permits_raw_harris',
         'tx-fort-bend': 'permits_raw_fort_bend',
         'tx-brazoria': 'permits_raw_brazoria', 
-        'tx-galveston': 'permits_raw_galveston'
+        'tx-galveston': 'permits_raw_galveston',
+        'tx-dallas': 'permits_raw_dallas'
     }
     
     # Default to Harris County table for backward compatibility
@@ -390,7 +391,7 @@ def handle_scrape(args: argparse.Namespace):
         # Add Supabase sink for all Texas counties
         if use_region_aware:
             # Support all Texas counties that have Supabase tables
-            tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston']
+            tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston', 'tx-dallas']
             
             if args.jurisdiction and args.jurisdiction in tx_counties:
                 # Single jurisdiction case

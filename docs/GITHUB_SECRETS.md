@@ -25,6 +25,12 @@ The repository uses GitHub Actions workflows that require various secrets for ex
   - Used by: `permits-harris.yml`
   - Required for: Fetching Harris County permit data
 
+### Dallas County Data Source
+- **`DALLAS_PERMITS_URL`** - Dallas County permits API endpoint
+  - Format: `https://www.dallasopendata.com/resource/e7gq-4sah.json`
+  - Used by: `scrape-dallas.yml`
+  - Required for: Fetching Dallas County permit data
+
 ## 🧪 Staging Environment Secrets
 
 ### Staging Supabase (for backup validation)
@@ -56,6 +62,17 @@ The repository uses GitHub Actions workflows that require various secrets for ex
 
 **What it does:**
 - Scrapes Harris County permit data hourly
+- Stores data in Supabase database
+- Creates artifacts with permit data
+
+### Dallas County Permit Scraper (`scrape-dallas.yml`)
+**Required secrets:**
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`  
+- `DALLAS_PERMITS_URL`
+
+**What it does:**
+- Scrapes Dallas County permit data daily
 - Stores data in Supabase database
 - Creates artifacts with permit data
 
