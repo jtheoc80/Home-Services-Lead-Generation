@@ -295,30 +295,37 @@ jobs:
         run: mkdir -p logs artifacts data
 
       - name: Run scraper
-        id: run
+        id: scrape
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+          SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || '' }}
         run: |
           set -e
-          echo "Name: ${{ inputs.name }}  Days: ${{ steps.args.outputs.days }}  Sample: ${{ steps.args.outputs.sample }}"
-          # Try to import module; fallback to script path
-          if python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('${{ inputs.module }}') else 1)"; then
-            python -m ${{ inputs.module }} \
-              --days "${{ steps.args.outputs.days }}" \
-              --source "$SOURCE_URL" \
-              --sample "${{ steps.args.outputs.sample }}" | tee -a logs/etl_output.log
-          else
-            if [ ! -f "${{ inputs.entry_fallback }}" ]; then
-              echo "::error title=Entry not found::${{ inputs.module }} nor ${{ inputs.entry_fallback }}"
-              exit 1
+          mkdir -p logs artifacts data
+          DAYS="${{ steps.args.outputs.days }}"
+          SAMPLE="${{ steps.args.outputs.sample }}"
+          echo "DAYS=$DAYS SAMPLE=$SAMPLE"
+          # try python -m module; else script path
+          if python - <<'PY'
+          import importlib.util, sys
+          sys.exit(0 if importlib.util.find_spec("${{ inputs.module }}") else 1)
+          PY
+          then
+            if [ "$SAMPLE" = "true" ]; then
+              python -m ${{ inputs.module }} --days "$DAYS" --sample | tee -a logs/etl_output.log
+            else
+              python -m ${{ inputs.module }} --days "$DAYS" | tee -a logs/etl_output.log
             fi
-            python "${{ inputs.entry_fallback }}" \
-              --days "${{ steps.args.outputs.days }}" \
-              --source "$SOURCE_URL" \
-              --sample "${{ steps.args.outputs.sample }}" | tee -a logs/etl_output.log
+          elif [ -f "${{ inputs.entry_fallback }}" ]; then
+            if [ "$SAMPLE" = "true" ]; then
+              python ${{ inputs.entry_fallback }} --days "$DAYS" --sample | tee -a logs/etl_output.log
+            else
+              python ${{ inputs.entry_fallback }} --days "$DAYS" | tee -a logs/etl_output.log
+            fi
+          else
+            echo "::error title=Scraper entry not found::module ${{ inputs.module }} or ${{ inputs.entry_fallback }}"; exit 1
           fi
 
       - name: Upload artifacts
