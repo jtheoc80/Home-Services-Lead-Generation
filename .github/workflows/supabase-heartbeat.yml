@@ -16,7 +16,7 @@ jobs:
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Prefer: count=exact, head=true" \
-            "$SUPABASE_URL/rest/v1/public_leads?select=id&limit=1")
+            "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
           echo "HTTP=$code"
           [ "$code" = "200" -o "$code" = "206" ]
 
