@@ -121,30 +121,25 @@ class SupabaseSink:
             logger.info("No records to upsert via RPC")
             return {"success": 0, "failed": 0}
         
-        success_count = 0
-        failed_count = 0
-        
         # Convert datetime objects to ISO format strings for JSON serialization
         serialized_records = self._serialize_records(records)
         
-        # Call upsert_permit RPC for each record individually for better error handling
-        for record in serialized_records:
-            try:
-                response = self.client.rpc('upsert_permit', {'p': record}).execute()
-                
-                # Check response status
-                if hasattr(response, 'status_code') and response.status_code != 200:
-                    logger.error(f"RPC upsert failed for record with status {response.status_code}")
-                    failed_count += 1
-                else:
-                    success_count += 1
-                    
-            except Exception as e:
-                logger.error(f"Failed to upsert single record via RPC: {e}")
-                failed_count += 1
+        # Perform a single batch RPC call for all records
+        try:
+            response = self.client.rpc('upsert_permit', {'p': serialized_records}).execute()
+            
+            # Check response status
+            if hasattr(response, 'status_code') and response.status_code != 200:
+                logger.error(f"Batch RPC upsert failed with status {response.status_code}")
+                return {"success": 0, "failed": len(records)}
+            
+            success_count = len(records)
+            logger.info(f"Successfully upserted {success_count} records via batch RPC to {self.upsert_table}")
+            return {"success": success_count, "failed": 0}
         
-        logger.info(f"RPC upsert completed: {success_count} success, {failed_count} failed")
-        return {"success": success_count, "failed": failed_count}
+        except Exception as e:
+            logger.error(f"Failed to upsert batch of {len(records)} records via RPC: {e}")
+            return {"success": 0, "failed": len(records)}
     
     def upsert_records(self, records: List[Dict[str, Any]], use_rpc: bool = True) -> Dict[str, int]:
         """
