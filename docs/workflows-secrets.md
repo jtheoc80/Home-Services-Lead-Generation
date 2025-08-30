@@ -8,7 +8,9 @@ This document lists the required GitHub repository secrets needed for the automa
 | --- | --- | --- |
 | SUPABASE_URL | permits-harris.yml | e.g., https://YOUR-PROJECT.supabase.co |
 | SUPABASE_SERVICE_ROLE_KEY | permits-harris.yml | service role key (server-only) |
+| SUPABASE_DB_URL | db-migrate.yml | PostgreSQL connection string |
 | HC_ISSUED_PERMITS_URL | permits-harris.yml | Source endpoint for Harris permits |
+| DALLAS_PERMITS_URL | scrape-dallas.yml | Source endpoint for Dallas permits |
 
 ## 🔑 Required Secrets
 
@@ -48,7 +50,22 @@ This document lists the required GitHub repository secrets needed for the automa
 
 ---
 
-### 3. `HC_ISSUED_PERMITS_URL`
+### 3. `SUPABASE_DB_URL`
+
+**Description:** PostgreSQL connection string for direct database access used in migrations and database operations.
+
+**Format:** `postgresql://postgres:YOUR_DB_PASSWORD@db.YOUR-REF.supabase.co:5432/postgres?sslmode=require`
+
+**Where to find:** Supabase Dashboard → Settings → Database → Connection string (Direct connection)
+
+**Security Note:** ⚠️ This connection string includes the database password. Keep secure.
+
+**Used in workflows:**
+- [`db-migrate.yml`](.github/workflows/db-migrate.yml) - For Supabase database migrations and schema changes
+
+---
+
+### 4. `HC_ISSUED_PERMITS_URL`
 
 **Description:** Harris County ArcGIS FeatureServer URL for issued permits data.
 
@@ -63,7 +80,7 @@ This document lists the required GitHub repository secrets needed for the automa
 
 ---
 
-### 4. `STAGING_SUPABASE_URL`
+### 5. `STAGING_SUPABASE_URL`
 
 **Description:** Staging Supabase project URL for backup validation testing.
 
@@ -76,7 +93,7 @@ This document lists the required GitHub repository secrets needed for the automa
 
 ---
 
-### 5. `STAGING_SUPABASE_SERVICE_ROLE_KEY`
+### 6. `STAGING_SUPABASE_SERVICE_ROLE_KEY`
 
 **Description:** Staging Supabase service role key for backup validation operations.
 
@@ -91,7 +108,7 @@ This document lists the required GitHub repository secrets needed for the automa
 
 ---
 
-### 6. `CRON_SECRET`
+### 7. `CRON_SECRET`
 
 **Description:** Authentication secret for secured Vercel ingest endpoints.
 
@@ -102,7 +119,7 @@ This document lists the required GitHub repository secrets needed for the automa
 
 ---
 
-### 7. `VERCEL_DOMAIN`
+### 8. `VERCEL_DOMAIN`
 
 **Description:** Vercel deployment domain for permit ingestion API calls.
 
@@ -131,8 +148,10 @@ This document lists the required GitHub repository secrets needed for the automa
 ### Step 3: Verify All Secrets Are Set
 After adding all secrets, you should see:
 - ✅ `SUPABASE_URL`
-- ✅ `SUPABASE_SERVICE_ROLE_KEY`  
+- ✅ `SUPABASE_SERVICE_ROLE_KEY`
+- ✅ `SUPABASE_DB_URL`
 - ✅ `HC_ISSUED_PERMITS_URL`
+- ✅ `DALLAS_PERMITS_URL`
 - ✅ `STAGING_SUPABASE_URL`
 - ✅ `STAGING_SUPABASE_SERVICE_ROLE_KEY`
 - ✅ `CRON_SECRET`
@@ -145,17 +164,22 @@ If you have [GitHub CLI](https://cli.github.com/) installed and authenticated:
 ```bash
 # Set all required secrets interactively (will prompt for values)
 gh secret set SUPABASE_URL
-gh secret set SUPABASE_SERVICE_ROLE_KEY  
+gh secret set SUPABASE_SERVICE_ROLE_KEY
+gh secret set SUPABASE_DB_URL
 gh secret set HC_ISSUED_PERMITS_URL
+gh secret set DALLAS_PERMITS_URL
 gh secret set STAGING_SUPABASE_URL
 gh secret set STAGING_SUPABASE_SERVICE_ROLE_KEY
 gh secret set CRON_SECRET
 gh secret set VERCEL_DOMAIN
 
 # Or set values directly
-gh secret set SUPABASE_URL --body "https://your-project-id.supabase.co"
-gh secret set SUPABASE_SERVICE_ROLE_KEY --body "your-service-role-key-here"
-gh secret set HC_ISSUED_PERMITS_URL --body "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+gh secret set SUPABASE_URL --body 'https://YOUR-REF.supabase.co'
+gh secret set SUPABASE_SERVICE_ROLE_KEY --body 'YOUR_SERVICE_ROLE_KEY'
+gh secret set SUPABASE_DB_URL --body 'postgresql://postgres:YOUR_DB_PASSWORD@db.YOUR-REF.supabase.co:5432/postgres?sslmode=require'
+gh secret set HC_ISSUED_PERMITS_URL --body 'https://<harris-county-source-endpoint>'
+# Add more cities as needed:
+gh secret set DALLAS_PERMITS_URL --body 'https://<dallas-source-endpoint>'
 gh secret set STAGING_SUPABASE_URL --body "https://your-staging-project-id.supabase.co"
 gh secret set STAGING_SUPABASE_SERVICE_ROLE_KEY --body "your-staging-service-role-key-here"
 gh secret set CRON_SECRET --body "your-secure-cron-secret-here"
