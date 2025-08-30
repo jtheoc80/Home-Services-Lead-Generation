@@ -1,0 +1,4 @@
+frontend/src/lib/supabaseClient.ts
+supabase/config.toml
+supabase/seed/.gitkeep
+supabase/types/.gitkeep
