@@ -47,9 +47,10 @@ def main():
         "--jurisdiction", "tx-harris",
         "--days", str(args.days),
         "--formats", "csv", "sqlite", "jsonl",
-        "--verbose" if args.verbose else "--quiet",
         "--retries", "5"
     ]
+    if args.verbose:
+        cmd.insert(6, "--verbose")  # Insert after --formats ... "jsonl"
     
     logger.info(f"Running command: {' '.join(cmd)}")
     
