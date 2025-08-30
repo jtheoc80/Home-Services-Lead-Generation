@@ -302,7 +302,7 @@ jobs:
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || '' }}
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL || '' }}
       run: |
         set -e
         mkdir -p logs artifacts data
