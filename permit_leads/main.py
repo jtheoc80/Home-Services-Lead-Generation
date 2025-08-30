@@ -16,6 +16,7 @@ from .export_leads import export_enriched_leads
 from .migrate_db import add_enrichment_columns
 from .region_adapter import RegionAwareAdapter
 from .sinks.supabase_sink import SupabaseSink
+from .utils.finalize_log import finalize_log
 
 logger = logging.getLogger(__name__)
 
@@ -326,123 +327,133 @@ def handle_scrape(args: argparse.Namespace):
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Debug logging enabled")
     
-    # Print current working directory and discovered CSVs
-    import glob as glob_module
-    current_dir = Path.cwd()
-    print(f"📂 Current working directory: {current_dir}")
-    
-    # Discover CSV files in data/**/*.csv recursively
-    csv_files = glob_module.glob('data/**/*.csv', recursive=True)
-    print(f"📋 Discovered {len(csv_files)} CSV files:")
-    for csv_file in csv_files:
-        print(f"  - {csv_file}")
-    print()
-    
-    # Determine scraping mode
-    use_region_aware = getattr(args, 'region_aware', False) or getattr(args, 'jurisdiction', None)
-    
-    if args.command == "__auto__":
-        if not getattr(args, "source", None) and not getattr(args, "all", False) and not use_region_aware:
-            raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction (scrape mode).")
-        output_dir = Path(getattr(args, "output_dir", "data"))
-    else:
-        if not args.source and not args.all and not use_region_aware:
-            raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction")
-        if args.source and args.all:
-            raise SystemExit("Cannot specify both --source and --all")
-        output_dir = Path(args.output_dir)
-    
-    output_paths = setup_output_directories(output_dir)
-    all_permits: List[PermitRecord] = []
-    jurisdiction_results = {}  # Initialize for legacy compatibility
-    
-    if use_region_aware:
-        # Use new region-aware system
-        logger.info("Using region-aware scraping system")
-        # Initialize for legacy compatibility
-        permits, jurisdiction_results = run_region_aware_scraper(args, output_paths, return_jurisdiction_map=True)
-        all_permits.extend(permits)
-        sources_processed = ["region-aware"]
-    else:
-        # Use legacy system
-        sources_to_run = list(SCRAPERS.keys()) if args.all else [args.source]
-        sources_processed = sources_to_run
+    try:
+        # Print current working directory and discovered CSVs
+        import glob as glob_module
+        current_dir = Path.cwd()
+        print(f"📂 Current working directory: {current_dir}")
         
-        for source_name in sources_to_run:
-            logger.info(f"Running legacy scraper: {source_name}")
-            permits = run_legacy_scraper(source_name, args, output_paths)
-            all_permits.extend(permits)
-    
-    # Save output files
-    if all_permits and not args.dry_run:
-        if "jsonl" in args.formats:
-            # For region-aware, use first permit's jurisdiction or fallback
-            if use_region_aware:
-                temp_jur = "multi-jurisdiction"
-            else:
-                temp_jur = SCRAPERS[sources_to_run[0]]("").jurisdiction
-            write_jsonl_output(all_permits, temp_jur, output_paths)
-        if "csv" in args.formats:
-            write_csv_output(all_permits, output_paths)
-        if "sqlite" in args.formats:
-            write_sqlite_output(all_permits, output_paths)
+        # Discover CSV files in data/**/*.csv recursively
+        csv_files = glob_module.glob('data/**/*.csv', recursive=True)
+        print(f"📋 Discovered {len(csv_files)} CSV files:")
+        for csv_file in csv_files:
+            print(f"  - {csv_file}")
+        print()
         
-        # Add Supabase sink for all Texas counties
-        if use_region_aware:
-            # Support all Texas counties that have Supabase tables
-            tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston']
-            
-            if args.jurisdiction and args.jurisdiction in tx_counties:
-                # Single jurisdiction case
-                write_supabase_output(all_permits, args.jurisdiction)
-            elif not args.jurisdiction:
-                # All jurisdictions case - write each jurisdiction separately
-                for jurisdiction, permits_list in jurisdiction_results.items():
-                    if jurisdiction in tx_counties and permits_list:
-                        write_supabase_output(permits_list, jurisdiction)
-    
-    total_permits = len(all_permits)
-    residential_permits = sum(1 for p in all_permits if p.is_residential())
-    
-    # Handle empty pipeline results
-    if total_permits == 0:
-        print("\n=== SCRAPING SUMMARY ===")
-        print("No permits found to process")
+        # Determine scraping mode
+        use_region_aware = getattr(args, 'region_aware', False) or getattr(args, 'jurisdiction', None)
         
-        # Write summary to log file
-        write_summary_to_log(0, "No input found")
-        
-        # Handle ETL_ALLOW_EMPTY environment variable
-        import os
-        allow_empty = os.getenv("ETL_ALLOW_EMPTY", "").strip() == "1"
-        if allow_empty:
-            print("🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit")
-            call_ensure_artifacts("--empty-pipeline")
-            return
+        if args.command == "__auto__":
+            if not getattr(args, "source", None) and not getattr(args, "all", False) and not use_region_aware:
+                raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction (scrape mode).")
+            output_dir = Path(getattr(args, "output_dir", "data"))
         else:
-            call_ensure_artifacts()
-            return
-    
-    print("\n=== SCRAPING SUMMARY ===")
-    print(f"Total permits: {total_permits}")
-    print(f"Residential permits: {residential_permits}")
-    print(f"Sources processed: {len(sources_processed)}")
-    if not args.dry_run and total_permits > 0:
-        print(f"Output directory: {output_dir}")
-        print(f"Formats written: {', '.join(args.formats)}")
-        if "sqlite" in args.formats:
-            storage = Storage(db_path=output_paths['db'])
-            latest = storage.get_latest(5)
-            if latest:
-                print("\nLatest permits:")
-                for permit in latest:
-                    print(f"  {permit.get('permit_id', 'N/A')} - {permit.get('address', 'N/A')}")
-    
-    # Write final summary to log file
-    write_summary_to_log(total_permits, f"Scraping completed: {total_permits} total permits, {residential_permits} residential")
-    
-    # Call ensure_artifacts.py at the end
-    call_ensure_artifacts()
+            if not args.source and not args.all and not use_region_aware:
+                raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction")
+            if args.source and args.all:
+                raise SystemExit("Cannot specify both --source and --all")
+            output_dir = Path(args.output_dir)
+        
+        output_paths = setup_output_directories(output_dir)
+        all_permits: List[PermitRecord] = []
+        jurisdiction_results = {}  # Initialize for legacy compatibility
+        
+        if use_region_aware:
+            # Use new region-aware system
+            logger.info("Using region-aware scraping system")
+            # Initialize for legacy compatibility
+            permits, jurisdiction_results = run_region_aware_scraper(args, output_paths, return_jurisdiction_map=True)
+            all_permits.extend(permits)
+            sources_processed = ["region-aware"]
+        else:
+            # Use legacy system
+            sources_to_run = list(SCRAPERS.keys()) if args.all else [args.source]
+            sources_processed = sources_to_run
+            
+            for source_name in sources_to_run:
+                logger.info(f"Running legacy scraper: {source_name}")
+                permits = run_legacy_scraper(source_name, args, output_paths)
+                all_permits.extend(permits)
+        
+        # Save output files
+        if all_permits and not args.dry_run:
+            if "jsonl" in args.formats:
+                # For region-aware, use first permit's jurisdiction or fallback
+                if use_region_aware:
+                    temp_jur = "multi-jurisdiction"
+                else:
+                    temp_jur = SCRAPERS[sources_to_run[0]]("").jurisdiction
+                write_jsonl_output(all_permits, temp_jur, output_paths)
+            if "csv" in args.formats:
+                write_csv_output(all_permits, output_paths)
+            if "sqlite" in args.formats:
+                write_sqlite_output(all_permits, output_paths)
+            
+            # Add Supabase sink for all Texas counties
+            if use_region_aware:
+                # Support all Texas counties that have Supabase tables
+                tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston']
+                
+                if args.jurisdiction and args.jurisdiction in tx_counties:
+                    # Single jurisdiction case
+                    write_supabase_output(all_permits, args.jurisdiction)
+                elif not args.jurisdiction:
+                    # All jurisdictions case - write each jurisdiction separately
+                    for jurisdiction, permits_list in jurisdiction_results.items():
+                        if jurisdiction in tx_counties and permits_list:
+                            write_supabase_output(permits_list, jurisdiction)
+        
+        total_permits = len(all_permits)
+        residential_permits = sum(1 for p in all_permits if p.is_residential())
+        
+        # Handle empty pipeline results
+        if total_permits == 0:
+            print("\n=== SCRAPING SUMMARY ===")
+            print("No permits found to process")
+            
+            # Write summary to log file
+            write_summary_to_log(0, "No input found")
+            
+            # Handle ETL_ALLOW_EMPTY environment variable
+            import os
+            allow_empty = os.getenv("ETL_ALLOW_EMPTY", "").strip() == "1"
+            if allow_empty:
+                print("🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit")
+                call_ensure_artifacts("--empty-pipeline")
+            else:
+                call_ensure_artifacts()
+            
+            # Use finalize_log for "no new data" case - exit with 0 (expected empty)
+            finalize_log(0, True)
+        
+        print("\n=== SCRAPING SUMMARY ===")
+        print(f"Total permits: {total_permits}")
+        print(f"Residential permits: {residential_permits}")
+        print(f"Sources processed: {len(sources_processed)}")
+        if not args.dry_run and total_permits > 0:
+            print(f"Output directory: {output_dir}")
+            print(f"Formats written: {', '.join(args.formats)}")
+            if "sqlite" in args.formats:
+                storage = Storage(db_path=output_paths['db'])
+                latest = storage.get_latest(5)
+                if latest:
+                    print("\nLatest permits:")
+                    for permit in latest:
+                        print(f"  {permit.get('permit_id', 'N/A')} - {permit.get('address', 'N/A')}")
+        
+        # Write final summary to log file
+        write_summary_to_log(total_permits, f"Scraping completed: {total_permits} total permits, {residential_permits} residential")
+        
+        # Call ensure_artifacts.py at the end
+        call_ensure_artifacts()
+        
+        # Use finalize_log for successful completion
+        finalize_log(total_permits, True)
+        
+    except Exception as e:
+        logger.error(f"Scraping failed with error: {e}")
+        # Use finalize_log for failure case - exit with 1
+        finalize_log(0, False)
 
 
 def call_ensure_artifacts(args: str = "") -> None:
