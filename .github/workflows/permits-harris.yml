@@ -45,11 +45,31 @@ jobs:
         python scripts/workflow-preflight.py
         if [ $? -eq 0 ]; then
           echo "status=success" >> $GITHUB_OUTPUT
+          echo "ok=1" >> $GITHUB_OUTPUT
           echo "✅ Preflight checks passed"
         else
           echo "status=failed" >> $GITHUB_OUTPUT
+          echo "ok=0" >> $GITHUB_OUTPUT
           echo "❌ Preflight checks failed"
           exit 1
+        fi
+
+    - name: "Preflight: Supabase REST check"
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      id: supa
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact" \
+          "$SUPABASE_URL/rest/v1/permits?select=id&limit=1")
+        echo "http_code=$code" >> "$GITHUB_OUTPUT"
+        if [ "$code" != "200" ]; then
+          echo "::error title=Supabase REST failed::HTTP $code"; exit 1
         fi
 
   dryrun:
