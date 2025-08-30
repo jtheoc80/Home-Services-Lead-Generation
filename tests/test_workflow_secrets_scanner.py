@@ -168,9 +168,6 @@ jobs:
         usages = scanner.scan_all_workflows()
         
         # Debug output
-        print(f"Found {len(usages)} usages:")
-        for usage in usages:
-            print(f"  {usage.secret_name} in {usage.context}")
         
         # Should find the secret and mark it as required due to validation
         # Filter to just VERCEL_TOKEN usages
