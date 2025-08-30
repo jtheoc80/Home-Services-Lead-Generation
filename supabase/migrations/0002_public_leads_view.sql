@@ -4,7 +4,7 @@ select
   id,
   source_record_id,
   created_at
-from permits;
+from public.permits;
 
 -- Make view invoker-secured so it respects caller's role
 alter view public.public_leads set (security_invoker = true);
