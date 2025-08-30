@@ -22,6 +22,12 @@ regions:
     parent: tx
     timezone: America/Chicago
 
+  - slug: tx-dallas
+    name: Dallas-Fort Worth Metro
+    level: metro
+    parent: tx
+    timezone: America/Chicago
+
 jurisdictions:
   # --- ACTIVE (Houston Metro) ---
   - slug: tx-harris
@@ -115,13 +121,20 @@ jurisdictions:
   #     date_field: "issue_date"
   #     field_map: {}
 
-  # - slug: tx-dallas
-  #   name: Dallas County (Dallas-Fort Worth)
-  #   state: TX
-  #   region: tx-dallas
-  #   active: false
-  #   provider: arcgis
-  #   source_config:
-  #     url: "<placeholder>"
-  #     date_field: "issue_date"
-  #     field_map: {}
+  - slug: tx-dallas
+    name: Dallas County
+    state: TX
+    region: tx-dallas
+    active: true
+    provider: socrata
+    source_config:
+      url: "https://www.dallasopendata.com/resource/e7gq-4sah.json"
+      date_field: "issued_date"
+      field_map:
+        permit_id: "permit_number"
+        issue_date: "issued_date"
+        work_class: "permit_type"
+        value: "estimated_cost"
+        applicant: "contractor_name"
+        address: "address"
+        description: "work_description"
