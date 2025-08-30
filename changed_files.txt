@@ -1,0 +1,9 @@
+frontend/app/demo/leads/page.tsx
+frontend/app/demo/permits/page.tsx
+frontend/lib/actions/leads.ts
+frontend/lib/actions/permits.ts
+frontend/types/api.ts
+frontend/types/index.ts
+frontend/types/leads.ts
+frontend/types/utils.ts
+scripts/generate-frontend-types.sh
