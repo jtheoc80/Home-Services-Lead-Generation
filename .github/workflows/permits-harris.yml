@@ -68,7 +68,7 @@ jobs:
           -H "Prefer: count=exact" \
           "$SUPABASE_URL/rest/v1/permits?select=id&limit=1")
         echo "http_code=$code" >> "$GITHUB_OUTPUT"
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+        if [ "$code" != "200" ]; then
           echo "::error title=Supabase REST failed::HTTP $code"; exit 1
         fi
 
