@@ -394,7 +394,11 @@ Found **13 workflow files** matching criteria.
 ### ⚠️ Steps using secrets.*
 - Line 18: `SUPABASE_URL: ${{ secrets.SUPABASE_URL }}`
 - Line 19: `SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}`
-- Line 20: `SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}` **TERNARY FOUND**
+- Line 20: 
+  - `if: secrets.HC_ISSUED_PERMITS_URL != ''`
+    `SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}`
+  - `if: secrets.HC_ISSUED_PERMITS_URL == ''`
+    `SOURCE_URL: ${{ secrets.SOURCE_URL }}`
 - Line 40: `SUPABASE_URL: ${{ secrets.SUPABASE_URL }}`
 - Line 41: `SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}`
 - Line 42: `HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}`
