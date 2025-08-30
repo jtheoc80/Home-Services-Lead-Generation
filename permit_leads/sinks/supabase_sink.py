@@ -107,12 +107,47 @@ class SupabaseSink:
             logger.error(f"Failed to upsert batch of {len(records)} records: {e}")
             return {"success": 0, "failed": len(records)}
     
-    def upsert_records(self, records: List[Dict[str, Any]]) -> Dict[str, int]:
+    def upsert_batch_rpc(self, records: List[Dict[str, Any]]) -> Dict[str, int]:
+        """
+        Upsert a batch of records using RPC endpoint for better conflict resolution.
+        
+        Args:
+            records: List of dictionaries representing permit records
+            
+        Returns:
+            Dictionary with success/failure counts
+        """
+        if not records:
+            logger.info("No records to upsert via RPC")
+            return {"success": 0, "failed": 0}
+        
+        # Convert datetime objects to ISO format strings for JSON serialization
+        serialized_records = self._serialize_records(records)
+        
+        # Perform a single batch RPC call for all records
+        try:
+            response = self.client.rpc('upsert_permit', {'p': serialized_records}).execute()
+            
+            # Check response status
+            if hasattr(response, 'status_code') and response.status_code != 200:
+                logger.error(f"Batch RPC upsert failed with status {response.status_code}")
+                return {"success": 0, "failed": len(records)}
+            
+            success_count = len(records)
+            logger.info(f"Successfully upserted {success_count} records via batch RPC to {self.upsert_table}")
+            return {"success": success_count, "failed": 0}
+        
+        except Exception as e:
+            logger.error(f"Failed to upsert batch of {len(records)} records via RPC: {e}")
+            return {"success": 0, "failed": len(records)}
+    
+    def upsert_records(self, records: List[Dict[str, Any]], use_rpc: bool = True) -> Dict[str, int]:
         """
         Upsert records in chunks, with comprehensive logging.
         
         Args:
             records: List of dictionaries representing permit records
+            use_rpc: Whether to use RPC endpoint (default: True for better conflict resolution)
             
         Returns:
             Dictionary with total success/failure counts
@@ -123,28 +158,36 @@ class SupabaseSink:
         
         total_success = 0
         total_failed = 0
-        total_chunks = (len(records) + self.chunk_size - 1) // self.chunk_size
         
-        logger.info(f"Starting upsert of {len(records)} records in {total_chunks} chunks of {self.chunk_size}")
-        
-        # Process records in chunks
-        for i in range(0, len(records), self.chunk_size):
-            chunk = records[i:i + self.chunk_size]
-            chunk_num = (i // self.chunk_size) + 1
+        if use_rpc:
+            # Use RPC endpoint for better (source, source_record_id) upsert behavior
+            logger.info(f"Starting RPC upsert of {len(records)} records")
+            result = self.upsert_batch_rpc(records)
+            total_success = result["success"]
+            total_failed = result["failed"]
+        else:
+            # Fall back to traditional table upsert in chunks
+            total_chunks = (len(records) + self.chunk_size - 1) // self.chunk_size
+            logger.info(f"Starting table upsert of {len(records)} records in {total_chunks} chunks of {self.chunk_size}")
             
-            logger.info(f"Processing chunk {chunk_num}/{total_chunks} ({len(chunk)} records)")
-            
-            try:
-                result = self.upsert_batch(chunk)
-                total_success += result["success"]
-                total_failed += result["failed"]
+            # Process records in chunks
+            for i in range(0, len(records), self.chunk_size):
+                chunk = records[i:i + self.chunk_size]
+                chunk_num = (i // self.chunk_size) + 1
                 
-                logger.info(f"Chunk {chunk_num} complete: {result['success']} success, {result['failed']} failed")
+                logger.info(f"Processing chunk {chunk_num}/{total_chunks} ({len(chunk)} records)")
                 
-            except Exception as e:
-                logger.error(f"Chunk {chunk_num} failed completely: {e}")
-                total_failed += len(chunk)
-                # Continue processing remaining chunks
+                try:
+                    result = self.upsert_batch(chunk)
+                    total_success += result["success"]
+                    total_failed += result["failed"]
+                    
+                    logger.info(f"Chunk {chunk_num} complete: {result['success']} success, {result['failed']} failed")
+                    
+                except Exception as e:
+                    logger.error(f"Chunk {chunk_num} failed completely: {e}")
+                    total_failed += len(chunk)
+                    # Continue processing remaining chunks
         
         # Log final summary
         logger.info(f"Upsert complete: {total_success} success, {total_failed} failed")
