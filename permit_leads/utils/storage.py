@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS permits (
 );
 """
 
+
 class Storage:
     def __init__(self, db_path: Path, csv_path: Path):
         self.db_path = Path(db_path)
@@ -41,7 +42,26 @@ class Storage:
         if not self.csv_path.exists():
             with open(self.csv_path, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
-                w.writerow(["source","permit_number","issued_date","status","address","city","state","zipcode","applicant","contractor","description","value","work_class","category","latitude","longitude"])
+                w.writerow(
+                    [
+                        "source",
+                        "permit_number",
+                        "issued_date",
+                        "status",
+                        "address",
+                        "city",
+                        "state",
+                        "zipcode",
+                        "applicant",
+                        "contractor",
+                        "description",
+                        "value",
+                        "work_class",
+                        "category",
+                        "latitude",
+                        "longitude",
+                    ]
+                )
 
     def save(self, rec: Dict[str, Any]) -> bool:
         # insert into sqlite
@@ -50,7 +70,7 @@ class Storage:
                 """INSERT OR IGNORE INTO permits
                 (source, permit_number, issued_date, status, address, city, state, zipcode, applicant, contractor, description, value, work_class, category, latitude, longitude, raw)
                 VALUES (:source, :permit_number, :issued_date, :status, :address, :city, :state, :zipcode, :applicant, :contractor, :description, :value, :work_class, :category, :latitude, :longitude, :raw)""",
-                {**rec, "raw": rec.get("raw_json","{}")},
+                {**rec, "raw": rec.get("raw_json", "{}")},
             )
             self.conn.commit()
         except sqlite3.Error:
@@ -60,13 +80,38 @@ class Storage:
         try:
             with open(self.csv_path, "a", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
-                w.writerow([rec.get(k,"") for k in ["source","permit_number","issued_date","status","address","city","state","zipcode","applicant","contractor","description","value","work_class","category","latitude","longitude"]])
+                w.writerow(
+                    [
+                        rec.get(k, "")
+                        for k in [
+                            "source",
+                            "permit_number",
+                            "issued_date",
+                            "status",
+                            "address",
+                            "city",
+                            "state",
+                            "zipcode",
+                            "applicant",
+                            "contractor",
+                            "description",
+                            "value",
+                            "work_class",
+                            "category",
+                            "latitude",
+                            "longitude",
+                        ]
+                    ]
+                )
         except Exception:
             pass
         return True
 
     def latest(self, n: int = 10) -> List[dict]:
-        cur = self.conn.execute("""SELECT source, permit_number, issued_date, address, applicant, contractor, description, value, status
-                                   FROM permits ORDER BY issued_date DESC, id DESC LIMIT ?""", (n,))
+        cur = self.conn.execute(
+            """SELECT source, permit_number, issued_date, address, applicant, contractor, description, value, status
+                                   FROM permits ORDER BY issued_date DESC, id DESC LIMIT ?""",
+            (n,),
+        )
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
