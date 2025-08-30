@@ -115,13 +115,19 @@ jurisdictions:
   #     date_field: "issue_date"
   #     field_map: {}
 
-  # - slug: tx-dallas
-  #   name: Dallas County (Dallas-Fort Worth)
-  #   state: TX
-  #   region: tx-dallas
-  #   active: false
-  #   provider: arcgis
-  #   source_config:
-  #     url: "<placeholder>"
-  #     date_field: "issue_date"
-  #     field_map: {}
+  - slug: tx-dallas
+    name: Dallas County (Dallas-Fort Worth)
+    state: TX
+    region: tx-dallas
+    active: true
+    provider: arcgis
+    source_config:
+      url: "https://dallas.maps.arcgis.com/arcgis/rest/services/Permits/FeatureServer/0"
+      date_field: "issue_date"
+      field_map:
+        permit_id: "permit_no"
+        issue_date: "issue_date"
+        work_class: "type"
+        value: "value"
+        applicant: "contractor_name"
+        address: "address"

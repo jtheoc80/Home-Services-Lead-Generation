@@ -1,0 +1,40 @@
+name: Scrape — Metro Sweep
+"on":
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days back"
+        default: "1"
+      sample_data:
+        description: "Sample mode"
+        type: choice
+        options: ["false", "true"]
+        default: "false"
+
+jobs:
+  sweep:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: "tx-harris"
+            module: "permit_leads.harris.scrape"
+            entry: "scripts/harris_scrape.py"
+            src: "HC_ISSUED_PERMITS_URL"
+          - name: "tx-dallas"
+            module: "permit_leads.dallas.scrape"
+            entry: "scripts/dallas_scrape.py"
+            src: "DALLAS_PERMITS_URL"
+    uses: ./.github/workflows/_scrape-python.yml
+    with:
+      name: ${{ matrix.target.name }}
+      module: ${{ matrix.target.module }}
+      entry_fallback: ${{ matrix.target.entry }}
+      days: ${{ inputs.days }}
+      sample_data: ${{ inputs.sample_data }}
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets[matrix.target.src] }}

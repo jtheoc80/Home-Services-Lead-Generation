@@ -1,0 +1,176 @@
+name: Reusable Python Scraper
+
+"on":
+  workflow_call:
+    inputs:
+      name:
+        description: "Scraper name/identifier"
+        required: true
+        type: string
+      module:
+        description: "Python module to import"
+        required: true
+        type: string
+      entry_fallback:
+        description: "Fallback script entry point"
+        required: false
+        type: string
+        default: ""
+      days:
+        description: "Days back to scrape"
+        required: false
+        type: string
+        default: "1"
+      sample_data:
+        description: "Use sample data"
+        required: false
+        type: string
+        default: "false"
+    secrets:
+      SUPABASE_URL:
+        required: true
+      SUPABASE_SERVICE_ROLE_KEY:
+        required: true
+      SOURCE_URL:
+        required: true
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: permit_leads
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets.SOURCE_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd ..
+          python -m pip install --upgrade pip
+          pip install -r permit_leads/requirements.txt
+
+      - name: Create data directory
+        run: |
+          cd ..
+          mkdir -p data/permits/{raw,aggregate}
+
+      - name: Run scraper
+        id: scrape
+        run: |
+          DAYS="${{ inputs.days }}"
+          [ -z "$DAYS" ] && DAYS="1"
+          SAMPLE="${{ inputs.sample_data }}"
+          [ -z "$SAMPLE" ] && SAMPLE="false"
+
+          # Set SAMPLE_DATA using bash default pattern
+          if [ "$SAMPLE" = "true" ]; then
+            export SAMPLE_DATA=1
+          else
+            export SAMPLE_DATA=0
+          fi
+
+          echo "Running scraper: ${{ inputs.name }}"
+          echo "Module: ${{ inputs.module }}"
+          echo "Days back: ${DAYS}"
+          echo "Sample data mode: ${SAMPLE_DATA}"
+
+          # Try the jurisdiction-based approach first (current system)
+          if [[ "${{ inputs.name }}" == "tx-harris" ]]; then
+            python -m permit_leads scrape --jurisdiction tx-harris \
+              --days "${DAYS}" --formats csv sqlite jsonl \
+              --verbose --retries 5
+          elif [[ "${{ inputs.name }}" == "tx-dallas" ]]; then
+            python -m permit_leads scrape --jurisdiction tx-dallas \
+              --days "${DAYS}" --formats csv sqlite jsonl \
+              --verbose --retries 5
+          else
+            # Fallback to script if provided and module approach doesn't work
+            if [ -n "${{ inputs.entry_fallback }}" ] && \
+               [ -f "../${{ inputs.entry_fallback }}" ]; then
+              python "../${{ inputs.entry_fallback }}" --days "${DAYS}"
+            else
+              # Try module import approach
+              echo "Attempting to run module: ${{ inputs.module }}"
+              python -c "
+          import sys
+          sys.path.append('.')
+          try:
+              import ${{ inputs.module }}
+              print('Module imported successfully')
+          except ImportError as e:
+              print(f'Module import failed: {e}')
+              sys.exit(1)
+              "
+            fi
+          fi
+
+          # Count new permits from today's run
+          TODAY=$(date +%Y-%m-%d)
+          NEW_PERMITS=0
+
+          # Check CSV files for permit count
+          if [ -f "../data/permits/aggregate/permits_${TODAY}.csv" ]; then
+            NEW_PERMITS=$(tail -n +2 \
+              "../data/permits/aggregate/permits_${TODAY}.csv" | wc -l)
+          fi
+
+          echo "new_permits=${NEW_PERMITS}" >> $GITHUB_OUTPUT
+          echo "Found ${NEW_PERMITS} new permits today"
+
+      - name: Commit and push data
+        if: ${{ steps.scrape.outputs.new_permits != '0' }}
+        run: |
+          cd ..
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          TODAY=$(date +%Y-%m-%d)
+          git commit -m "Update ${{ inputs.name }} permit data for ${TODAY}" \
+                      -m "${{ steps.scrape.outputs.new_permits }} permits processed" \
+                      -m "Automated ${{ inputs.name }} scrape"
+          git push
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## 📊 ${{ inputs.name }} Scraping Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.scrape.outputs.new_permits }}" -gt 0 ]; then
+            echo "✅ **Success**: Found ${{ steps.scrape.outputs.new_permits }} new permits" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No new data**: No permits found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Name: ${{ inputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Module: ${{ inputs.module }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Days back: ${{ inputs.days }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Sample data: ${{ inputs.sample_data }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload data artifacts
+        if: ${{ steps.scrape.outputs.new_permits != '0' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.name }}-permits-$(date +%Y-%m-%d)
+          path: ../data/
+          retention-days: 30
