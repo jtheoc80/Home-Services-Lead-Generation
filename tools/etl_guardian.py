@@ -143,7 +143,7 @@ def is_path_allowed(file_path: str) -> bool:
     ]
     
     # Check if it's a root-level file matching allowed patterns
-    if '/' not in path_str:  # Root-level file
+    if len(path.parts) == 1:  # Root-level file (cross-platform)
         for pattern in allowed_root_patterns:
             if pattern.startswith('*'):
                 extension = pattern[1:]  # Remove the *
