@@ -766,6 +766,53 @@ def insert_lead(lead: dict, trace_id: Optional[str] = None) -> dict:
         raise Exception(f"Failed to insert lead: {e}")
 
 
+def ingest_csv_data(csv_file_path: str) -> int:
+    """
+    Standalone function for ingesting CSV data. 
+    
+    This function is designed to be called from GitHub workflows
+    and other automated scripts.
+    
+    Args:
+        csv_file_path: Path to the CSV file to ingest
+        
+    Returns:
+        Number of records successfully ingested
+        
+    Raises:
+        Exception: If ingestion fails
+    """
+    # Get database URL from environment
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        # Try Supabase connection string format
+        supabase_url = os.environ.get('SUPABASE_URL')
+        supabase_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+        
+        if supabase_url and supabase_key:
+            # Extract the project ID from Supabase URL for DATABASE_URL format
+            # Format: postgresql://postgres:[password]@[host]:5432/postgres
+            import re
+            match = re.search(r'https://([^.]+)\.supabase\.co', supabase_url)
+            if match:
+                project_id = match.group(1)
+                db_url = f"postgresql://postgres:{supabase_key}@db.{project_id}.supabase.co:5432/postgres"
+            else:
+                raise Exception("Could not construct DATABASE_URL from SUPABASE_URL")
+        else:
+            raise Exception("DATABASE_URL or SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY environment variables not set")
+        
+    try:
+        ingestor = LeadIngestor(db_url)
+        records_processed = ingestor.ingest_csv(csv_file_path)
+        logger.info(f"Successfully ingested {records_processed} records from {csv_file_path}")
+        return records_processed
+        
+    except Exception as e:
+        logger.error(f"Ingest failed for {csv_file_path}: {e}")
+        raise
+
+
 def main():
     """Main entry point for the ingest script."""
     # Default path if no argument provided
@@ -779,19 +826,12 @@ def main():
     
     csv_file_path = sys.argv[1] if len(sys.argv) == 2 else default_csv_path
     
-    # Get database URL from environment
-    db_url = os.environ.get('DATABASE_URL')
-    if not db_url:
-        logger.error("DATABASE_URL environment variable not set")
-        sys.exit(1)
-        
     try:
-        ingestor = LeadIngestor(db_url)
-        records_processed = ingestor.ingest_csv(csv_file_path)
-        logger.info(f"Successfully ingested {records_processed} records")
+        records_processed = ingest_csv_data(csv_file_path)
+        logger.info(f"Main: Successfully processed {records_processed} records")
         
     except Exception as e:
-        logger.error(f"Ingest failed: {e}")
+        logger.error(f"Main: Ingest failed: {e}")
         sys.exit(1)
 
 
