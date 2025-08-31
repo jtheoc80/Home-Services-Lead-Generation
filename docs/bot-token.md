@@ -83,8 +83,7 @@ gh secret set BOT_TOKEN --body '<paste your PAT>'
 
 **Example:**
 ```bash
-# Replace with your actual token
-gh secret set BOT_TOKEN --body 'github_pat_11ABCDEFG_xyzabcdefghijklmnopqrstuvwxyz123456789'
+gh secret set BOT_TOKEN --body 'github_pat_11XXXXXXX_YOUR_ACTUAL_TOKEN_HERE'
 ```
 
 ## Step 3: Verify Token Setup
