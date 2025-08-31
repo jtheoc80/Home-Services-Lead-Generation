@@ -72,6 +72,23 @@ jobs:
           echo "ok=$ok" >> "$GITHUB_OUTPUT"
           [ "$ok" -eq 1 ]
 
+      - name: Preflight Source URL
+        if: ${{ steps.preflight.outputs.ok == '1' }}
+        env:
+          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+        run: |
+          if [ -z "$HC_ISSUED_PERMITS_URL" ]; then
+            echo "::warning title=Source URL not configured::HC_ISSUED_PERMITS_URL is not set"
+          else
+            echo "::add-mask::$HC_ISSUED_PERMITS_URL"
+            code=$(curl -s -o /dev/null -w "%{http_code}" --head --max-time 10 "$HC_ISSUED_PERMITS_URL" || echo "000")
+            if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+              echo "✅ Source URL accessible (HTTP $code)"
+            else
+              echo "::warning title=Source URL check failed::HTTP $code from source URL"
+            fi
+          fi
+
       - name: Supabase REST probe (non-fatal)
         if: ${{ steps.preflight.outputs.ok == '1' }}
         id: supa
