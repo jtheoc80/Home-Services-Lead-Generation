@@ -1,0 +1,32 @@
+name: Actionlint
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    name: Validate GitHub Actions workflows
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        shell: bash
+
+      - name: Check workflow files with actionlint
+        run: ./actionlint -format "{{range \$err := .}}::error file={{\$err.Filepath}},line={{\$err.Line}},col={{\$err.Column}}::{{\$err.Message}}%0A{{end}}"
+
+      - name: Check workflow files with actionlint (verbose output)
+        if: failure()
+        run: ./actionlint -verbose
