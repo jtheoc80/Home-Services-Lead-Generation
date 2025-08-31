@@ -1,7 +1,7 @@
 name: Scrape — Harris County
 on:
   schedule:
-    - cron: "15 6 * * *"   # daily 06:15 UTC
+    - cron: "15 6 * * *"
   workflow_dispatch:
     inputs:
       days: { description: "Days back", default: "1" }
@@ -16,7 +16,6 @@ jobs:
       entry_fallback: scripts/harris_scrape.py
       days: ${{ inputs.days }}
       sample_data: ${{ inputs.sample_data }}
-      artifacts_glob: ""
     secrets:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
