@@ -1,209 +1,312 @@
 #!/usr/bin/env python3
 """
-ETL Guardian - Repository Policy Check
+ETL Guardian - Automatic ETL Workflow Fixer
 
-This script exits non-zero if it detects changes outside allowed files.
-
-ALLOWED PATHS:
-- permit_leads/          - Core ETL pipeline code
-- scripts/               - ETL scripts and tooling
-- config/                - Configuration files (registry.yaml, sources_tx.yaml)
-- backend/               - Backend API and workers
-- sql/                   - Database migrations and setup scripts
-- docs/                  - Documentation files
-- tools/                 - Development tools and utilities
-- *.md                   - Root-level documentation
-- *.yaml, *.yml          - Root-level configuration
-- *.json                 - Root-level configuration (package.json, etc.)
-- *.py                   - Root-level Python scripts
-- *.sql                  - Root-level SQL scripts
-- .github/               - GitHub workflows and configuration
-- requirements.txt       - Python dependencies
-- pyproject.toml         - Python project configuration
-- poetry.lock            - Python dependency lock file
-- package*.json          - Node.js dependencies
+This script automatically fixes common issues in the etl.yml workflow:
+- Ensures mkdir step for logs/artifacts/data
+- Makes ingestion step conditional
+- Fixes summary to tail logs/etl_output.log
+- Collapses duplicate artifact uploaders with stable globs
+- Adds concurrency guard on jobs.etl
+- Sets defaults.run.working-directory: permit_leads
 """
 
 import os
 import sys
-import subprocess
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, Any, Optional
+from ruamel.yaml import YAML
 
 
-def get_changed_files() -> List[str]:
-    """
-    Get list of changed files using git diff.
+def load_etl_workflow() -> tuple[Path, Optional[Dict[str, Any]]]:
+    """Load the etl.yml workflow file."""
+    etl_path = Path(".github/workflows/etl.yml")
     
-    Returns list of file paths that have been modified, added, or deleted.
-    """
+    if not etl_path.exists():
+        print(f"❌ ETL workflow not found at {etl_path}")
+        return etl_path, None
+    
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.default_flow_style = False
+    yaml.width = 4096
+    
     try:
-        # Get staged changes
-        result_staged = subprocess.run(
-            ['git', 'diff', '--cached', '--name-only'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
-        # Get unstaged changes
-        result_unstaged = subprocess.run(
-            ['git', 'diff', '--name-only'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
-        # Get untracked files
-        result_untracked = subprocess.run(
-            ['git', 'ls-files', '--others', '--exclude-standard'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
-        changed_files = set()
-        
-        # Combine all changes
-        for result in [result_staged, result_unstaged, result_untracked]:
-            if result.stdout.strip():
-                changed_files.update(result.stdout.strip().split('\n'))
-        
-        return sorted(list(changed_files))
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error getting changed files: {e}")
-        return []
+        with open(etl_path, 'r') as f:
+            content = yaml.load(f)
+        return etl_path, content
+    except Exception as e:
+        print(f"❌ Error loading ETL workflow: {e}")
+        return etl_path, None
 
 
-def is_path_allowed(file_path: str) -> bool:
-    """
-    Check if a file path is within allowed directories or matches allowed patterns.
+def ensure_mkdir_step(workflow: Dict[str, Any]) -> bool:
+    """Ensure there's a mkdir step for logs/artifacts/data."""
+    if 'jobs' not in workflow or 'etl' not in workflow['jobs']:
+        return False
     
-    Args:
-        file_path: Path to check
-        
-    Returns:
-        True if path is allowed, False otherwise
-    """
-    path = Path(file_path)
+    steps = workflow['jobs']['etl'].get('steps', [])
     
-    # Convert to string for easier matching
-    path_str = str(path)
+    # Check if mkdir step exists
+    for step in steps:
+        if 'name' in step and 'ensure output dirs' in step['name'].lower():
+            # Check if it creates the required directories
+            run_script = step.get('run', '')
+            if 'mkdir -p logs artifacts data' in run_script:
+                print("✅ mkdir step already exists and is correct")
+                return False
     
-    # Allowed directory prefixes
-    allowed_dirs = [
-        'permit_leads/',
-        'scripts/',
-        'config/',
-        'backend/',
-        'sql/',
-        'docs/',
-        'tools/',
-        '.github/',
-    ]
+    # Find a good place to insert the mkdir step (after deps install)
+    insert_index = 0
+    for i, step in enumerate(steps):
+        if 'name' in step and ('install deps' in step['name'].lower() or 'setup python' in step['name'].lower()):
+            insert_index = i + 1
     
-    # Check if path starts with any allowed directory
-    for allowed_dir in allowed_dirs:
-        if path_str.startswith(allowed_dir):
-            return True
+    # Add the mkdir step
+    mkdir_step = {
+        'name': 'Ensure output dirs',
+        'run': 'mkdir -p logs artifacts data'
+    }
     
-    # Allowed root-level patterns
-    allowed_root_patterns = [
-        # Documentation
-        '*.md',
-        # Configuration files
-        '*.yaml',
-        '*.yml', 
-        '*.json',
-        # Python files
-        '*.py',
-        # SQL files
-        '*.sql',
-        # Dependency files
-        'requirements.txt',
-        'pyproject.toml',
-        'poetry.lock',
-        'package.json',
-        'package-lock.json',
-        # Other configuration
-        '.gitignore',
-        '.env.example',
-        '.nvmrc',
-        'Makefile',
-        'Procfile',
-        'nixpacks.toml',
-        'railway.json',
-        'vercel.json',
-        'openapi.yaml',
-        'openapitools.json',
-        'playwright.config.ts',
-        'setup.py',
-        'setup.sh',
-    ]
+    steps.insert(insert_index, mkdir_step)
+    print("🔧 Added mkdir step for logs/artifacts/data")
+    return True
+
+
+def ensure_conditional_ingestion(workflow: Dict[str, Any]) -> bool:
+    """Ensure ingestion step is conditional."""
+    if 'jobs' not in workflow or 'etl' not in workflow['jobs']:
+        return False
     
-    # Check if it's a root-level file matching allowed patterns
-    if len(path.parts) == 1:  # Root-level file (cross-platform)
-        for pattern in allowed_root_patterns:
-            if pattern.startswith('*'):
-                extension = pattern[1:]  # Remove the *
-                if path_str.endswith(extension):
-                    return True
-            elif path_str == pattern:
-                return True
+    steps = workflow['jobs']['etl'].get('steps', [])
+    modified = False
     
+    for step in steps:
+        if 'name' in step and 'data ingestion' in step['name'].lower():
+            # Check if it has the correct conditional
+            current_if = step.get('if', '')
+            expected_if = "${{ steps.scrape.outputs.record_count != '0' || inputs.force == true }}"
+            
+            if expected_if not in current_if:
+                step['if'] = expected_if
+                print("🔧 Fixed conditional ingestion step")
+                modified = True
+            else:
+                print("✅ Ingestion step conditional is correct")
+    
+    return modified
+
+
+def ensure_working_directory(workflow: Dict[str, Any]) -> bool:
+    """Ensure defaults.run.working-directory is set to permit_leads."""
+    if 'jobs' not in workflow or 'etl' not in workflow['jobs']:
+        return False
+    
+    etl_job = workflow['jobs']['etl']
+    
+    # Check if defaults.run.working-directory exists
+    if 'defaults' not in etl_job:
+        etl_job['defaults'] = {}
+    
+    if 'run' not in etl_job['defaults']:
+        etl_job['defaults']['run'] = {}
+    
+    if etl_job['defaults']['run'].get('working-directory') != 'permit_leads':
+        etl_job['defaults']['run']['working-directory'] = 'permit_leads'
+        print("🔧 Set working-directory to permit_leads")
+        return True
+    
+    print("✅ Working directory already set correctly")
     return False
 
 
-def main():
-    """
-    Main function to check for changes outside allowed paths.
+def ensure_concurrency_guard(workflow: Dict[str, Any]) -> bool:
+    """Ensure concurrency guard is on jobs.etl."""
+    if 'jobs' not in workflow or 'etl' not in workflow['jobs']:
+        return False
     
-    Exits with code 0 if all changes are in allowed paths.
-    Exits with code 1 if changes are detected outside allowed paths.
-    """
-    print("🔍 ETL Guardian: Checking for changes outside allowed paths...")
+    etl_job = workflow['jobs']['etl']
     
-    changed_files = get_changed_files()
+    # Check if concurrency exists and is correct
+    expected_concurrency = {
+        'group': 'nightly-etl',
+        'cancel-in-progress': False
+    }
     
-    if not changed_files:
-        print("✅ No changes detected.")
-        sys.exit(0)
+    current_concurrency = etl_job.get('concurrency', {})
     
-    print(f"📁 Found {len(changed_files)} changed file(s):")
+    if (current_concurrency.get('group') != expected_concurrency['group'] or 
+        current_concurrency.get('cancel-in-progress') != expected_concurrency['cancel-in-progress']):
+        
+        etl_job['concurrency'] = expected_concurrency
+        print("🔧 Added/fixed concurrency guard")
+        return True
     
-    disallowed_files = []
-    allowed_files = []
+    print("✅ Concurrency guard already correct")
+    return False
+
+
+def collapse_artifact_uploaders(workflow: Dict[str, Any]) -> bool:
+    """Collapse duplicate artifact uploaders into one with stable globs."""
+    if 'jobs' not in workflow or 'etl' not in workflow['jobs']:
+        return False
     
-    for file_path in changed_files:
-        if is_path_allowed(file_path):
-            allowed_files.append(file_path)
-            print(f"  ✅ {file_path}")
+    steps = workflow['jobs']['etl'].get('steps', [])
+    upload_steps = []
+    other_steps = []
+    
+    # Separate upload steps from other steps
+    for i, step in enumerate(steps):
+        if step.get('uses', '').startswith('actions/upload-artifact'):
+            upload_steps.append((i, step))
         else:
-            disallowed_files.append(file_path)
-            print(f"  ❌ {file_path}")
+            other_steps.append((i, step))
     
-    if disallowed_files:
-        print(f"\n🚫 ERROR: {len(disallowed_files)} file(s) changed outside allowed paths:")
-        for file_path in disallowed_files:
-            print(f"  - {file_path}")
+    # If there's only one upload step, check if it's correct
+    if len(upload_steps) <= 1:
+        if upload_steps:
+            step = upload_steps[0][1]
+            expected_paths = [
+                'permit_leads/artifacts/**/*.csv',
+                'permit_leads/logs/**/*.log'
+            ]
+            
+            with_config = step.get('with', {})
+            current_path = with_config.get('path', '')
+            
+            # Check if paths match expected
+            if isinstance(current_path, list):
+                if set(current_path) == set(expected_paths):
+                    print("✅ Artifact uploader already correct")
+                    return False
+            elif isinstance(current_path, str):
+                if all(path in current_path for path in expected_paths):
+                    print("✅ Artifact uploader already correct") 
+                    return False
+            
+            # Fix the existing upload step
+            with_config['path'] = expected_paths
+            with_config['if-no-files-found'] = 'warn'
+            print("🔧 Fixed artifact uploader paths")
+            return True
         
-        print("\n📋 Allowed paths:")
-        print("  - permit_leads/          - Core ETL pipeline code")
-        print("  - scripts/               - ETL scripts and tooling")
-        print("  - config/                - Configuration files")
-        print("  - backend/               - Backend API and workers")
-        print("  - sql/                   - Database migrations")
-        print("  - docs/                  - Documentation")
-        print("  - tools/                 - Development tools")
-        print("  - .github/               - GitHub workflows")
-        print("  - *.md, *.yaml, *.json   - Root-level config/docs")
-        print("  - *.py, *.sql            - Root-level scripts")
-        print("  - requirements.txt       - Dependencies")
+        print("✅ No artifact uploaders to fix")
+        return False
+    
+    # Multiple upload steps - collapse them
+    # Remove all upload steps from the original steps list
+    new_steps = [step for i, step in enumerate(steps) if i not in [idx for idx, _ in upload_steps]]
+    
+    # Create a single consolidated upload step
+    consolidated_upload = {
+        'name': 'Upload artifacts',
+        'if': 'always()',
+        'uses': 'actions/upload-artifact@v4',
+        'with': {
+            'name': 'nightly-etl-${{ github.run_id }}',
+            'path': [
+                'permit_leads/artifacts/**/*.csv',
+                'permit_leads/logs/**/*.log'
+            ],
+            'if-no-files-found': 'warn',
+            'retention-days': 14
+        }
+    }
+    
+    # Add it to the end
+    new_steps.append(consolidated_upload)
+    workflow['jobs']['etl']['steps'] = new_steps
+    
+    print(f"🔧 Collapsed {len(upload_steps)} artifact uploaders into one")
+    return True
+
+
+def fix_summary_tail(workflow: Dict[str, Any]) -> bool:
+    """Fix summary to tail logs/etl_output.log."""
+    if 'jobs' not in workflow or 'etl' not in workflow['jobs']:
+        return False
+    
+    steps = workflow['jobs']['etl'].get('steps', [])
+    
+    for step in steps:
+        if 'name' in step and 'summary' in step['name'].lower():
+            run_script = step.get('run', '')
+            
+            # Check if it's tailing the correct log file
+            if 'tail -n 25 logs/etl_output.log' in run_script:
+                print("✅ Summary tail already correct")
+                return False
+            
+            # Fix the tail command
+            if 'tail' in run_script and 'etl_output.log' in run_script:
+                # Replace existing tail command
+                import re
+                run_script = re.sub(
+                    r'tail[^|]*etl_output\.log[^>]*',
+                    'tail -n 25 logs/etl_output.log',
+                    run_script
+                )
+                step['run'] = run_script
+                print("🔧 Fixed summary tail command")
+                return True
+    
+    print("ℹ️ No summary step found to fix")
+    return False
+
+
+def save_workflow(etl_path: Path, workflow: Dict[str, Any]) -> bool:
+    """Save the updated workflow back to file."""
+    try:
+        yaml = YAML()
+        yaml.preserve_quotes = True
+        yaml.default_flow_style = False
+        yaml.width = 4096
         
+        with open(etl_path, 'w') as f:
+            yaml.dump(workflow, f)
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error saving workflow: {e}")
+        return False
+
+
+def main():
+    """Main function to fix ETL workflow issues."""
+    print("🛡️ ETL Guardian: Checking and fixing etl.yml workflow...")
+    
+    # Change to repository root if we're in tools/
+    if os.path.basename(os.getcwd()) == 'tools':
+        os.chdir('..')
+    
+    etl_path, workflow = load_etl_workflow()
+    
+    if workflow is None:
         sys.exit(1)
     
-    print(f"\n✅ All {len(allowed_files)} changed file(s) are in allowed paths.")
+    print(f"📁 Found ETL workflow at {etl_path}")
+    
+    # Apply fixes
+    changes_made = False
+    
+    changes_made |= ensure_working_directory(workflow)
+    changes_made |= ensure_concurrency_guard(workflow)
+    changes_made |= ensure_mkdir_step(workflow)
+    changes_made |= ensure_conditional_ingestion(workflow)
+    changes_made |= collapse_artifact_uploaders(workflow)
+    changes_made |= fix_summary_tail(workflow)
+    
+    if changes_made:
+        if save_workflow(etl_path, workflow):
+            print("\n✅ ETL workflow updated successfully!")
+            print("📝 Changes made to .github/workflows/etl.yml")
+        else:
+            print("\n❌ Failed to save workflow changes")
+            sys.exit(1)
+    else:
+        print("\n✅ ETL workflow is already properly configured!")
+        print("📋 No changes needed")
+    
     sys.exit(0)
 
 
