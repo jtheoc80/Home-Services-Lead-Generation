@@ -17,7 +17,6 @@ on:
 env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL != '' && secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
 
 jobs:
   preflight:
@@ -41,6 +40,14 @@ jobs:
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
       run: |
+        # Set SOURCE_URL using shell logic instead of ternary
+        if [ -n "$HC_ISSUED_PERMITS_URL" ] && [ "$HC_ISSUED_PERMITS_URL" != "" ]; then
+          SOURCE_URL="$HC_ISSUED_PERMITS_URL"
+        else
+          SOURCE_URL="${{ secrets.SOURCE_URL }}"
+        fi
+        export SOURCE_URL
+        
         echo "🚀 Running preflight validation for Harris County permit scraper..."
         python scripts/workflow-preflight.py
         if [ $? -eq 0 ]; then
@@ -55,7 +62,7 @@ jobs:
         fi
 
     - name: "Preflight: Supabase REST check"
-      if: ${{ steps.preflight.outputs.ok == '1' }}
+      if: steps.preflight.outputs.ok == '1'
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -95,7 +102,6 @@ jobs:
       SAMPLE_DATA: 1
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
     
     steps:
     - name: Checkout repository
@@ -118,17 +124,23 @@ jobs:
         
     - name: Run Harris County permit scraper (dry-run with sample data)
       run: |
+        # Set SOURCE_URL using shell logic instead of logical OR
+        if [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+        else
+          SOURCE_URL="${{ secrets.SOURCE_URL }}"
+        fi
+        export SOURCE_URL
+        
         echo "🔧 Running dry-run with sample data and ETL_ALLOW_EMPTY=1"
         echo "Sample data mode: ${SAMPLE_DATA}"
         echo "ETL allow empty: ${ETL_ALLOW_EMPTY}"
         
         # Run with sample data for 1 day
 
-
         python -m permit_leads.harris.scrape --days 1 --sample
 
         python -m permit_leads.harris.scrape --days 1 --verbose
-
 
         SCRAPER_EXIT_CODE=$?
         if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
@@ -192,10 +204,11 @@ jobs:
     secrets:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
 
-      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
-
-    
+  scrape-harris-manual:
+    needs: preflight
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
@@ -209,13 +222,11 @@ jobs:
       run: |
         cd ..
         pipx install poetry && poetry install --no-interaction --no-ansi
-        
 
     - name: Create data directory
       run: |
         cd ..
         mkdir -p data/permits/{raw,aggregate}
-        
 
     - name: "Preflight: verify required secrets"
       id: preflight
@@ -223,8 +234,19 @@ jobs:
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.DALLAS_PERMITS_URL || secrets.AUSTIN_PERMITS_URL || '' }}
       run: |
+        # Set SOURCE_URL using shell logic instead of logical OR  
+        if [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+        elif [ -n "${{ secrets.DALLAS_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.DALLAS_PERMITS_URL }}"
+        elif [ -n "${{ secrets.AUSTIN_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.AUSTIN_PERMITS_URL }}"
+        else
+          SOURCE_URL=""
+        fi
+        export SOURCE_URL
+        
         ok=1
         for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
           val="${!v}"
@@ -238,28 +260,6 @@ jobs:
         echo "ok=$ok" >> "$GITHUB_OUTPUT"
         [ "$ok" -eq 1 ]
 
-
-
-    - name: Checkout repository
-      uses: actions/checkout@v5
-      
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-
-      run: |
-        cd ..
-        python -m pip install --upgrade pip
-        pip install -r permit_leads/requirements.txt
-        
-    - name: Create data directory
-      run: |
-        cd ..
-        mkdir -p data/permits/{raw,aggregate}
-        
     - name: Check for 24h zero results
       id: check_recent
       run: |
@@ -274,22 +274,32 @@ jobs:
         
         echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
         echo "Found ${RECENT_FILES} recent Harris County files"
-        
+
     - name: Run scraper
-      if: ${{ steps.preflight.outputs.ok == '1' }}
+      if: steps.preflight.outputs.ok == '1'
       id: scrape
       shell: bash
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL || '' }}
       run: |
         set -e
         mkdir -p logs artifacts data
+        
+        # Set defaults using shell logic for cron-safe execution
         DAYS="${{ inputs.days }}"
         [ -z "$DAYS" ] && DAYS="1"
         SAMPLE="${{ inputs.sample_data }}"
         [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set SOURCE_URL using shell logic instead of logical OR
+        if [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+        else
+          SOURCE_URL="${{ secrets.SOURCE_URL }}"
+        fi
+        export SOURCE_URL
+        
         echo "DAYS=$DAYS SAMPLE=$SAMPLE"
         # try python -m module; else script path
         if python - <<'PY'
@@ -320,7 +330,7 @@ jobs:
         exit 1
         
     - name: Commit and push data
-      if: ${{ steps.scrape.outputs.new_permits != '0' }}
+      if: steps.scrape.outputs.new_permits != '0'
       run: |
         cd ..
         git config --local user.email "action@github.com"
@@ -449,7 +459,7 @@ jobs:
         retention-days: 14
         
     - name: Upload data artifacts
-      if: ${{ steps.scrape.outputs.new_permits != '0' }}
+      if: steps.scrape.outputs.new_permits != '0'
       uses: actions/upload-artifact@v4
       with:
         name: harris-county-permits-${{ steps.set_date.outputs.date }}

@@ -75,11 +75,14 @@ jobs:
           set -e
 
       - name: Fallback script
-        if: steps.run_module.outputs.exit != '0' && inputs.entry_fallback != ''
+        if: steps.run_module.outputs.exit != '0'
         run: |
-          ARGS="--days ${{ inputs.days }}"
-          [ "${{ inputs.sample_data }}" = "true" ] && ARGS="$ARGS --sample"
-          python "${{ inputs.entry_fallback }}" $ARGS | tee -a logs/etl_output.log
+          # Check if entry_fallback is provided using shell logic
+          if [ -n "${{ inputs.entry_fallback }}" ] && [ "${{ inputs.entry_fallback }}" != "" ]; then
+            ARGS="--days ${{ inputs.days }}"
+            [ "${{ inputs.sample_data }}" = "true" ] && ARGS="$ARGS --sample"
+            python "${{ inputs.entry_fallback }}" $ARGS | tee -a logs/etl_output.log
+          fi
 
       - name: Upload artifacts
         if: always()

@@ -67,7 +67,7 @@ jobs:
           echo "ok=1" >> $GITHUB_OUTPUT
           
       - name: "Preflight: test Supabase REST"
-        if: ${{ steps.preflight.outputs.ok == '1' }}
+        if: steps.preflight.outputs.ok == '1'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -90,7 +90,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: |
-          # Set default time period using shell logic
+          # Set default time period using shell logic for cron-safe execution
           SINCE_PERIOD="${{ inputs.since }}"
           [ -z "$SINCE_PERIOD" ] && SINCE_PERIOD="1d"
           echo "Running ETL with --since $SINCE_PERIOD"
