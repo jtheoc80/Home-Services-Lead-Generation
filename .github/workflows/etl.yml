@@ -90,7 +90,7 @@ jobs:
           fi
 
       - name: Run ETL scraping
-        id: scrape
+        id: etl_run
         env:
           HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
         run: |
@@ -123,7 +123,7 @@ jobs:
 
       # ✅ Only run ingestion if records > 0 OR force=true
       - name: Run data ingestion
-        if: ${{ steps.scrape.outputs.record_count != '0' || inputs.force == true }}
+        if: ${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -175,7 +175,7 @@ jobs:
         if: always()
         run: |
           TIME="${{ inputs.since }}"; [ -z "$TIME" ] && TIME="1d"
-          COUNT="${{ steps.scrape.outputs.record_count }}"
+          COUNT="${{ steps.etl_run.outputs.record_count }}"
           SUPA="${{ steps.supa.outputs.http_code }}"
           echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Time period: $TIME" >> $GITHUB_STEP_SUMMARY
