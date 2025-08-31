@@ -164,8 +164,6 @@ jobs:
 
       SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL || secrets.SOURCE_URL }}
 
-      SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL || secrets.SOURCE_URL }}
-
     
     steps:
     - name: Checkout repository
