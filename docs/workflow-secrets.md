@@ -14,8 +14,8 @@ This checklist enumerates the required GitHub secrets for Harris/Dallas scrapers
   - Format: JWT token starting with `eyJ`
   - Required for database operations with full access
 
-- [ ] **`HC_ISSUED_PERMITS_URL`** - Harris County permits data source
-  - Format: `https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0`
+  - Format: `https://<harris-county-permits-endpoint>`
+  - Obtain the correct endpoint from the Harris County GIS portal or contact Harris County IT.
   - Required for permit data scraping
 
 ### For Dallas County Scraper (`scrape-dallas.yml`)
