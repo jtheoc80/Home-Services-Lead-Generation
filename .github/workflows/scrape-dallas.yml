@@ -1,10 +1,10 @@
-name: Dallas County Permit Scraper
-
+name: Scrape — Dallas County
 on:
   schedule:
-    - cron: "15 6 * * *"  # 06:15 UTC
+    - cron: "20 6 * * *"
   workflow_dispatch:
     inputs:
+
       days:
         description: "Days back"
         default: "1"
@@ -166,16 +166,25 @@ jobs:
     
   scrape-dallas-permits:
     needs: preflight
+
+      days: { description: "Days back", default: "1" }
+      sample_data: { description: "Sample mode", type: choice, options: ["false","true"], default: "false" }
+
+jobs:
+  run:
+
     uses: ./.github/workflows/_scrape-python.yml
     with:
       name: tx-dallas
       module: permit_leads.dallas.scrape
+      entry_fallback: scripts/dallas_scrape.py
       days: ${{ inputs.days || '1' }}
       sample_data: ${{ inputs.sample_data || 'false' }}
     secrets:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL }}
+
 
   scrape-dallas-manual:
     needs: preflight
@@ -502,4 +511,5 @@ jobs:
         echo "- Supabase REST: ${SUPABASE_REST_STATUS}" >> $GITHUB_STEP_SUMMARY
         echo "- Days: $DAYS, Sample: $SAMPLE" >> $GITHUB_STEP_SUMMARY
         echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
+
 
