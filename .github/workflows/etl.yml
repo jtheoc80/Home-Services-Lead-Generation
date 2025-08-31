@@ -2,33 +2,34 @@ name: Nightly ETL
 
 on:
   schedule:
-    # hourly
-    - cron: "0 * * * *"
+    - cron: "0 * * * *"     # hourly
   workflow_dispatch:
     inputs:
       since:
-        description: "Time period to scrape (e.g., 1d, 2h, 30m)"
+        description: "Window (e.g., 1d, 2h, 30m)"
         required: false
         default: "1d"
       force:
-        description: "Force run even with 0 records"
+        description: "Force ingest even if 0 records"
         required: false
         type: boolean
         default: false
 
 env:
   PYTHON_VERSION: "3.11"
-  ETL_ALLOW_EMPTY: "1"
 
 jobs:
   etl:
     runs-on: ubuntu-latest
+    concurrency:
+      group: nightly-etl
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: permit_leads
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -51,7 +52,7 @@ jobs:
 
       - name: Ensure output dirs
         run: |
-          mkdir -p permit_leads/logs permit_leads/artifacts permit_leads/data
+          mkdir -p logs artifacts data
 
       - name: Preflight secrets
         id: preflight
@@ -62,7 +63,7 @@ jobs:
           ok=1
           for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
             if [ -z "${!v}" ]; then
-              echo "::error title=$v missing::Set it in GitHub → Settings → Secrets and variables → Actions"
+              echo "::error title=$v missing::Add in GitHub → Settings → Secrets and variables → Actions"
               ok=0
             else
               echo "::add-mask::${!v}"
@@ -71,7 +72,7 @@ jobs:
           echo "ok=$ok" >> "$GITHUB_OUTPUT"
           [ "$ok" -eq 1 ]
 
-      - name: Supabase REST probe
+      - name: Supabase REST probe (non-fatal)
         if: ${{ steps.preflight.outputs.ok == '1' }}
         id: supa
         env:
@@ -93,64 +94,70 @@ jobs:
         env:
           HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
         run: |
-          # Resolve --since default in bash (cron-safe)
-          SINCE="${{ inputs.since }}"
-          [ -z "$SINCE" ] && SINCE="1d"
-          echo "Running scrape: --since $SINCE"
-          # We run poetry from repo root but write logs under permit_leads/
+          SINCE="${{ inputs.since }}"; [ -z "$SINCE" ] && SINCE="1d"
+          echo "Running ETL: --since $SINCE"
+          
+          # Convert time periods to days for the CLI
+          if [[ "$SINCE" =~ ^([0-9]+)([dhm])$ ]]; then
+            NUM="${BASH_REMATCH[1]}"
+            UNIT="${BASH_REMATCH[2]}"
+            case "$UNIT" in
+              d) DAYS="$NUM" ;;
+              h) DAYS=$(python -c "print(max(1, round($NUM/24)))") ;;
+              m) DAYS=$(python -c "print(max(1, round($NUM/1440)))") ;;
+              *) DAYS="1" ;;
+            esac
+          else
+            DAYS="1"
+          fi
+          
           cd ..
           set +e
-          poetry run python -m permit_leads --since "$SINCE" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
+          poetry run python -m permit_leads --jurisdiction tx-harris --days "$DAYS" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
           status=${PIPESTATUS[0]}
           set -e
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-
-          # Count records defensively
           COUNT=$(grep -o "Processed [0-9]\+" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]\+" || echo 0)
           echo "record_count=$COUNT" >> "$GITHUB_OUTPUT"
-          echo "Scrape produced $COUNT records (exit $status)"
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          echo "Scrape status=$status, records=$COUNT"
 
-      - name: Run data ingestion (only when records > 0 or force=true)
-        id: etl_run
+      # ✅ Only run ingestion if records > 0 OR force=true
+      - name: Run data ingestion
+        if: ${{ steps.scrape.outputs.record_count != '0' || inputs.force == true }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          FORCE="${{ inputs.force }}"; [ -z "$FORCE" ] && FORCE="false"
-          RECORDS="${{ steps.scrape.outputs.record_count }}"
-
-          if [ "$RECORDS" -eq 0 ] && [ "$FORCE" != "true" ]; then
-            echo "No records and force!=true → skipping ingestion."
-            exit 0
-          fi
-
-          echo "Looking for CSVs under permit_leads/artifacts/ ..."
+          echo "Searching CSVs in artifacts/ ..."
           shopt -s nullglob
-          CSVs=( permit_leads/artifacts/*.csv )
+          CSVs=( artifacts/*.csv )
           if [ ${#CSVs[@]} -eq 0 ]; then
             echo "::warning title=No CSV artifacts found::Skipping ingestion"
             exit 0
           fi
-
           echo "Ingesting ${#CSVs[@]} file(s)"
           cd ..
-          cat > /tmp/ingest_script.py << 'EOF'
+          poetry run python - <<'EOF'
           import glob, sys
           sys.path.insert(0, 'backend')
-          from app.ingest import ingest_csv_data
+          try:
+              from app.ingest import ingest_csv_data
+          except Exception as e:
+              print(f"Import error: {e}")
+              sys.exit(1)
+
           files = glob.glob('permit_leads/artifacts/*.csv')
           ok = True
           for f in files:
               try:
-                  print(f'Ingesting {f}')
+                  print(f"Ingesting {f}")
                   ingest_csv_data(f)
               except Exception as e:
-                  print(f'Ingestion failed for {f}: {e}')
+                  print(f"Ingestion failed for {f}: {e}")
                   ok = False
-          print('DONE')
+          print("DONE")
           sys.exit(0 if ok else 1)
           EOF
-          poetry run python /tmp/ingest_script.py
 
       - name: Upload artifacts
         if: always()
@@ -158,28 +165,26 @@ jobs:
         with:
           name: nightly-etl-${{ github.run_id }}
           path: |
-            artifacts/**/*.csv
-            logs/**/*.log
-            logs/etl_output.log
+            permit_leads/artifacts/**/*.csv
+            permit_leads/logs/**/*.log
+            permit_leads/logs/etl_output.log
           if-no-files-found: warn
           retention-days: 14
 
       - name: Summary
         if: always()
         run: |
-          TIME="${{ inputs.since }}"
-          [ -z "$TIME" ] && TIME="1d"
+          TIME="${{ inputs.since }}"; [ -z "$TIME" ] && TIME="1d"
           COUNT="${{ steps.scrape.outputs.record_count }}"
           SUPA="${{ steps.supa.outputs.http_code }}"
-
           echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Time period: $TIME" >> $GITHUB_STEP_SUMMARY
           echo "- Records processed: ${COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-          echo "- Supabase REST probe: ${SUPA:-n/a}" >> $GITHUB_STEP_SUMMARY
+          echo "- Supabase REST: ${SUPA:-n/a}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f logs/etl_output.log ]; then
-            echo "### Tail of etl_output.log" >> $GITHUB_STEP_SUMMARY
+            echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -20 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
+            tail -n 25 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
