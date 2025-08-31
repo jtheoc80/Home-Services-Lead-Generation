@@ -212,7 +212,7 @@ jobs:
         [ "$ok" -eq 1 ]
 
 
-    - name: "Preflight: Supabase REST check"
+    - name: "Preflight: Supabase REST API check"
       if: ${{ steps.preflight.outputs.ok == '1' }}
       shell: bash
       env:
@@ -230,6 +230,12 @@ jobs:
           exit 1
         fi
 
+    - name: "Preflight: Supabase connectivity check"
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         code=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
