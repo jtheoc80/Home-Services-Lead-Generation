@@ -117,7 +117,7 @@ jobs:
         
         # Run with sample data for 1 day
 
-        python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose --retries 5
+        python -m permit_leads.harris.scrape --days 1 --verbose
 
         SCRAPER_EXIT_CODE=$?
         if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
