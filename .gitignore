@@ -49,6 +49,9 @@ htmlcov/
 # Test and debugging files
 test_nixpacks_*.py
 
+# ETL Guardian output files
+tools/etl_guardian.out
+
 # Frontend
 frontend/.env.local
 frontend/.env
