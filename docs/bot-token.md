@@ -56,8 +56,7 @@ Set the following permissions for the selected repository:
 
 2. **Token format example**:
    ```bash
-   # Example token format (not a real token)
-   github_pat_11ABCDEFG_xyzabcdefghijklmnopqrstuvwxyz123456789
+   github_pat_11XXXXXXX_YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
    ```
 
 ## Step 2: Add Token to Repository Secrets
