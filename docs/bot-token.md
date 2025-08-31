@@ -23,14 +23,9 @@ The `BOT_TOKEN` is used for automated GitHub operations that require write permi
 
 **Basic Information:**
 ```
-Token name: Home-Services-Bot-Token
+Token name: Your-Repository-Bot-Token
 Expiration: 90 days (or per your security policy)
 Description: Bot token for automated content and PR operations
-```
-
-**Repository Access:**
-- Choose "Selected repositories"
-- Add: `jtheoc80/Home-Services-Lead-Generation`
 
 ### 3. Configure Repository Permissions
 
