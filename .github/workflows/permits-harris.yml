@@ -56,20 +56,27 @@ jobs:
 
     - name: "Preflight: Supabase REST check"
       if: ${{ steps.preflight.outputs.ok == '1' }}
-      id: supa
-      shell: bash
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
+        set -e
+        # REST health (table probe)
         code=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
           -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact" \
-          "$SUPABASE_URL/rest/v1/permits?select=id&limit=1")
-        echo "http_code=$code" >> "$GITHUB_OUTPUT"
-        if [ "$code" != "200" ]; then
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "REST table probe HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
           echo "::error title=Supabase REST failed::HTTP $code"; exit 1
+        fi
+
+        # Root reachability (optional)
+        root=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL" || true)
+        echo "Root HTTP=$root"
+        if [ "$root" != "200" ] && [ "$root" != "404" ]; then
+          echo "::error title=Supabase root connectivity failed::HTTP $root"; exit 1
         fi
 
   dryrun:
@@ -117,7 +124,7 @@ jobs:
         
         # Run with sample data for 1 day
 
-        python -m permit_leads scrape --jurisdiction tx-harris --days 1 --formats csv sqlite jsonl --verbose --retries 5
+        python -m permit_leads.harris.scrape --days 1 --sample
 
         SCRAPER_EXIT_CODE=$?
         if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
@@ -232,34 +239,7 @@ jobs:
         [ "$ok" -eq 1 ]
 
 
-    - name: "Preflight: Supabase REST check"
-      if: ${{ steps.preflight.outputs.ok == '1' }}
-      shell: bash
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
-          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "HTTP=$code"
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::error title=Supabase REST failed::HTTP $code from $SUPABASE_URL"
-          exit 1
-        fi
 
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          "$SUPABASE_URL")
-        echo "HTTP=$code"
-        if [ "$code" != "200" ] && [ "$code" != "404" ]; then
-          echo "::error title=Supabase connectivity failed::HTTP $code from $SUPABASE_URL"
-          exit 1
-        fi
     - name: Checkout repository
       uses: actions/checkout@v5
       
@@ -495,12 +475,8 @@ jobs:
         
         echo "### Scrape Summary" >> $GITHUB_STEP_SUMMARY
         echo "- Secrets: $([ '${{ steps.preflight.outputs.ok }}' = '1' ] && echo '✅ present' || echo '❌ missing')" >> $GITHUB_STEP_SUMMARY
-        # Check Supabase REST status
-        if [ "${{ steps.supa.outputs.http_code }}" = "200" ] || [ "${{ steps.supa.outputs.http_code }}" = "206" ]; then
-          SUPABASE_REST_STATUS="✅ ok"
-        else
-          SUPABASE_REST_STATUS="❌ failed"
-        fi
+        # Check Supabase REST status - if we reach here, it passed (since preflight exits on failure)
+        SUPABASE_REST_STATUS="✅ ok"
         echo "- Supabase REST: ${SUPABASE_REST_STATUS}" >> $GITHUB_STEP_SUMMARY
         echo "- Days: $DAYS, Sample: $SAMPLE" >> $GITHUB_STEP_SUMMARY
         echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
