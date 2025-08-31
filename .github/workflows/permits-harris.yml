@@ -61,6 +61,20 @@ jobs:
           exit 1
         fi
 
+    - name: Preflight: Source URL
+      env:
+        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      run: |
+        if [ -z "$SOURCE_URL" ]; then
+          echo "::warning title=HC_ISSUED_PERMITS_URL missing::Set this repo secret for Harris source"
+        else
+          code=$(curl -s -o /dev/null -w "%{http_code}" -I "$SOURCE_URL" || true)
+          echo "Source HEAD HTTP=$code"
+          if [ "$code" != "200" ] && [ "$code" != "302" ] && [ "$code" != "301" ]; then
+            echo "::warning title=Source URL not reachable::HTTP $code"
+          fi
+        fi
+
     - name: "Preflight: Supabase REST check"
       if: steps.preflight.outputs.ok == '1'
       env:
