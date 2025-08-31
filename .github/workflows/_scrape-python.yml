@@ -70,11 +70,8 @@ jobs:
       - name: Run module
         id: run_module
         run: |
-          set +e
-          ARGS="--days ${{ inputs.days }}"
-          [ "${{ inputs.sample_data }}" = "true" ] && ARGS="$ARGS --sample"
-          python -m ${{ inputs.module }} $ARGS | tee -a logs/etl_output.log
-          echo "exit=$?" >> $GITHUB_OUTPUT
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit=$EXIT_CODE" >> $GITHUB_OUTPUT
           set -e
 
       - name: Fallback script
