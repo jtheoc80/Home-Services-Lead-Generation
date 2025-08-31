@@ -4,10 +4,10 @@ Enhanced Redis Smoke Test
 
 Includes both normal Redis operations and chaos testing with latency injection.
 
-Usage: 
+Usage:
     python scripts/redis_smoketest.py          # Normal smoke test
     python scripts/redis_smoketest.py --chaos  # Include chaos testing
-    
+
 Exit codes: 0 = success, 1 = error
 """
 
@@ -16,11 +16,16 @@ import sys
 import argparse
 
 # Add backend to Python path
-sys.path.append('backend')
+sys.path.append("backend")
 
 from app.redis_client import (
-    ping_ms, cache_setex, cache_get, with_lock, 
-    stream_xadd, stream_readgroup, stream_ack
+    ping_ms,
+    cache_setex,
+    cache_get,
+    with_lock,
+    stream_xadd,
+    stream_readgroup,
+    stream_ack,
 )
 
 
@@ -28,20 +33,22 @@ async def run_normal_tests():
     """Run the standard Redis smoke tests"""
     print("🔍 Redis Standard Smoke Test")
     print("=" * 40)
-    
+
     status, rtt = await ping_ms()
     print("PING", status, rtt)
-    
+
     await cache_setex("cache:hello", 30, "world")
     print("GET", await cache_get("cache:hello"))
-    
-    async with (await with_lock("demo", 5)) as acquired:
+
+    async with await with_lock("demo", 5) as acquired:
         print("LOCK", acquired)
-    
+
     sid = await stream_xadd("queue:scrape", {"demo": True})
     print("XADD", bool(sid))
-    
-    msgs = await stream_readgroup("queue:scrape", "scrapegrp", "tester-1", count=1, block_ms=1000)
+
+    msgs = await stream_readgroup(
+        "queue:scrape", "scrapegrp", "tester-1", count=1, block_ms=1000
+    )
     if msgs:
         _, items = msgs[0]
         ids = [i[0] for i in items]
@@ -49,7 +56,7 @@ async def run_normal_tests():
         print("XACK", len(ids))
     else:
         print("XACK", 0)
-    
+
     print("✅ Standard tests completed")
     print()
 
@@ -59,6 +66,7 @@ async def run_chaos_tests():
     try:
         # Import chaos test functionality
         from redis_chaos_smoketest import run_chaos_tests
+
         return await run_chaos_tests()
     except ImportError as e:
         print(f"❌ Could not import chaos tests: {e}")
@@ -67,20 +75,23 @@ async def run_chaos_tests():
 
 async def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description='Redis Smoke Test Suite')
-    parser.add_argument('--chaos', action='store_true', 
-                       help='Include chaos testing with latency injection')
+    parser = argparse.ArgumentParser(description="Redis Smoke Test Suite")
+    parser.add_argument(
+        "--chaos",
+        action="store_true",
+        help="Include chaos testing with latency injection",
+    )
     args = parser.parse_args()
-    
+
     success = True
-    
+
     # Always run normal tests
     try:
         await run_normal_tests()
     except Exception as e:
         print(f"❌ Standard tests failed: {e}")
         success = False
-    
+
     # Run chaos tests if requested
     if args.chaos:
         try:
@@ -89,12 +100,12 @@ async def main():
         except Exception as e:
             print(f"❌ Chaos tests failed: {e}")
             success = False
-    
+
     if success:
         print("🎉 All tests passed!")
     else:
         print("💥 Some tests failed!")
-    
+
     return success
 
 
