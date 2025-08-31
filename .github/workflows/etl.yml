@@ -85,7 +85,7 @@ jobs:
             if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
               echo "✅ Source URL accessible (HTTP $code)"
             else
-              echo "::warning title=Source URL check failed::HTTP $code from $HC_ISSUED_PERMITS_URL"
+              echo "::warning title=Source URL check failed::HTTP $code from source URL"
             fi
           fi
 
