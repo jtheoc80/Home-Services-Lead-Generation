@@ -59,9 +59,6 @@ jobs:
           if [ "$FETCHED" -eq 0 ]; then
             echo "::warning::Fetched=0 for ${{ matrix.source }} (check dataset/token)"
           fi
-        env:
-          INGEST_URL: ${{ secrets.INGEST_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
       - name: Real ingest ${{ matrix.source }}
         id: real
@@ -119,8 +116,6 @@ jobs:
             echo "::error::Debug endpoint failed"; exit 1
           fi
           echo "Leads=$LEADS, Permits=$PERMITS"
-        env:
-          DEBUG_URL: ${{ secrets.DEBUG_URL }}
 
       - name: Summarize
         run: echo "✅ Verification complete"
