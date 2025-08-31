@@ -91,7 +91,7 @@ jobs:
           echo "Supabase URL: $SUPABASE_URL"
           
           # Run the ETL delta test with JSON output for monitoring
-          cd .. && npx tsx scripts/etlDelta.ts 2>&1 | tee scripts/logs/etl-output.log
+          cd .. && npx tsx scripts/etlDelta.ts 2>&1 | tee scripts/logs/etl_output.log
           
           # Check exit code
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -105,9 +105,9 @@ jobs:
         if: always()
         run: |
           # Extract JSON summary from output for monitoring
-          if [ -f logs/etl-output.log ]; then
+          if [ -f logs/etl_output.log ]; then
             echo "Extracting JSON logs..."
-            grep -o '{.*"test".*"etl-delta".*}' logs/etl-output.log > logs/etl-summary.json || echo '{"error": "No JSON summary found"}' > logs/etl-summary.json
+            grep -o '{.*"test".*"etl-delta".*}' logs/etl_output.log > logs/etl-summary.json || echo '{"error": "No JSON summary found"}' > logs/etl-summary.json
             
             echo "ETL Summary:"
             cat logs/etl-summary.json
@@ -115,17 +115,7 @@ jobs:
             echo '{"error": "No log file found"}' > logs/etl-summary.json
           fi
       
-      - name: Upload ETL artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: etl-${{ github.run_id }}
-          path: |
-            artifacts/**/*.csv
-            logs/**/*.log
-            logs/etl_output.log
-          if-no-files-found: warn
-          retention-days: 14
+
 
       - name: Check for stale data (24h failure protection)
         if: always()
@@ -182,9 +172,24 @@ jobs:
           echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
           
-          if [ -f etl-summary.json ]; then
+          if [ -f logs/etl-summary.json ]; then
             echo "- ETL Summary:" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat etl-summary.json >> $GITHUB_STEP_SUMMARY
+            cat logs/etl-summary.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Harris County ETL Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: Harris County ETL Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f logs/etl_output.log ]; then
+            echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -20 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
