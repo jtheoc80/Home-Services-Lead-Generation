@@ -97,7 +97,7 @@ After adding all secrets, verify your setup:
 | `scrape-dallas.yml` | 3 | 0 |
 | `ingest-agents-min.yml` | 3 | 2 |
 
-**Total unique secrets needed:** 5 (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are shared)
+**Total unique secrets needed:** 7 (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are shared across workflows, but all 7 are required)
 
 ---
 
