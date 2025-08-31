@@ -51,7 +51,7 @@ jobs:
 
       - name: Ensure output dirs
         run: |
-          mkdir -p logs artifacts data
+          mkdir -p permit_leads/logs permit_leads/artifacts permit_leads/data
 
       - name: Preflight secrets
         id: preflight
@@ -110,37 +110,47 @@ jobs:
           echo "record_count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "Scrape produced $COUNT records (exit $status)"
 
-      - name: Ingest CSVs (only if there are records or force=true)
-        id: ingest
+      - name: Run data ingestion (only when records > 0 or force=true)
+        id: etl_run
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          FORCE="${{ inputs.force }}"
-          [ -z "$FORCE" ] && FORCE="false"
-
-          # Evaluate condition first
+          FORCE="${{ inputs.force }}"; [ -z "$FORCE" ] && FORCE="false"
           RECORDS="${{ steps.scrape.outputs.record_count }}"
+
           if [ "$RECORDS" -eq 0 ] && [ "$FORCE" != "true" ]; then
-            echo "No records and force != true → skipping ingestion."
-            echo "ingested=0" >> "$GITHUB_OUTPUT"
+            echo "No records and force!=true → skipping ingestion."
             exit 0
           fi
 
-          echo "Looking for CSVs to ingest..."
+          echo "Looking for CSVs under permit_leads/artifacts/ ..."
           shopt -s nullglob
-          CSVs=( artifacts/*.csv )
+          CSVs=( permit_leads/artifacts/*.csv )
           if [ ${#CSVs[@]} -eq 0 ]; then
             echo "::warning title=No CSV artifacts found::Skipping ingestion"
-            echo "ingested=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "Ingesting ${#CSVs[@]} CSV file(s)"
+          echo "Ingesting ${#CSVs[@]} file(s)"
           cd ..
-          poetry run python -c "import sys; sys.path.insert(0, 'backend'); from app.ingest import ingest_csv_data; import glob; [ingest_csv_data(f) for f in glob.glob('permit_leads/artifacts/*.csv')]"
-
-          echo "ingested=1" >> "$GITHUB_OUTPUT"
+          cat > /tmp/ingest_script.py << 'EOF'
+          import glob, sys
+          sys.path.insert(0, 'backend')
+          from app.ingest import ingest_csv_data
+          files = glob.glob('permit_leads/artifacts/*.csv')
+          ok = True
+          for f in files:
+              try:
+                  print(f'Ingesting {f}')
+                  ingest_csv_data(f)
+              except Exception as e:
+                  print(f'Ingestion failed for {f}: {e}')
+                  ok = False
+          print('DONE')
+          sys.exit(0 if ok else 1)
+          EOF
+          poetry run python /tmp/ingest_script.py
 
       - name: Upload artifacts
         if: always()
@@ -161,17 +171,15 @@ jobs:
           [ -z "$TIME" ] && TIME="1d"
           COUNT="${{ steps.scrape.outputs.record_count }}"
           SUPA="${{ steps.supa.outputs.http_code }}"
-          ING="${{ steps.ingest.outputs.ingested }}"
 
           echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Time period: $TIME" >> $GITHUB_STEP_SUMMARY
           echo "- Records processed: ${COUNT:-0}" >> $GITHUB_STEP_SUMMARY
           echo "- Supabase REST probe: ${SUPA:-n/a}" >> $GITHUB_STEP_SUMMARY
-          echo "- Ingestion run: $([ "${ING:-0}" = "1" ] && echo ✅ yes || echo ⏭️ skipped)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f logs/etl_output.log ]; then
             echo "### Tail of etl_output.log" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 25 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
+            tail -20 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
