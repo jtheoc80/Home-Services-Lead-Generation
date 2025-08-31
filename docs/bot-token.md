@@ -186,5 +186,3 @@ steps:
 ---
 
 **Related Documentation:**
-- [Stack Monitor Bot Setup](ops/stack-monitor-bot.md) - Comprehensive bot setup guide
-- [Workflow Secrets Configuration](workflows-secrets.md) - Other required secrets
