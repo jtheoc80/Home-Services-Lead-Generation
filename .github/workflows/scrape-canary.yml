@@ -1,0 +1,30 @@
+name: Scrape Canary
+on:
+  schedule: [{ cron: "0 */3 * * *" }]
+  workflow_dispatch: {}
+
+jobs:
+  harris:
+    uses: ./.github/workflows/_scrape-python.yml
+    with:
+      name: tx-harris-canary
+      module: permit_leads.harris.scrape
+      entry_fallback: scripts/harris_scrape.py
+      days: "1"
+      sample_data: "true"
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+  dallas:
+    uses: ./.github/workflows/_scrape-python.yml
+    with:
+      name: tx-dallas-canary
+      module: permit_leads.dallas.scrape
+      entry_fallback: scripts/dallas_scrape.py
+      days: "1"
+      sample_data: "true"
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL }}
