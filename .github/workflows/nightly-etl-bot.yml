@@ -1,0 +1,127 @@
+name: Nightly ETL Guardian Bot
+
+on:
+  workflow_run:
+    workflows: ["Nightly ETL"]
+    types: [completed]
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 6 AM UTC
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  guardian:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.BOT_TOKEN || github.token }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          cd tools
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Run ETL Guardian
+        id: guardian
+        run: |
+          cd tools
+          echo "Running ETL Guardian..."
+          python etl_guardian.py
+          
+          # Check if etl.yml was modified
+          cd ..
+          if git diff --quiet .github/workflows/etl.yml; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes made to etl.yml"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in etl.yml"
+          fi
+
+      - name: Create Pull Request
+        if: steps.guardian.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.BOT_TOKEN || github.token }}
+          commit-message: "ci(bot): Nightly ETL Guardian auto-fix workflow"
+          title: "Nightly ETL Bot: auto-fix workflow"
+          body: |
+            🛡️ **Nightly ETL Guardian Bot**
+            
+            This PR contains automatic fixes to the `etl.yml` workflow to ensure:
+            
+            ✅ **mkdir step** for logs/artifacts/data directories
+            ✅ **Conditional ingestion** step (only run if records > 0 or force=true)
+            ✅ **Summary tail** of logs/etl_output.log
+            ✅ **Collapsed artifact uploaders** with stable globs and if-no-files-found: warn
+            ✅ **Concurrency guard** on jobs.etl
+            ✅ **Working directory** set to permit_leads
+            
+            ---
+            
+            🤖 *This PR was created automatically by the Nightly ETL Guardian Bot*
+            
+            **Changes made:**
+            ```diff
+            ${{ steps.guardian.outputs.diff || 'See commit for details' }}
+            ```
+            
+            **Next steps:**
+            1. Review the changes
+            2. If approved, this PR will be auto-merged
+            3. The fixed ETL workflow will be deployed
+            
+          branch: bot/etl-guardian-fixes
+          delete-branch: true
+
+      - name: Auto-approve PR (optional)
+        if: steps.guardian.outputs.changed == 'true' && secrets.BOT_TOKEN != ''
+        uses: juliangruber/approve-pull-request-action@v2
+        with:
+          github-token: ${{ secrets.BOT_TOKEN }}
+          number: ${{ steps.create-pr.outputs.pull-request-number }}
+
+      - name: Auto-merge PR (optional)
+        if: steps.guardian.outputs.changed == 'true' && secrets.BOT_TOKEN != ''
+        run: |
+          # Wait a moment for the approval to process
+          sleep 10
+          
+          # Enable auto-merge if PR was created
+          if [ -n "${{ steps.create-pr.outputs.pull-request-number }}" ]; then
+            gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --auto --squash
+            echo "✅ Auto-merge enabled for PR #${{ steps.create-pr.outputs.pull-request-number }}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## ETL Guardian Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow checked**: .github/workflows/etl.yml" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.guardian.outputs.changed }}" == "true" ]; then
+            echo "- **Status**: ⚠️ Issues found and fixed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action**: PR created for auto-fix" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.create-pr.outputs.pull-request-number }}" ]; then
+              echo "- **PR**: #${{ steps.create-pr.outputs.pull-request-number }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **Status**: ✅ No issues found" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action**: No changes needed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY

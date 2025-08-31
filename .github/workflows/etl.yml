@@ -2,7 +2,7 @@ name: Nightly ETL
 
 on:
   schedule:
-    - cron: "0 * * * *"     # hourly
+  - cron: "0 * * * *"       # hourly
   workflow_dispatch:
     inputs:
       since:
@@ -29,179 +29,179 @@ jobs:
         working-directory: permit_leads
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install deps
-        run: |
-          cd ..
-          python -m pip install --upgrade pip
-          if [ -f "poetry.lock" ]; then
-            pipx install poetry
-            poetry install --no-interaction --no-ansi
-          elif [ -f "requirements.txt" ]; then
-            pip install -r requirements.txt
+    - name: Install deps
+      run: |
+        cd ..
+        python -m pip install --upgrade pip
+        if [ -f "poetry.lock" ]; then
+          pipx install poetry
+          poetry install --no-interaction --no-ansi
+        elif [ -f "requirements.txt" ]; then
+          pip install -r requirements.txt
+        else
+          pip install -e .
+        fi
+
+    - name: Ensure output dirs
+      run: |
+        mkdir -p logs artifacts data
+
+    - name: Preflight secrets
+      id: preflight
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        ok=1
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+          if [ -z "${!v}" ]; then
+            echo "::error title=$v missing::Add in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
           else
-            pip install -e .
+            echo "::add-mask::${!v}"
           fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
 
-      - name: Ensure output dirs
-        run: |
-          mkdir -p logs artifacts data
-
-      - name: Preflight secrets
-        id: preflight
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          ok=1
-          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
-            if [ -z "${!v}" ]; then
-              echo "::error title=$v missing::Add in GitHub → Settings → Secrets and variables → Actions"
-              ok=0
-            else
-              echo "::add-mask::${!v}"
-            fi
-          done
-          echo "ok=$ok" >> "$GITHUB_OUTPUT"
-          [ "$ok" -eq 1 ]
-
-      - name: Preflight Source URL
-        if: ${{ steps.preflight.outputs.ok == '1' }}
-        env:
-          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
-        run: |
-          if [ -z "$HC_ISSUED_PERMITS_URL" ]; then
-            echo "::warning title=Source URL not configured::HC_ISSUED_PERMITS_URL is not set"
+    - name: Preflight Source URL
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      env:
+        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      run: |
+        if [ -z "$HC_ISSUED_PERMITS_URL" ]; then
+          echo "::warning title=Source URL not configured::HC_ISSUED_PERMITS_URL is not set"
+        else
+          echo "::add-mask::$HC_ISSUED_PERMITS_URL"
+          code=$(curl -s -o /dev/null -w "%{http_code}" --head --max-time 10 "$HC_ISSUED_PERMITS_URL" || echo "000")
+          if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+            echo "✅ Source URL accessible (HTTP $code)"
           else
-            echo "::add-mask::$HC_ISSUED_PERMITS_URL"
-            code=$(curl -s -o /dev/null -w "%{http_code}" --head --max-time 10 "$HC_ISSUED_PERMITS_URL" || echo "000")
-            if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
-              echo "✅ Source URL accessible (HTTP $code)"
-            else
-              echo "::warning title=Source URL check failed::HTTP $code from source URL"
-            fi
+            echo "::warning title=Source URL check failed::HTTP $code from source URL"
           fi
+        fi
 
-      - name: Supabase REST probe (non-fatal)
-        if: ${{ steps.preflight.outputs.ok == '1' }}
-        id: supa
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Prefer: count=exact, head=true" \
-            "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-          echo "http_code=$code" >> "$GITHUB_OUTPUT"
-          if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-            echo "::warning title=Supabase REST check failed::HTTP $code"
-          fi
+    - name: Supabase REST probe (non-fatal)
+      if: ${{ steps.preflight.outputs.ok == '1' }}
+      id: supa
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "http_code=$code" >> "$GITHUB_OUTPUT"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+          echo "::warning title=Supabase REST check failed::HTTP $code"
+        fi
 
-      - name: Run ETL scraping
-        id: etl_run
-        env:
-          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
-        run: |
-          SINCE="${{ inputs.since }}"; [ -z "$SINCE" ] && SINCE="1d"
-          echo "Running ETL: --since $SINCE"
-          
-          # Convert time periods to days for the CLI
-          if [[ "$SINCE" =~ ^([0-9]+)([dhm])$ ]]; then
-            NUM="${BASH_REMATCH[1]}"
-            UNIT="${BASH_REMATCH[2]}"
-            case "$UNIT" in
-              d) DAYS="$NUM" ;;
-              h) DAYS=$(python -c "print(max(1, round($NUM/24)))") ;;
-              m) DAYS=$(python -c "print(max(1, round($NUM/1440)))") ;;
-              *) DAYS="1" ;;
-            esac
-          else
-            DAYS="1"
-          fi
-          
-          cd ..
-          set +e
-          poetry run python -m permit_leads --jurisdiction tx-harris --days "$DAYS" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
-          status=${PIPESTATUS[0]}
-          set -e
-          COUNT=$(grep -o "Processed [0-9]\+" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]\+" || echo 0)
-          echo "record_count=$COUNT" >> "$GITHUB_OUTPUT"
-          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-          echo "Scrape status=$status, records=$COUNT"
+    - name: Run ETL scraping
+      id: etl_run
+      env:
+        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      run: |
+        SINCE="${{ inputs.since }}"; [ -z "$SINCE" ] && SINCE="1d"
+        echo "Running ETL: --since $SINCE"
+
+        # Convert time periods to days for the CLI
+        if [[ "$SINCE" =~ ^([0-9]+)([dhm])$ ]]; then
+          NUM="${BASH_REMATCH[1]}"
+          UNIT="${BASH_REMATCH[2]}"
+          case "$UNIT" in
+            d) DAYS="$NUM" ;;
+            h) DAYS=$(python -c "print(max(1, round($NUM/24)))") ;;
+            m) DAYS=$(python -c "print(max(1, round($NUM/1440)))") ;;
+            *) DAYS="1" ;;
+          esac
+        else
+          DAYS="1"
+        fi
+
+        cd ..
+        set +e
+        poetry run python -m permit_leads --jurisdiction tx-harris --days "$DAYS" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
+        status=${PIPESTATUS[0]}
+        set -e
+        COUNT=$(grep -o "Processed [0-9]\+" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]\+" || echo 0)
+        echo "record_count=$COUNT" >> "$GITHUB_OUTPUT"
+        echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+        echo "Scrape status=$status, records=$COUNT"
 
       # ✅ Only run ingestion if records > 0 OR force=true
-      - name: Run data ingestion
-        if: ${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          echo "Searching CSVs in artifacts/ ..."
-          shopt -s nullglob
-          CSVs=( artifacts/*.csv )
-          if [ ${#CSVs[@]} -eq 0 ]; then
-            echo "::warning title=No CSV artifacts found::Skipping ingestion"
-            exit 0
-          fi
-          echo "Ingesting ${#CSVs[@]} file(s)"
-          cd ..
-          poetry run python - <<'EOF'
-          import glob, sys
-          sys.path.insert(0, 'backend')
-          try:
-              from app.ingest import ingest_csv_data
-          except Exception as e:
-              print(f"Import error: {e}")
-              sys.exit(1)
+    - name: Run data ingestion
+      if: ${{ steps.scrape.outputs.record_count != '0' || inputs.force == true }}
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        echo "Searching CSVs in artifacts/ ..."
+        shopt -s nullglob
+        CSVs=( artifacts/*.csv )
+        if [ ${#CSVs[@]} -eq 0 ]; then
+          echo "::warning title=No CSV artifacts found::Skipping ingestion"
+          exit 0
+        fi
+        echo "Ingesting ${#CSVs[@]} file(s)"
+        cd ..
+        poetry run python - <<'EOF'
+        import glob, sys
+        sys.path.insert(0, 'backend')
+        try:
+            from app.ingest import ingest_csv_data
+        except Exception as e:
+            print(f"Import error: {e}")
+            sys.exit(1)
 
-          files = glob.glob('permit_leads/artifacts/*.csv')
-          ok = True
-          for f in files:
-              try:
-                  print(f"Ingesting {f}")
-                  ingest_csv_data(f)
-              except Exception as e:
-                  print(f"Ingestion failed for {f}: {e}")
-                  ok = False
-          print("DONE")
-          sys.exit(0 if ok else 1)
-          EOF
+        files = glob.glob('permit_leads/artifacts/*.csv')
+        ok = True
+        for f in files:
+            try:
+                print(f"Ingesting {f}")
+                ingest_csv_data(f)
+            except Exception as e:
+                print(f"Ingestion failed for {f}: {e}")
+                ok = False
+        print("DONE")
+        sys.exit(0 if ok else 1)
+        EOF
 
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-etl-${{ github.run_id }}
-          path: |
-            permit_leads/artifacts/**/*.csv
-            permit_leads/logs/**/*.log
-            permit_leads/logs/etl_output.log
-          if-no-files-found: warn
-          retention-days: 14
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: nightly-etl-${{ github.run_id }}
+        path: |
+          permit_leads/artifacts/**/*.csv
+          permit_leads/logs/**/*.log
+          permit_leads/logs/etl_output.log
+        if-no-files-found: warn
+        retention-days: 14
 
-      - name: Summary
-        if: always()
-        run: |
-          TIME="${{ inputs.since }}"; [ -z "$TIME" ] && TIME="1d"
-          COUNT="${{ steps.etl_run.outputs.record_count }}"
-          SUPA="${{ steps.supa.outputs.http_code }}"
-          echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Time period: $TIME" >> $GITHUB_STEP_SUMMARY
-          echo "- Records processed: ${COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-          echo "- Supabase REST: ${SUPA:-n/a}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f logs/etl_output.log ]; then
-            echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 25 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+    - name: Summary
+      if: always()
+      run: |
+        TIME="${{ inputs.since }}"; [ -z "$TIME" ] && TIME="1d"
+        COUNT="${{ steps.etl_run.outputs.record_count }}"
+        SUPA="${{ steps.supa.outputs.http_code }}"
+        echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Time period: $TIME" >> $GITHUB_STEP_SUMMARY
+        echo "- Records processed: ${COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+        echo "- Supabase REST: ${SUPA:-n/a}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f logs/etl_output.log ]; then
+          echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 25 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
