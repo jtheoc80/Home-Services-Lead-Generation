@@ -14,8 +14,8 @@ jobs:
       name: tx-dallas
       module: permit_leads.dallas.scrape
       entry_fallback: scripts/dallas_scrape.py
-      days: ${{ inputs.days }}
-      sample_data: ${{ inputs.sample_data }}
+      days: ${{ inputs.days || '1' }}
+      sample_data: ${{ inputs.sample_data || 'false' }}
     secrets:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
