@@ -1,50 +1,9 @@
-name: Actionlint
-on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/**'
-
-permissions:
-  contents: read
-
+name: Workflow Lint
+on: [push, pull_request]
 jobs:
-  actionlint:
+  lint:
     runs-on: ubuntu-latest
-    name: Validate GitHub Actions workflows
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download actionlint
-        run: |
-          set -e
-          # Pin to a specific tag or commit SHA
-          ACTIONLINT_VERSION="v1.6.27"
-          SCRIPT_URL="https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_VERSION}/scripts/download-actionlint.bash"
-          SCRIPT_FILE="download-actionlint.bash"
-          # Download the script
-          curl -fsSL "$SCRIPT_URL" -o "$SCRIPT_FILE"
-          # Verify checksum
-          # The expected SHA256 checksum for v1.6.27 as of 2024-06-01 (replace with actual value)
-          EXPECTED_SHA256="b2e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2e1e2"
-          ACTUAL_SHA256="$(sha256sum "$SCRIPT_FILE" | awk '{print $1}')"
-          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
-            echo "Checksum verification failed for $SCRIPT_FILE"
-            exit 1
-          fi
-          # Run the script
-          bash "$SCRIPT_FILE"
-        shell: bash
-
-      - name: Check workflow files with actionlint
-        run: |
-          ./actionlint -format "{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A{{end}}"
-
-      - name: Check workflow files with actionlint (verbose output)
-        if: failure()
-        run: ./actionlint -verbose
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v1
