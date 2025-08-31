@@ -25,7 +25,8 @@ jobs:
         shell: bash
 
       - name: Check workflow files with actionlint
-        run: ./actionlint -format "{{range \$err := .}}::error file={{\$err.Filepath}},line={{\$err.Line}},col={{\$err.Column}}::{{\$err.Message}}%0A{{end}}"
+        run: |
+          ./actionlint -format "{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A{{end}}"
 
       - name: Check workflow files with actionlint (verbose output)
         if: failure()
