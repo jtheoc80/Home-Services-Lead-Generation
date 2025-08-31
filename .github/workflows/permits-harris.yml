@@ -182,21 +182,17 @@ jobs:
         retention-days: 7
     
   scrape-harris-permits:
-    runs-on: ubuntu-latest
-    
-    concurrency:
-      group: scrape-harris-permits
-      cancel-in-progress: false
-
-    defaults:
-      run:
-        working-directory: permit_leads
-
     needs: preflight
-    
-    env:
+    uses: ./.github/workflows/_scrape-python.yml
+    with:
+      name: tx-harris
+      module: permit_leads.harris.scrape
+      days: ${{ inputs.days || '1' }}
+      sample_data: ${{ inputs.sample_data || 'false' }}
+    secrets:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL || secrets.SOURCE_URL }}
 
     
@@ -484,3 +480,4 @@ jobs:
         echo "- Supabase REST: ${SUPABASE_REST_STATUS}" >> $GITHUB_STEP_SUMMARY
         echo "- Days: $DAYS, Sample: $SAMPLE" >> $GITHUB_STEP_SUMMARY
         echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
+
