@@ -35,6 +35,10 @@ jobs:
         cd ..
         pipx install poetry && poetry install --no-interaction --no-ansi
         
+    - name: Ensure output dirs
+      run: |
+        mkdir -p logs artifacts data
+        
     - name: Create data directory
       run: |
         cd ..
