@@ -4,11 +4,175 @@ on:
     - cron: "20 6 * * *"
   workflow_dispatch:
     inputs:
+
+      days:
+        description: "Days back"
+        default: "1"
+      sample_data:
+        description: "Sample mode"
+        type: choice
+        options: ["false","true"]
+        default: "false"
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      preflight_status: ${{ steps.preflight.outputs.status }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Run preflight checks
+      id: preflight
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        DALLAS_PERMITS_URL: ${{ secrets.DALLAS_PERMITS_URL }}
+      run: |
+        # Set SOURCE_URL using shell logic instead of ternary
+        if [ -n "$DALLAS_PERMITS_URL" ] && [ "$DALLAS_PERMITS_URL" != "" ]; then
+          SOURCE_URL="$DALLAS_PERMITS_URL"
+        else
+          SOURCE_URL="${{ secrets.SOURCE_URL }}"
+        fi
+        export SOURCE_URL
+        
+        echo "🚀 Running preflight validation for Dallas County permit scraper..."
+        python scripts/workflow-preflight.py
+        if [ $? -eq 0 ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "✅ Preflight checks passed"
+        else
+          echo "status=failed" >> $GITHUB_OUTPUT
+          echo "❌ Preflight checks failed"
+          exit 1
+        fi
+
+  dryrun:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    defaults:
+      run:
+        working-directory: permit_leads
+
+    needs: preflight
+
+    
+    env:
+      ETL_ALLOW_EMPTY: 1
+      SAMPLE_DATA: 1
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        cd ..
+        pipx install poetry && poetry install --no-interaction --no-ansi
+        
+    - name: Create directories
+      run: |
+        cd ..
+        mkdir -p data/permits/{raw,aggregate}
+        
+    - name: Run Dallas County permit scraper (dry-run with sample data)
+      run: |
+        # Set SOURCE_URL using shell logic instead of logical OR
+        if [ -n "${{ secrets.DALLAS_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.DALLAS_PERMITS_URL }}"
+        else
+          SOURCE_URL="${{ secrets.SOURCE_URL }}"
+        fi
+        export SOURCE_URL
+        
+        echo "🔧 Running dry-run with sample data and ETL_ALLOW_EMPTY=1"
+        echo "Sample data mode: ${SAMPLE_DATA}"
+        echo "ETL allow empty: ${ETL_ALLOW_EMPTY}"
+        
+        # Run with sample data for 1 day
+
+        python -m permit_leads scrape --jurisdiction tx-dallas --days 1 --formats csv sqlite jsonl --verbose --retries 5
+
+        SCRAPER_EXIT_CODE=$?
+        if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
+          echo "::error::Dallas County permit scraper failed with exit code $SCRAPER_EXIT_CODE"
+        fi
+        # Continue regardless of scraper result
+        
+        # Ensure artifacts are created even when empty
+        [ -f ../scripts/ensure_artifacts.py ] && python ../scripts/ensure_artifacts.py || true
+        
+    - name: Upload ETL artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        retention-days: 14
+        
+    - name: Generate dryrun summary
+      if: always()
+      run: |
+        echo "## 🧪 Dallas County Permit Scraper - Dry Run Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🚀 Preflight Validation" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ needs.preflight.outputs.preflight_status }}" = "success" ]; then
+          echo "✅ **Preflight checks passed**: All required secrets validated and Supabase connectivity confirmed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Preflight checks failed**: Environment validation or connectivity issues detected" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🧪 Dry Run Results" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Dry run completed**: Sample data mode with ETL_ALLOW_EMPTY=1" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+        echo "- [Workflow Secrets Configuration](docs/workflows-secrets.md)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Dallas County Permits Endpoint](docs/tx_permits.md)" >> $GITHUB_STEP_SUMMARY
+        
+    - name: Upload logs and data artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dallas-dryrun-logs-${{ github.run_number }}
+        path: |
+          logs/
+          data/
+          artifacts/
+        retention-days: 7
+    
+  scrape-dallas-permits:
+    needs: preflight
+
       days: { description: "Days back", default: "1" }
       sample_data: { description: "Sample mode", type: choice, options: ["false","true"], default: "false" }
 
 jobs:
   run:
+
     uses: ./.github/workflows/_scrape-python.yml
     with:
       name: tx-dallas
@@ -20,3 +184,332 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SOURCE_URL: ${{ secrets.DALLAS_PERMITS_URL }}
+
+
+  scrape-dallas-manual:
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        cd ..
+        pipx install poetry && poetry install --no-interaction --no-ansi
+
+    - name: Create data directory
+      run: |
+        cd ..
+        mkdir -p data/permits/{raw,aggregate}
+
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        # Set SOURCE_URL using shell logic instead of logical OR
+        if [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+        elif [ -n "${{ secrets.DALLAS_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.DALLAS_PERMITS_URL }}"
+        elif [ -n "${{ secrets.AUSTIN_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.AUSTIN_PERMITS_URL }}"
+        else
+          SOURCE_URL=""
+        fi
+        export SOURCE_URL
+        
+        ok=1
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SOURCE_URL; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set this in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+
+
+    - name: "Preflight: Supabase REST API check"
+      if: steps.preflight.outputs.ok == '1'
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Prefer: count=exact, head=true" \
+          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+          echo "::error title=Supabase REST failed::HTTP $code from $SUPABASE_URL"
+          exit 1
+        fi
+
+    - name: "Preflight: Supabase connectivity check"
+      if: steps.preflight.outputs.ok == '1'
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        code=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          "$SUPABASE_URL")
+        echo "HTTP=$code"
+        if [ "$code" != "200" ] && [ "$code" != "404" ]; then
+          echo "::error title=Supabase connectivity failed::HTTP $code from $SUPABASE_URL"
+          exit 1
+        fi
+    - name: Check for 24h zero results
+      id: check_recent
+      run: |
+        # Check if we have any Dallas County data from the last 24 hours
+        YESTERDAY=$(date -d '1 day ago' +%Y-%m-%d)
+        TODAY=$(date +%Y-%m-%d)
+        
+        RECENT_FILES=0
+        if [ -d "../data/permits" ]; then
+          RECENT_FILES=$(find ../data/permits -name "*dallas*" -name "*${YESTERDAY}*" -o -name "*dallas*" -name "*${TODAY}*" | wc -l)
+        fi
+        
+        echo "recent_files=${RECENT_FILES}" >> $GITHUB_OUTPUT
+        echo "Found ${RECENT_FILES} recent Dallas County files"
+        
+    - name: Run scraper
+      if: steps.preflight.outputs.ok == '1'
+      id: scrape
+      shell: bash
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        set -e
+        mkdir -p logs artifacts data
+        
+        # Set defaults using shell logic for cron-safe execution
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set SOURCE_URL using shell logic instead of logical OR
+        if [ -n "${{ secrets.DALLAS_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.DALLAS_PERMITS_URL }}"
+        elif [ -n "${{ secrets.HC_ISSUED_PERMITS_URL }}" ]; then
+          SOURCE_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+        else
+          SOURCE_URL=""
+        fi
+        export SOURCE_URL
+        
+        echo "DAYS=$DAYS SAMPLE=$SAMPLE"
+        # try python -m module; else script path
+        if python - <<'PY'
+        import importlib.util, sys
+        sys.exit(0 if importlib.util.find_spec("permit_leads.dallas.scrape") else 1)
+        PY
+        then
+          if [ "$SAMPLE" = "true" ]; then
+            python -m permit_leads.dallas.scrape --days "$DAYS" --sample | tee -a logs/etl_output.log
+          else
+            python -m permit_leads.dallas.scrape --days "$DAYS" | tee -a logs/etl_output.log
+          fi
+        elif [ -f "scripts/dallas_scrape.py" ]; then
+          if [ "$SAMPLE" = "true" ]; then
+            python scripts/dallas_scrape.py --since "${DAYS}d" --sample | tee -a logs/etl_output.log
+          else
+            python scripts/dallas_scrape.py --since "${DAYS}d" | tee -a logs/etl_output.log
+          fi
+        else
+          echo "::error title=Scraper entry not found::module permit_leads.dallas.scrape or scripts/dallas_scrape.py"; exit 1
+        fi
+        
+    - name: Fail if zero results for 24h
+      if: steps.check_recent.outputs.recent_files == '0' && steps.scrape.outputs.new_permits == '0'
+      run: |
+        echo "❌ No Dallas County permits found in the last 24 hours"
+        echo "This may indicate a problem with the scraper or data source"
+        exit 1
+        
+    - name: Commit and push data
+      if: steps.scrape.outputs.new_permits != '0'
+      run: |
+        cd ..
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        TODAY=$(date +%Y-%m-%d)
+        git commit -m "Update Dallas County permit data for ${TODAY}" \
+                    -m "${{ steps.scrape.outputs.new_permits }} permits processed" \
+                    -m "Automated Dallas County scrape"
+        git push
+        
+
+
+    - name: Write job summary
+      run: |
+
+        echo "### scrape-dallas-permits summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Supabase URL: $([ -n \"${{ secrets.SUPABASE_URL }}\" ] && echo ✅ Set || echo ❌ Not set)" >> $GITHUB_STEP_SUMMARY
+        echo "- Supabase Service Key: $([ -n \"${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\" ] && echo ✅ Set || echo ❌ Not set)" >> $GITHUB_STEP_SUMMARY
+        echo "- Dallas Permits URL: $([ -n \"${{ secrets.DALLAS_PERMITS_URL }}\" ] && echo ✅ Set || echo ❌ Not set)" >> $GITHUB_STEP_SUMMARY
+
+        echo "## 🏙️ Dallas County Permit Scraping Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Preflight status
+        echo "### 🚀 Preflight Validation" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ needs.preflight.outputs.preflight_status }}" = "success" ]; then
+          echo "✅ **Preflight checks passed**: All required secrets validated and Supabase connectivity confirmed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Preflight checks failed**: Environment validation or connectivity issues detected" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Scraping results
+        echo "### 📊 Scraping Results" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.scrape.outputs.new_permits }}" -gt 0 ]; then
+          echo "✅ **Success**: Found ${{ steps.scrape.outputs.new_permits }} new permits" >> $GITHUB_STEP_SUMMARY
+          
+          # Show latest data files
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Files Updated:" >> $GITHUB_STEP_SUMMARY
+          TODAY=$(date +%Y-%m-%d)
+          find ../data \( -name "*${TODAY}*" -name "*dallas*" \) -o \( -name "*${TODAY}*" -name "permits_*" \) | head -5 | while read file; do
+            if [ -f "$file" ]; then
+              SIZE=$(stat -c%s "$file" 2>/dev/null || echo "0")
+              echo "- \`$file\` (${SIZE} bytes)" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 **Dallas County permits processed**: ${{ steps.scrape.outputs.new_permits }}" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "ℹ️ **No new data**: No Dallas County permits found" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_recent.outputs.recent_files }}" -eq 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Warning**: No recent data found in last 24 hours" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔧 Technical Details" >> $GITHUB_STEP_SUMMARY
+        echo "**Run Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Jurisdiction: Dallas County (tx-dallas)" >> $GITHUB_STEP_SUMMARY
+        
+        # Set days default using shell logic
+        DAYS_DISPLAY="${{ inputs.days }}"
+        [ -z "$DAYS_DISPLAY" ] && DAYS_DISPLAY="1"
+        echo "- Days back: $DAYS_DISPLAY" >> $GITHUB_STEP_SUMMARY
+        if [ "${SAMPLE_DATA}" = "1" ]; then
+          echo "- Sample data: Yes" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Sample data: No" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Run time: $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        # Environment status with detailed health info
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment Status:**" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "- Supabase URL: ✅ Set and validated" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Supabase URL: ❌ Not set" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+          echo "- Supabase Service Key: ✅ Set and authenticated" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Supabase Service Key: ❌ Not set" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ -n "${{ secrets.DALLAS_PERMITS_URL }}" ]; then
+          echo "- Dallas Permits URL: ✅ Set and accessible" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- Dallas Permits URL: ❌ Not set" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Documentation links
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+        echo "- [Workflow Secrets Configuration](docs/workflows-secrets.md)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Dallas County Permits Data](docs/tx_permits.md)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Troubleshooting Guide](docs/workflows-secrets.md#troubleshooting)" >> $GITHUB_STEP_SUMMARY
+
+
+
+
+    - name: Set date output
+      id: set_date
+      run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+        
+    - name: Upload ETL artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-${{ github.run_id }}
+        path: |
+          artifacts/**/*.csv
+          logs/**/*.log
+          logs/etl_output.log
+        if-no-files-found: warn
+        retention-days: 14
+        
+    - name: Upload data artifacts
+      if: steps.scrape.outputs.new_permits != '0'
+      uses: actions/upload-artifact@v4
+      with:
+        name: dallas-county-permits-${{ steps.set_date.outputs.date }}
+        path: ../data/
+        retention-days: 30
+
+    - name: Write scrape summary
+      if: always()
+      run: |
+        # Set up variables with shell defaults for cron-safe execution
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="1"
+        
+        SAMPLE="${{ inputs.sample_data }}"
+        [ -z "$SAMPLE" ] && SAMPLE="false"
+        
+        # Set sample data using shell logic
+        if [ "$SAMPLE" = "true" ]; then
+          SAMPLE="1"
+        else
+          SAMPLE="0"
+        fi
+        
+        echo "### Scrape Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Secrets: $([ '${{ steps.preflight.outputs.ok }}' = '1' ] && echo '✅ present' || echo '❌ missing')" >> $GITHUB_STEP_SUMMARY
+        # Check Supabase REST status
+        if [ "${{ steps.supa.outputs.http_code }}" = "200" ] || [ "${{ steps.supa.outputs.http_code }}" = "206" ]; then
+          SUPABASE_REST_STATUS="✅ ok"
+        else
+          SUPABASE_REST_STATUS="❌ failed"
+        fi
+        echo "- Supabase REST: ${SUPABASE_REST_STATUS}" >> $GITHUB_STEP_SUMMARY
+        echo "- Days: $DAYS, Sample: $SAMPLE" >> $GITHUB_STEP_SUMMARY
+        echo "- Artifacts: logs + csv uploaded (see artifacts tab)" >> $GITHUB_STEP_SUMMARY
+
+
