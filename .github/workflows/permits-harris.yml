@@ -61,7 +61,7 @@ jobs:
           exit 1
         fi
 
-    - name: Preflight: Source URL
+    - name: "Preflight: Source URL"
       env:
         SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
       run: |
