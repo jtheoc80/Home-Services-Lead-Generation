@@ -7,8 +7,8 @@ when the --write flag is provided.
 """
 
 import argparse
-import os
 import sys
+import pathlib
 from pathlib import Path
 
 
