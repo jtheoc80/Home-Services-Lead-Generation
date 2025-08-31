@@ -124,7 +124,11 @@ jobs:
         
         # Run with sample data for 1 day
 
+
         python -m permit_leads.harris.scrape --days 1 --sample
+
+        python -m permit_leads.harris.scrape --days 1 --verbose
+
 
         SCRAPER_EXIT_CODE=$?
         if [ $SCRAPER_EXIT_CODE -ne 0 ]; then
