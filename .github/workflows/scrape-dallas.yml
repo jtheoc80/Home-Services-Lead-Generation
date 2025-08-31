@@ -90,6 +90,10 @@ jobs:
         cd ..
         pipx install poetry && poetry install --no-interaction --no-ansi
         
+    - name: Ensure output dirs
+      run: |
+        mkdir -p logs artifacts data
+        
     - name: Create directories
       run: |
         cd ..
@@ -166,13 +170,6 @@ jobs:
     
   scrape-dallas-permits:
     needs: preflight
-
-      days: { description: "Days back", default: "1" }
-      sample_data: { description: "Sample mode", type: choice, options: ["false","true"], default: "false" }
-
-jobs:
-  run:
-
     uses: ./.github/workflows/_scrape-python.yml
     with:
       name: tx-dallas
