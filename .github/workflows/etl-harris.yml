@@ -20,6 +20,9 @@ env:
 jobs:
   etl-harris:
     runs-on: ubuntu-latest
+    concurrency:
+      group: nightly-etl
+      cancel-in-progress: false
     timeout-minutes: 30
     defaults:
       run:
