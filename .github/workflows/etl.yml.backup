@@ -138,7 +138,27 @@ jobs:
 
           echo "Ingesting ${#CSVs[@]} CSV file(s)"
           cd ..
-          poetry run python -c "import sys; sys.path.insert(0, 'backend'); from app.ingest import ingest_csv_data; import glob; [ingest_csv_data(f) for f in glob.glob('permit_leads/artifacts/*.csv')]"
+          poetry run python - <<'PY'
+import glob, sys
+sys.path.insert(0, 'backend')
+try:
+    from app.ingest import ingest_csv_data
+except Exception as e:
+    print(f"Import error: {e}")
+    sys.exit(1)
+
+files = glob.glob('permit_leads/artifacts/*.csv')
+ok = True
+for f in files:
+    try:
+        print(f"Ingesting {f}")
+        ingest_csv_data(f)
+    except Exception as e:
+        print(f"Ingestion failed for {f}: {e}")
+        ok = False
+print("DONE")
+sys.exit(0 if ok else 1)
+PY
 
           echo "ingested=1" >> "$GITHUB_OUTPUT"
 
