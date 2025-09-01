@@ -17,7 +17,6 @@ jobs:
             const {owner, repo} = context.repo;
             const runId = context.payload.workflow_run.id;
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({owner, repo, run_id: runId});
-            core.setOutput('artifactId', artifacts.data.artifacts[0]?.id || '');
       - name: Fetch log tail (best-effort)
         run: echo "No direct log API; artifact will hold logs."
       - name: Open issue with artifact link
