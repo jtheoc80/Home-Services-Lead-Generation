@@ -11,6 +11,7 @@ This script automatically fixes common issues in the etl.yml workflow:
 - Sets defaults.run.working-directory: permit_leads
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -273,6 +274,11 @@ def save_workflow(etl_path: Path, workflow: Dict[str, Any]) -> bool:
 
 def main():
     """Main function to fix ETL workflow issues."""
+    parser = argparse.ArgumentParser(description="ETL Guardian - Automatic ETL Workflow Fixer")
+    parser.add_argument('--write', action='store_true', 
+                       help='Write changes to the workflow file (default: dry-run)')
+    args = parser.parse_args()
+    
     print("🛡️ ETL Guardian: Checking and fixing etl.yml workflow...")
     
     # Change to repository root if we're in tools/
@@ -297,12 +303,16 @@ def main():
     changes_made |= fix_summary_tail(workflow)
     
     if changes_made:
-        if save_workflow(etl_path, workflow):
-            print("\n✅ ETL workflow updated successfully!")
-            print("📝 Changes made to .github/workflows/etl.yml")
+        if args.write:
+            if save_workflow(etl_path, workflow):
+                print("\n✅ ETL workflow updated successfully!")
+                print("📝 Changes made to .github/workflows/etl.yml")
+            else:
+                print("\n❌ Failed to save workflow changes")
+                sys.exit(1)
         else:
-            print("\n❌ Failed to save workflow changes")
-            sys.exit(1)
+            print("\n📋 Changes would be made (use --write to apply)")
+            print("💡 Run with --write flag to apply changes")
     else:
         print("\n✅ ETL workflow is already properly configured!")
         print("📋 No changes needed")
