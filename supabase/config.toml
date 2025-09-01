@@ -1,6 +1,3 @@
-[project]
-ref = "wsbnbncapkrdovrrghlh"
-
 [api]
 enabled = true
 
