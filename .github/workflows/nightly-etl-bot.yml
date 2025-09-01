@@ -24,6 +24,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check BOT_TOKEN availability
+        id: check-token
+        run: |
+          if [ -n "$BOT_TOKEN" ]; then
+            echo "has-bot-token=true" >> $GITHUB_OUTPUT
+            echo "BOT_TOKEN is available for enhanced features"
+          else
+            echo "has-bot-token=false" >> $GITHUB_OUTPUT
+            echo "Using github.token - some features may be limited"
+          fi
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -46,6 +59,7 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
+
       # record whether BOT_TOKEN is set without using it in "if:"
       - name: Flag BOT_TOKEN presence
         run: echo "BOT_TOKEN_SET=${{ secrets.BOT_TOKEN != '' }}" >> $GITHUB_ENV
@@ -53,6 +67,11 @@ jobs:
       - name: Create or update PR
         if: ${{ steps.guardian.outputs.changed == 'true' }}
         id: create_pr
+
+      - name: Create Pull Request
+        if: steps.guardian.outputs.changed == 'true'
+        id: create-pr
+
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.BOT_TOKEN || github.token }}
@@ -67,12 +86,19 @@ jobs:
             - Single artifact uploader with stable globs
             - Concurrency guard
 
+
       - name: Auto-approve
         if: ${{ steps.guardian.outputs.changed == 'true' && env.BOT_TOKEN_SET == 'true' }}
         uses: peter-evans/approve-pull-request@v3
+
+      - name: Auto-approve PR (optional)
+        if: steps.guardian.outputs.changed == 'true' && steps.check-token.outputs.has-bot-token == 'true'
+        uses: juliangruber/approve-pull-request-action@v2
+
         with:
           token: ${{ secrets.BOT_TOKEN }}
           pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
+
 
       - name: Enable auto-merge (squash)
         if: ${{ steps.guardian.outputs.changed == 'true' && env.BOT_TOKEN_SET == 'true' && steps.create_pr.outputs.pull-request-number }}
@@ -81,3 +107,36 @@ jobs:
           token: ${{ secrets.BOT_TOKEN }}
           pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
           merge-method: squash
+
+      - name: Auto-merge PR (optional)
+        if: steps.guardian.outputs.changed == 'true' && steps.check-token.outputs.has-bot-token == 'true'
+        run: |
+          # Wait a moment for the approval to process
+          sleep 10
+          
+          # Enable auto-merge if PR was created
+          if [ -n "${{ steps.create-pr.outputs.pull-request-number }}" ]; then
+            gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --auto --squash
+            echo "✅ Auto-merge enabled for PR #${{ steps.create-pr.outputs.pull-request-number }}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## ETL Guardian Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow checked**: .github/workflows/etl.yml" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.guardian.outputs.changed }}" == "true" ]; then
+            echo "- **Status**: ⚠️ Issues found and fixed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action**: PR created for auto-fix" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.create-pr.outputs.pull-request-number }}" ]; then
+              echo "- **PR**: #${{ steps.create-pr.outputs.pull-request-number }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **Status**: ✅ No issues found" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action**: No changes needed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **BOT_TOKEN**: ${{ steps.check-token.outputs.has-bot-token == 'true' && 'Available' || 'Not available' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+
