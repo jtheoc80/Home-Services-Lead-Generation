@@ -22,6 +22,19 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.BOT_TOKEN || github.token }}
 
+      - name: Check BOT_TOKEN availability
+        id: check-token
+        run: |
+          if [ -n "$BOT_TOKEN" ]; then
+            echo "has-bot-token=true" >> $GITHUB_OUTPUT
+            echo "BOT_TOKEN is available for enhanced features"
+          else
+            echo "has-bot-token=false" >> $GITHUB_OUTPUT
+            echo "Using github.token - some features may be limited"
+          fi
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -54,6 +67,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.guardian.outputs.changed == 'true'
+        id: create-pr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.BOT_TOKEN || github.token }}
@@ -89,14 +103,14 @@ jobs:
           delete-branch: true
 
       - name: Auto-approve PR (optional)
-        if: steps.guardian.outputs.changed == 'true' && secrets.BOT_TOKEN != ''
+        if: steps.guardian.outputs.changed == 'true' && steps.check-token.outputs.has-bot-token == 'true'
         uses: juliangruber/approve-pull-request-action@v2
         with:
           github-token: ${{ secrets.BOT_TOKEN }}
           number: ${{ steps.create-pr.outputs.pull-request-number }}
 
       - name: Auto-merge PR (optional)
-        if: steps.guardian.outputs.changed == 'true' && secrets.BOT_TOKEN != ''
+        if: steps.guardian.outputs.changed == 'true' && steps.check-token.outputs.has-bot-token == 'true'
         run: |
           # Wait a moment for the approval to process
           sleep 10
@@ -124,4 +138,5 @@ jobs:
             echo "- **Status**: ✅ No issues found" >> $GITHUB_STEP_SUMMARY
             echo "- **Action**: No changes needed" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "- **BOT_TOKEN**: ${{ steps.check-token.outputs.has-bot-token == 'true' && 'Available' || 'Not available' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
