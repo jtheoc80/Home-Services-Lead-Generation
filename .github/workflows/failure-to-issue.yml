@@ -1,0 +1,34 @@
+name: Failure Reporter
+on:
+  workflow_run:
+    workflows: ["Nightly ETL", "Scrape — Harris County", "Scrape — Dallas County"]
+    types: [completed]
+
+jobs:
+  report:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const core = require('@actions/core');
+            const {owner, repo} = context.repo;
+            const runId = context.payload.workflow_run.id;
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({owner, repo, run_id: runId});
+      # No direct log API; artifact will hold logs.
+      - name: Open issue with artifact link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const name = context.payload.workflow_run.name;
+            const url  = context.payload.workflow_run.html_url;
+            const head = `🔥 ${name} failed: ${new Date().toISOString()}`;
+            const body = [
+              `Workflow: ${name}`,
+              `Run: ${url}`,
+              `Please see attached artifacts (logs/etl_output.log).`,
+            ].join("\n\n");
+            await github.rest.issues.create({owner, repo, title: head, body});
