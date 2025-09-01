@@ -1,5 +1,11 @@
 name: Workflow Lint
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
 jobs:
   lint:
     runs-on: ubuntu-latest
