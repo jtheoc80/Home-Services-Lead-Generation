@@ -1,62 +1,202 @@
-name: Watchdog (open issue on failure)
-on:
+---
+name: System Health Watchdog
+'on':
   schedule:
-    - cron: "30 6 * * *"  # daily after the ingest agents
+    - cron: "*/30 * * * *"  # Every 30 minutes
   workflow_dispatch:
 
 jobs:
-  probe:
+  ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe /api/_debug/sb
-        id: probe
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Verify Frontend Health
+        id: frontend
         run: |
-          set -e
-          RESP=$(curl -sS -H "X-Debug-Key: $DEBUG_API_KEY" "$DEBUG_URL")
-          echo "$RESP"
-          echo "resp=$RESP" >> $GITHUB_OUTPUT
-          OK=$(jq -r '.ok' <<< "$RESP")
-          PERMITS=$(jq -r '.permits | tonumber // 0' <<< "$RESP")
-          if [ "$OK" != "true" ] || [ "$PERMITS" -eq 0 ]; then
-            echo "status=bad" >> $GITHUB_OUTPUT
+          echo "🌐 Checking frontend health..."
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "⚠️  FRONTEND_URL not configured, skipping check"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "message=FRONTEND_URL not configured" >> $GITHUB_OUTPUT
           else
-            echo "status=good" >> $GITHUB_OUTPUT
+            endpoint="$FRONTEND_URL/api/health"
+            if curl -f -s --max-time 30 "$endpoint" > /dev/null; then
+              echo "✅ Frontend health check passed"
+              echo "status=healthy" >> $GITHUB_OUTPUT
+              echo "message=Frontend responding normally" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Frontend health check failed"
+              echo "status=unhealthy" >> $GITHUB_OUTPUT
+              echo "message=Frontend not responding or unhealthy" \
+                >> $GITHUB_OUTPUT
+            fi
           fi
         env:
-          DEBUG_URL: ${{ secrets.DEBUG_URL }}
-          DEBUG_API_KEY: ${{ secrets.DEBUG_API_KEY }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
 
-  file_issue:
-    needs: probe
-    if: needs.probe.outputs.status == 'bad'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/github-script@v7
+      - name: Verify Backend Health
+        id: backend
+        run: |
+          echo "🖥️  Checking backend health..."
+          if [ -z "$BACKEND_URL" ]; then
+            echo "⚠️  BACKEND_URL not configured, skipping check"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "message=BACKEND_URL not configured" >> $GITHUB_OUTPUT
+          else
+            endpoint="$BACKEND_URL/healthz"
+            if curl -f -s --max-time 30 "$endpoint" > /dev/null; then
+              echo "✅ Backend health check passed"
+              echo "status=healthy" >> $GITHUB_OUTPUT
+              echo "message=Backend responding normally" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Backend health check failed"
+              echo "status=unhealthy" >> $GITHUB_OUTPUT
+              echo "message=Backend not responding or unhealthy" \
+                >> $GITHUB_OUTPUT
+            fi
+          fi
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+
+      - name: Check ETL Freshness
+        id: etl
+        run: |
+          echo "📊 Checking ETL freshness..."
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "⚠️  Supabase vars not configured, skipping ETL check"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "message=Supabase environment variables not configured" \
+              >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
+          else
+            python scripts/check_etl_freshness.py > etl_output.txt 2>&1
+            exit_code=$?
+            cat etl_output.txt
+
+            # Extract count from output
+            count=$(grep -o 'Count from content-range header: [0-9]*' etl_output.txt | sed 's/.*: //' || echo "0")
+            echo "count=$count" >> $GITHUB_OUTPUT
+
+            if [ $exit_code -eq 0 ] && [ "$count" -gt 0 ]; then
+              echo "✅ ETL check passed: $count permits in last 24 hours"
+              echo "status=healthy" >> $GITHUB_OUTPUT
+              echo "message=ETL data is fresh ($count permits in last 24h)" \
+                >> $GITHUB_OUTPUT
+            elif [ $exit_code -eq 0 ] && [ "$count" -eq 0 ]; then
+              echo "⚠️  ETL check warning: no permits in last 24 hours"
+              echo "status=stale" >> $GITHUB_OUTPUT
+              echo "message=No permits found in last 24h" \
+                >> $GITHUB_OUTPUT
+            else
+              echo "❌ ETL freshness check failed"
+              echo "status=unhealthy" >> $GITHUB_OUTPUT
+              echo "message=ETL freshness check failed" >> $GITHUB_OUTPUT
+            fi
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Summary Report
+        run: |
+          echo "🏥 System Health Summary"
+          echo "======================"
+          frontend_msg="${{ steps.frontend.outputs.message }}"
+          backend_msg="${{ steps.backend.outputs.message }}"
+          etl_msg="${{ steps.etl.outputs.message }}"
+          echo "Frontend: ${{ steps.frontend.outputs.status }} - $frontend_msg"
+          echo "Backend: ${{ steps.backend.outputs.status }} - $backend_msg"
+          echo "ETL: ${{ steps.etl.outputs.status }} - $etl_msg"
+          echo ""
+
+          # Determine overall health
+          frontend_status="${{ steps.frontend.outputs.status }}"
+          backend_status="${{ steps.backend.outputs.status }}"
+          etl_status="${{ steps.etl.outputs.status }}"
+
+          if [ "$frontend_status" = "unhealthy" ] || \
+             [ "$backend_status" = "unhealthy" ] || \
+             [ "$etl_status" = "unhealthy" ]; then
+            echo "🚨 Overall Status: UNHEALTHY"
+            echo "overall_status=unhealthy" >> $GITHUB_ENV
+          elif [ "$etl_status" = "stale" ]; then
+            echo "⚠️  Overall Status: WARNING (ETL data stale)"
+            echo "overall_status=warning" >> $GITHUB_ENV
+          else
+            echo "✅ Overall Status: HEALTHY"
+            echo "overall_status=healthy" >> $GITHUB_ENV
+          fi
+
+      - name: Create Issue on Failure
+        if: env.overall_status == 'unhealthy'
+        uses: actions/github-script@v7
         with:
           script: |
-            const body = `Automated watchdog detected an ingest issue.
+            const body = `🚨 **System Health Alert - Critical Issues Detected**
 
-            Last debug:
-            \`\`\`json
-            ${process.env.RESP || 'n/a'}
-            \`\`\`
+            The automated watchdog has detected critical system health issues:
 
-            - Check Vercel envs (URL/keys/CRON_SECRET)
-            - Hit /api/permits/ingest?source=austin&dry=1
-            - Inspect function logs in Vercel
+            ## Health Check Results
 
+            | Component | Status | Details |
+            |-----------|--------|---------|
+            | Frontend | ${{ steps.frontend.outputs.status }} | ${{ steps.frontend.outputs.message }} |
+            | Backend | ${{ steps.backend.outputs.status }} | ${{ steps.backend.outputs.message }} |
+            | ETL/Database | ${{ steps.etl.outputs.status }} | ${{ steps.etl.outputs.message }} |
+
+            ## Recommended Actions
+
+            ### Frontend Issues
+            - Check Vercel deployment status and logs
+            - Verify environment variables in Vercel dashboard
+            - Test frontend endpoint: \`curl {FRONTEND_URL}/api/health\`
+
+            ### Backend Issues
+            - Check Railway deployment status and logs
+            - Verify environment variables in Railway dashboard
+            - Test backend endpoint: \`curl {BACKEND_URL}/healthz\`
+
+            ### ETL/Database Issues
+            - Check Supabase status at https://status.supabase.com
+            - Verify Supabase environment variables
+            - Check recent ETL workflow runs for failures
+            - Review permit ingestion processes
+
+            ---
+            *Generated at ${new Date().toISOString()} by watchdog*
             `;
+
             const { owner, repo } = context.repo;
-            const title = "🚨 Ingest watchdog: data not flowing";
+            const title = "🚨 System Health Alert - Critical Issues Detected";
+
+            // Search for existing open health alert issues
             const issues = await github.rest.search.issuesAndPullRequests({
-              q: `repo:${owner}/${repo} is:issue in:title "${title}" state:open`
+              q: "repo:" + owner + "/" + repo + ' is:issue "System Health Alert" state:open'
             });
-            // Replace strict equality with loose equality
-            if (issues.data.total_count == 0) {
-              await github.rest.issues.create({ owner, repo, title, body, labels: ["ingest","watchdog"] });
+
+            if (issues.data.total_count === 0) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ["health", "watchdog", "critical"]
+              });
             } else {
+              // Add comment to existing issue
               const number = issues.data.items[0].number;
-              await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: \`## Updated Health Check Results\n\n\${body}\`
+              });
             }
-        env:
-          RESP: ${{ needs.probe.outputs.resp }}
