@@ -1,0 +1,7 @@
+backend/demo_harris_normalization.py
+demo_normalize_trade.py
+permit_leads/enrich.py
+permit_leads/normalizer.py
+permit_leads/tests/test_normalize_trade.py
+permit_leads/tests/test_normalizer_trade_integration.py
+supabase/migrations/20250102000000_enhanced_normalize_trade.sql
