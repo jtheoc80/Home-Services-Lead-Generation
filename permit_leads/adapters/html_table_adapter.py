@@ -2,6 +2,7 @@ from typing import Dict, Any, Iterable
 import datetime as dt
 from bs4 import BeautifulSoup
 
+
 class HTMLTableAdapter:
     """
     Very simple adapter for a static HTML table page that lists permits.
@@ -20,11 +21,14 @@ class HTMLTableAdapter:
           issued_date: "Issued"
           category: "Category"
     """
+
     def __init__(self, cfg: Dict[str, Any], session=None):
         self.cfg = cfg
         self.session = session
 
-    def fetch_since(self, since: dt.datetime, limit: int = 5000) -> Iterable[Dict[str, Any]]:
+    def fetch_since(
+        self, since: dt.datetime, limit: int = 5000
+    ) -> Iterable[Dict[str, Any]]:
         url = self.cfg["url"]
         table_sel = self.cfg["table_selector"]
         resp = self.session.get(url)
@@ -40,10 +44,12 @@ class HTMLTableAdapter:
             thead = table.find("thead")
             if not thead:
                 first_tr = table.find("tr")
-                headers = [td.get_text(strip=True) for td in first_tr.find_all(["td","th"])]
+                headers = [
+                    td.get_text(strip=True) for td in first_tr.find_all(["td", "th"])
+                ]
         rows = []
         for tr in table.select("tbody tr"):
-            cells = [td.get_text(" ", strip=True) for td in tr.find_all(["td","th"])]
+            cells = [td.get_text(" ", strip=True) for td in tr.find_all(["td", "th"])]
             row = dict(zip(headers, cells))
             rows.append(row)
 
