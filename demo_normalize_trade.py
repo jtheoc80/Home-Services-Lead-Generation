@@ -172,7 +172,7 @@ def demo_priority_system():
 
 if __name__ == "__main__":
     # Run demonstrations
-    success = demo_normalize_trade()
+    demo_normalize_trade()
     demo_priority_system()
     
     print("\n" + "=" * 50)
