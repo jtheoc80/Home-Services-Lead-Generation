@@ -164,7 +164,9 @@ jobs:
         echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
         
         # Force exit with 1 if no records and force is false
-        if [ "$total_records" -eq 0 ] && [ "${{ github.event.inputs.force }}" != "true" ]; then
+        FORCE_INPUT="${{ github.event.inputs.force }}"
+        FORCE_INPUT_LC=$(echo "$FORCE_INPUT" | tr '[:upper:]' '[:lower:]')
+        if [ "$total_records" -eq 0 ] && ! [[ "$FORCE_INPUT_LC" == "true" || "$FORCE_INPUT_LC" == "1" || "$FORCE_INPUT_LC" == "yes" ]]; then
           echo "::error title=No records processed::No data found and force=false"
           exit 1
         fi
