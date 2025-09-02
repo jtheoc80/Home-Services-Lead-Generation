@@ -1,7 +1,6 @@
 """
 Test cases for PermitNormalizer integration with normalize_trade function.
 """
-import pytest
 from permit_leads.normalizer import PermitNormalizer
 
 
