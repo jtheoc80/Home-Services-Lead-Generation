@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 FastAPI application entry point for Home Services Lead Generation backend.
@@ -35,9 +34,13 @@ from app.supabase_client import get_supabase_client
 
 # Import billing API
 from app.billing_api import (
-    create_customer, create_checkout_session_subscription, 
-    create_checkout_session_credits, create_portal_session, 
-    handle_webhook, get_user_credits, CheckoutSessionRequest
+    create_customer,
+    create_checkout_session_subscription,
+    create_checkout_session_credits,
+    create_portal_session,
+    handle_webhook,
+    get_user_credits,
+    CheckoutSessionRequest,
 )
 
 # Import lead claiming API
@@ -51,6 +54,7 @@ from app.ingest_logger import get_trace_logs
 try:
     from app.metrics import get_metrics, get_metrics_content_type
     from app.settings import settings
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -59,11 +63,12 @@ except ImportError:
 from app.utils.export_control import get_export_controller, ExportType
 
 
-
 # Import test Supabase router
 from test_supabase import router as test_supabase_router
+
 try:
     from app.supa_env_check import router as supa_env_check_router
+
     SUPA_ENV_CHECK_AVAILABLE = True
 except ImportError:
     supa_env_check_router = None
@@ -85,12 +90,14 @@ app = FastAPI(
     description="Home Services Lead Generation API with Supabase Authentication",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # Configure CORS origins from environment variable
 # Default to localhost for development, but allow override for production
-allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+allowed_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
 
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
@@ -107,6 +114,7 @@ app.add_middleware(RequestLoggingMiddleware)
 # Add rate limiting middleware (avoid /healthz)
 from app.middleware_rate_limit import RateLimitMiddleware
 
+
 @app.middleware("http")
 async def rate_limit_selected_routes(request, call_next):
     """Apply rate limiting to API routes but skip health checks"""
@@ -114,6 +122,7 @@ async def rate_limit_selected_routes(request, call_next):
         middleware = RateLimitMiddleware(app, limit=60, window=60)
         return await middleware.dispatch(request, call_next)
     return await call_next(request)
+
 
 # Include test Supabase router
 app.include_router(test_supabase_router, tags=["test", "supabase"])
@@ -124,6 +133,7 @@ app.include_router(supa_env_check_router, tags=["health", "supabase"])
 # Include demand index API router
 try:
     from app.demand_index_api import router as demand_index_router
+
     app.include_router(demand_index_router, tags=["forecast", "demand-index"])
     DEMAND_INDEX_AVAILABLE = True
 except ImportError:
@@ -138,62 +148,67 @@ class CancellationRequest(BaseModel):
     reason_notes: Optional[str] = None
     processed_by: Optional[str] = None
 
+
 class ReactivationRequest(BaseModel):
     user_id: str
-
 
 
 def verify_metrics_auth(authorization: str = Header(None)) -> bool:
     """
     Verify basic authentication for metrics endpoint.
-    
+
     Args:
         authorization: Authorization header containing basic auth credentials
-        
+
     Returns:
         True if authentication successful
-        
+
     Raises:
         HTTPException: If authentication fails
     """
-    if not METRICS_AVAILABLE or not getattr(settings, 'enable_metrics', False):
+    if not METRICS_AVAILABLE or not getattr(settings, "enable_metrics", False):
         raise HTTPException(status_code=503, detail="Metrics not available")
-    
+
     if not authorization:
         raise HTTPException(
             status_code=401,
             detail="Authorization header required",
-            headers={"WWW-Authenticate": "Basic"}
+            headers={"WWW-Authenticate": "Basic"},
         )
-    
+
     try:
         # Parse basic auth header
         scheme, credentials = authorization.split()
-        if scheme.lower() != 'basic':
+        if scheme.lower() != "basic":
             raise HTTPException(status_code=401, detail="Invalid authentication scheme")
-        
+
         # Decode credentials
-        decoded = base64.b64decode(credentials).decode('utf-8')
-        username, password = decoded.split(':', 1)
-        
+        decoded = base64.b64decode(credentials).decode("utf-8")
+        username, password = decoded.split(":", 1)
+
         # Verify credentials using constant-time comparison
-        expected_username = getattr(settings, 'metrics_username', 'admin')
-        expected_password = getattr(settings, 'metrics_password', 'changeme')
-        
-        if not (secrets.compare_digest(username, expected_username) and 
-                secrets.compare_digest(password, expected_password)):
+        expected_username = getattr(settings, "metrics_username", "admin")
+        expected_password = getattr(settings, "metrics_password", "changeme")
+
+        if not (
+            secrets.compare_digest(username, expected_username)
+            and secrets.compare_digest(password, expected_password)
+        ):
             raise HTTPException(
                 status_code=401,
                 detail="Invalid credentials",
-                headers={"WWW-Authenticate": "Basic"}
+                headers={"WWW-Authenticate": "Basic"},
             )
-        
+
         return True
-        
+
     except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+        raise HTTPException(
+            status_code=401, detail="Invalid authorization header format"
+        )
     except Exception:
         raise HTTPException(status_code=401, detail="Authentication failed")
+
 
 class ExportDataRequest(BaseModel):
     export_type: str  # leads, permits, scored_leads, analytics, feedback
@@ -201,10 +216,11 @@ class ExportDataRequest(BaseModel):
     filters: Optional[Dict[str, Any]] = None
     admin_override: Optional[bool] = False
 
+
 # Lead scoring models
 class LeadScoreInput(BaseModel):
     lead_id: Optional[str] = None
-    created_at: Optional[str] = None  
+    created_at: Optional[str] = None
     trade_tags: Optional[List[str]] = None
     value: Optional[float] = None
     year_built: Optional[int] = None
@@ -213,9 +229,11 @@ class LeadScoreInput(BaseModel):
     description: Optional[str] = None
     jurisdiction: Optional[str] = None
 
+
 class LeadScoreRequest(BaseModel):
     lead: LeadScoreInput
     version: Optional[str] = "v0"
+
 
 class LeadScoreResponse(BaseModel):
     lead_id: Optional[str]
@@ -232,45 +250,45 @@ async def root():
         "message": "LeadLedgerPro API is running",
         "version": "1.0.0",
         "docs": "/docs",
-        "status": "healthy"
+        "status": "healthy",
     }
+
 
 @app.get("/api/me")
 async def get_current_user(user: AuthUser = Depends(auth_user)):
     """
     Get current authenticated user information.
-    
+
     This endpoint returns the account_id and email of the authenticated user
     based on the JWT token provided in the Authorization header.
-    
+
     Args:
         user: The authenticated user (injected by auth dependency)
-        
+
     Returns:
         Dict containing account_id and email of the authenticated user
     """
-    return {
-        "account_id": user.account_id,
-        "email": user.email
-    }
+    return {"account_id": user.account_id, "email": user.email}
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "leadledderpro-api"}
 
+
 @app.get("/healthz")
 async def healthz():
     """
     Health check endpoint with comprehensive monitoring information.
-    
+
     Returns:
         Dict containing status, version, database, Redis, ingestion status,
         and sources connectivity
     """
     # Get version from app metadata
     version = app.version
-    
+
     # Check database connectivity with 300ms timeout
     db_status = "down"
     db_rtt = None
@@ -280,11 +298,11 @@ async def healthz():
             try:
                 supabase = get_supabase_client()
                 # Test with meta.sources table (should always exist after migration)
-                result = supabase.table('meta.sources').select('id').limit(1).execute()
+                result = supabase.table("meta.sources").select("id").limit(1).execute()
                 return result is not None
             except Exception:
                 return False
-        
+
         # Wait for DB check with 300ms timeout
         db_connected = await asyncio.wait_for(check_db(), timeout=0.3)
         if db_connected:
@@ -295,64 +313,75 @@ async def healthz():
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")
         db_status = "down"
-    
+
     # Check ingestion status
     ingest_last_run = None
     ingest_ok = True
     try:
         supabase = get_supabase_client()
         # Get the most recent ingestion run
-        result = supabase.table('meta.ingest_state').select('last_run, last_status').order('last_run', desc=True).limit(1).execute()
-        
+        result = (
+            supabase.table("meta.ingest_state")
+            .select("last_run, last_status")
+            .order("last_run", desc=True)
+            .limit(1)
+            .execute()
+        )
+
         if result.data:
-            ingest_last_run = result.data[0]['last_run']
+            ingest_last_run = result.data[0]["last_run"]
             # Check if last run was successful and within last 25 hours (daily + buffer)
-            from datetime import datetime, timezone, timedelta
-            last_run = datetime.fromisoformat(ingest_last_run.replace('Z', '+00:00'))
+            from datetime import datetime, timezone
+
+            last_run = datetime.fromisoformat(ingest_last_run.replace("Z", "+00:00"))
             age_hours = (datetime.now(timezone.utc) - last_run).total_seconds() / 3600
-            
+
             if age_hours > 25:  # Allow 1 hour buffer on daily schedule
                 ingest_ok = False
-            elif result.data[0]['last_status'] != 'success':
+            elif result.data[0]["last_status"] != "success":
                 ingest_ok = False
         else:
             ingest_ok = False  # No ingestion runs found
     except Exception as e:
         logger.error(f"Ingestion status check failed: {str(e)}")
         ingest_ok = False
-    
+
     # Check sources status
     sources_ok = True
     try:
         # Load sources config and check if all active sources are reachable
         import yaml
-        with open('config/sources_tx.yaml', 'r') as f:
+
+        with open("config/sources_tx.yaml", "r") as f:
             config = yaml.safe_load(f)
-        
+
         # Quick connectivity test for a sample of sources
         # In production, this might be cached or run periodically
-        active_sources = [s for s in config.get('sources', []) if s.get('kind') != 'tpia']
+        active_sources = [
+            s for s in config.get("sources", []) if s.get("kind") != "tpia"
+        ]
         if len(active_sources) == 0:
             sources_ok = False
     except Exception as e:
         logger.error(f"Sources status check failed: {str(e)}")
         sources_ok = False
-    
+
     # Check Redis connectivity
     redis_status, redis_rtt = await ping_ms()
-    
+
     # Check Stripe connectivity
     stripe_status = "missing"
     stripe_rtt = None
     try:
         from app.stripe_client import get_stripe_client
+
         stripe_client = get_stripe_client()
         if stripe_client.is_configured:
             # Test with a safe 200ms API call and measure RTT
             start_time = time.time()
             if await asyncio.wait_for(
-                asyncio.create_task(asyncio.to_thread(stripe_client.test_connection)), 
-                timeout=0.2
+                asyncio.create_task(asyncio.to_thread(stripe_client.test_connection)),
+                timeout=0.2,
             ):
                 stripe_rtt = round((time.time() - start_time) * 1000, 2)
                 stripe_status = "configured"
@@ -364,7 +393,7 @@ async def healthz():
         stripe_status = "timeout"
     except Exception:
         stripe_status = "error"
-    
+
     return {
         "status": "ok",
         "db": db_status,
@@ -376,30 +405,29 @@ async def healthz():
         "ingest_last_run": ingest_last_run,
         "ingest_ok": ingest_ok,
         "sources_ok": sources_ok,
-        "ts": int(time.time())
+        "ts": int(time.time()),
     }
+
 
 @app.get("/metrics")
 async def metrics_endpoint(auth: bool = Depends(verify_metrics_auth)):
     """
     Prometheus metrics endpoint with basic authentication.
-    
+
     This endpoint exposes Prometheus-style metrics for monitoring.
     Access is protected by basic authentication and can be disabled
     in production unless ENABLE_METRICS=true is set.
-    
+
     Returns:
         Prometheus formatted metrics
     """
     try:
         metrics_data = get_metrics()
-        return Response(
-            content=metrics_data,
-            media_type=get_metrics_content_type()
-        )
+        return Response(content=metrics_data, media_type=get_metrics_content_type())
     except Exception as e:
         logger.error(f"Error generating metrics: {str(e)}")
         raise HTTPException(status_code=500, detail="Error generating metrics")
+
 
 # Subscription management endpoints
 @app.post("/api/subscription/cancel")
@@ -408,20 +436,17 @@ async def cancel_subscription(request: CancellationRequest):
     try:
         subscription_api = get_subscription_api()
         result = subscription_api.cancel_subscription(request.dict())
-        
-        if result['success']:
-            return JSONResponse(
-                status_code=result['status_code'],
-                content=result
-            )
+
+        if result["success"]:
+            return JSONResponse(status_code=result["status_code"], content=result)
         else:
             raise HTTPException(
-                status_code=result['status_code'],
-                detail=result['error']
+                status_code=result["status_code"], detail=result["error"]
             )
     except Exception as e:
         logger.error(f"Error cancelling subscription: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.post("/api/subscription/reactivate")
 async def reactivate_subscription(request: ReactivationRequest):
@@ -429,20 +454,17 @@ async def reactivate_subscription(request: ReactivationRequest):
     try:
         subscription_api = get_subscription_api()
         result = subscription_api.reactivate_subscription(request.dict())
-        
-        if result['success']:
-            return JSONResponse(
-                status_code=result['status_code'],
-                content=result
-            )
+
+        if result["success"]:
+            return JSONResponse(status_code=result["status_code"], content=result)
         else:
             raise HTTPException(
-                status_code=result['status_code'],
-                detail=result['error']
+                status_code=result["status_code"], detail=result["error"]
             )
     except Exception as e:
         logger.error(f"Error reactivating subscription: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/api/subscription/status/{user_id}")
 async def get_subscription_status(user_id: str):
@@ -450,20 +472,17 @@ async def get_subscription_status(user_id: str):
     try:
         subscription_api = get_subscription_api()
         result = subscription_api.get_subscription_status(user_id)
-        
-        if result['success']:
-            return JSONResponse(
-                status_code=result['status_code'],
-                content=result
-            )
+
+        if result["success"]:
+            return JSONResponse(status_code=result["status_code"], content=result)
         else:
             raise HTTPException(
-                status_code=result['status_code'],
-                detail=result['error']
+                status_code=result["status_code"], detail=result["error"]
             )
     except Exception as e:
         logger.error(f"Error getting subscription status: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/api/admin/cancellations")
 async def get_cancellation_records(request: Request, admin_user_id: str = Query(...)):
@@ -471,45 +490,41 @@ async def get_cancellation_records(request: Request, admin_user_id: str = Query(
     try:
         subscription_api = get_subscription_api()
         result = subscription_api.get_cancellation_records(admin_user_id)
-        
-        if result['success']:
-            return JSONResponse(
-                status_code=result['status_code'],
-                content=result
-            )
+
+        if result["success"]:
+            return JSONResponse(status_code=result["status_code"], content=result)
         else:
             raise HTTPException(
-                status_code=result['status_code'],
-                detail=result['error']
+                status_code=result["status_code"], detail=result["error"]
             )
     except Exception as e:
         logger.error(f"Error getting cancellation records: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 @app.post("/api/export/data")
 async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_user)):
     """
     Export data with ALLOW_EXPORTS enforcement and admin override capability.
-    
-    This endpoint enforces ALLOW_EXPORTS=false server-side and only allows 
+
+    This endpoint enforces ALLOW_EXPORTS=false server-side and only allows
     exports when:
     1. ALLOW_EXPORTS=true in environment, OR
     2. User has admin role and explicitly requests admin_override=true
-    
+
     All export attempts are logged for audit purposes.
     """
     try:
         export_controller = get_export_controller()
-        
+
         # Validate export type
         try:
             export_type = ExportType(request.export_type)
         except ValueError:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid export_type: {request.export_type}"
+                status_code=400, detail=f"Invalid export_type: {request.export_type}"
             )
-        
+
         # Check if this is an admin override request first
         is_admin_override = False
         if request.admin_override:
@@ -517,35 +532,36 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
             try:
                 admin_user(user)  # This will raise HTTPException if not admin
                 is_admin_override = True
-                logger.info(f"Admin override requested by {user.email} for {export_type.value}")
+                logger.info(
+                    f"Admin override requested by {user.email} for {export_type.value}"
+                )
             except HTTPException:
                 # User is not admin but requested override
-                logger.warning(f"Non-admin user {user.email} attempted admin override for export")
+                logger.warning(
+                    f"Non-admin user {user.email} attempted admin override for export"
+                )
                 raise HTTPException(
                     status_code=403,
-                    detail="Admin privileges required for export override"
+                    detail="Admin privileges required for export override",
                 )
-        
+
         # Check if export is allowed (skip normal check if admin override)
         if is_admin_override:
             allowed = True
             reason = f"Admin override by {user.email}"
-            logger.info(f"Export allowed via admin override: {user.email} exporting {export_type.value}")
+            logger.info(
+                f"Export allowed via admin override: {user.email} exporting {export_type.value}"
+            )
         else:
             allowed, reason = export_controller.is_export_allowed(
-                export_type, 
-                user.email,
-                request.filters
+                export_type, user.email, request.filters
             )
-        
+
         if not allowed:
             # Log blocked export attempt for audit
             logger.warning(f"Export blocked for {user.email}: {reason}")
-            raise HTTPException(
-                status_code=403,
-                detail=f"Export not allowed: {reason}"
-            )
-        
+            raise HTTPException(status_code=403, detail=f"Export not allowed: {reason}")
+
         # Create and process export request
         export_request = export_controller.create_export_request(
             export_type=export_type,
@@ -555,10 +571,10 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
                 "filters": request.filters,
                 "admin_override": request.admin_override,
                 "user_id": user.account_id,
-                "allowed_via_override": is_admin_override
-            }
+                "allowed_via_override": is_admin_override,
+            },
         )
-        
+
         # Process the export (skip is_export_allowed check if admin override)
         if is_admin_override:
             # For admin override, manually create a successful result
@@ -566,22 +582,23 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
         else:
             # Normal processing
             result = export_controller.process_export_request(export_request)
-        
+
         if not result.success:
             raise HTTPException(
-                status_code=500,
-                detail=f"Export failed: {result.reason}"
+                status_code=500, detail=f"Export failed: {result.reason}"
             )
-        
+
         return {
             "message": "Export completed successfully",
             "export_id": result.export_id,
             "export_type": export_type.value,
             "record_count": result.record_count,
-            "allowed_via": "admin_override" if is_admin_override else "normal_permissions",
-            "timestamp": result.timestamp.isoformat() if result.timestamp else None
+            "allowed_via": (
+                "admin_override" if is_admin_override else "normal_permissions"
+            ),
+            "timestamp": result.timestamp.isoformat() if result.timestamp else None,
         }
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions (like 403, 400) as-is
         raise
@@ -589,17 +606,18 @@ async def export_data(request: ExportDataRequest, user: AuthUser = Depends(auth_
         logger.error(f"Unexpected error in export endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 @app.get("/api/export/status")
 async def get_export_status(user: AuthUser = Depends(auth_user)):
     """
     Get export configuration status for the current user.
-    
+
     Returns information about export permissions and available types.
     """
     try:
         export_controller = get_export_controller()
         status_info = export_controller.get_export_status()
-        
+
         # Add user-specific information
         is_admin = False
         try:
@@ -607,67 +625,80 @@ async def get_export_status(user: AuthUser = Depends(auth_user)):
             is_admin = True
         except HTTPException:
             pass
-        
+
         return {
             **status_info,
             "user_email": user.email,
             "user_is_admin": is_admin,
             "admin_override_available": is_admin,
-            "message": "Admin override available" if is_admin else "Standard export permissions apply"
+            "message": (
+                "Admin override available"
+                if is_admin
+                else "Standard export permissions apply"
+            ),
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting export status: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 # ===== BILLING API ROUTES =====
+
 
 @app.post("/api/billing/create-customer")
 async def api_create_customer(user: AuthUser = Depends(auth_user)):
     """Create or retrieve Stripe customer for authenticated user."""
     return await create_customer(user)
 
+
 @app.post("/api/billing/checkout/subscription")
 async def api_checkout_subscription(
     request: CheckoutSessionRequest,
     user: AuthUser = Depends(auth_user),
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     """Create checkout session for subscription."""
     return await create_checkout_session_subscription(request, user, idempotency_key)
 
+
 @app.post("/api/billing/checkout/credits")
 async def api_checkout_credits(
     user: AuthUser = Depends(auth_user),
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     """Create checkout session for credit pack purchase."""
     return await create_checkout_session_credits(user, idempotency_key)
+
 
 @app.post("/api/billing/portal")
 async def api_billing_portal(user: AuthUser = Depends(auth_user)):
     """Create Customer Portal session for billing management."""
     return await create_portal_session(user)
 
+
 @app.get("/api/billing/credits")
 async def api_get_credits(user: AuthUser = Depends(auth_user)):
     """Get current credit balance for authenticated user."""
     return await get_user_credits(user)
+
 
 @app.post("/webhooks/stripe")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events with signature verification."""
     return await handle_webhook(request)
 
+
 # ===== LEAD CLAIMING API ROUTES =====
+
 
 @app.post("/api/leads/claim")
 async def api_claim_lead(
-    request: ClaimLeadRequest,
-    user: AuthUser = Depends(auth_user)
+    request: ClaimLeadRequest, user: AuthUser = Depends(auth_user)
 ):
     """Claim a lead using credits."""
     return await claim_lead(request, user)
+
 
 @app.get("/api/leads/claims")
 async def api_get_user_claims(user: AuthUser = Depends(auth_user)):
@@ -677,8 +708,10 @@ async def api_get_user_claims(user: AuthUser = Depends(auth_user)):
 
 # ===== TX PERMITS DEMO API ROUTES =====
 
+
 class PermitRecord(BaseModel):
     """Permit record model for API responses."""
+
     permit_id: str
     city: str
     permit_type: Optional[str]
@@ -688,149 +721,172 @@ class PermitRecord(BaseModel):
     contractor_name: Optional[str]
     status: Optional[str]
 
+
 class LeadScoreRecord(BaseModel):
     """Lead score record model for API responses."""
+
     permit_id: str
     city: str
     issued_at: Optional[str]
     score: int
     reasons: List[str]
 
+
 @app.get("/api/demo/permits")
-async def get_demo_permits(city: Optional[str] = Query(None, description="Filter by city")):
+async def get_demo_permits(
+    city: Optional[str] = Query(None, description="Filter by city")
+):
     """
     Get latest 50 permits from gold.permits for demo purposes.
-    
+
     This endpoint returns recent permits for the TX permits demo page,
     optionally filtered by city (Dallas, Austin, Arlington).
-    
+
     Args:
         city: Optional city filter
-        
+
     Returns:
         List of recent permit records
     """
     try:
         supabase = get_supabase_client()
-        
+
         # Build query
-        query = supabase.table("gold.permits").select(
-            "permit_id, city, permit_type, issued_at, valuation, "
-            "address_full, contractor_name, status"
-        ).order("issued_at", desc=True).limit(50)
-        
+        query = (
+            supabase.table("gold.permits")
+            .select(
+                "permit_id, city, permit_type, issued_at, valuation, "
+                "address_full, contractor_name, status"
+            )
+            .order("issued_at", desc=True)
+            .limit(50)
+        )
+
         # Apply city filter if provided
         if city:
             query = query.eq("city", city)
-        
+
         # Execute query
         response = query.execute()
-        
+
         if response.data is None:
             logger.warning("No permits data returned from database")
             return []
-        
+
         # Convert to response format
         permits = []
         for record in response.data:
-            permits.append(PermitRecord(
-                permit_id=record.get("permit_id", ""),
-                city=record.get("city", ""),
-                permit_type=record.get("permit_type"),
-                issued_at=record.get("issued_at"),
-                valuation=record.get("valuation"),
-                address_full=record.get("address_full"),
-                contractor_name=record.get("contractor_name"),
-                status=record.get("status")
-            ))
-        
-        logger.info(f"Returned {len(permits)} permits for demo (city filter: {city or 'none'})")
+            permits.append(
+                PermitRecord(
+                    permit_id=record.get("permit_id", ""),
+                    city=record.get("city", ""),
+                    permit_type=record.get("permit_type"),
+                    issued_at=record.get("issued_at"),
+                    valuation=record.get("valuation"),
+                    address_full=record.get("address_full"),
+                    contractor_name=record.get("contractor_name"),
+                    status=record.get("status"),
+                )
+            )
+
+        logger.info(
+            f"Returned {len(permits)} permits for demo (city filter: {city or 'none'})"
+        )
         return permits
-        
+
     except Exception as e:
         logger.error(f"Error fetching demo permits: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch permits data"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch permits data")
+
 
 @app.get("/api/permits/recent")
 async def get_recent_permits():
     """
     Get recent permits for the permits page.
-    
+
     Returns recent permits from public.permits table formatted for the permits UI.
     Prefers permit_id over UUID for identification.
-    
+
     Returns:
         Dict with permits array and metadata
     """
     try:
         supabase = get_supabase_client()
-        
+
         # Build query to get recent permits from public.permits table
         # Prefer permit_id over UUID (id) for identification
         permit_fields = [
-            "permit_id", "id", "source", "permit_number", "city", "address", 
-            "permit_type", "status", "issued_date", "created_at"
+            "permit_id",
+            "id",
+            "source",
+            "permit_number",
+            "city",
+            "address",
+            "permit_type",
+            "status",
+            "issued_date",
+            "created_at",
         ]
-        query = supabase.table("permits").select(
-            ", ".join(permit_fields)
-        ).order("created_at", desc=True).limit(50)
-        
+        query = (
+            supabase.table("permits")
+            .select(", ".join(permit_fields))
+            .order("created_at", desc=True)
+            .limit(50)
+        )
+
         # Execute query
         response = query.execute()
-        
+
         if response.data is None:
             logger.warning("No permits data returned from database")
             return {"permits": []}
-        
+
         # Convert to response format expected by the UI
         permits = []
         for record in response.data:
             # Prefer permit_id over UUID for the id field
             display_id = record.get("permit_id") or record.get("id", "")
-            permits.append({
-                "id": display_id,
-                "source": record.get("source", ""),
-                "permit_number": record.get("permit_number", ""),
-                "jurisdiction": record.get("city", ""),
-                "address": record.get("address", ""),
-                "trade": record.get("permit_type", ""),
-                "status": record.get("status", ""),
-                "created_at": record.get("issued_date") or record.get("created_at")
-            })
-        
+            permits.append(
+                {
+                    "id": display_id,
+                    "source": record.get("source", ""),
+                    "permit_number": record.get("permit_number", ""),
+                    "jurisdiction": record.get("city", ""),
+                    "address": record.get("address", ""),
+                    "trade": record.get("permit_type", ""),
+                    "status": record.get("status", ""),
+                    "created_at": record.get("issued_date") or record.get("created_at"),
+                }
+            )
+
         logger.info(f"Returned {len(permits)} recent permits from public.permits")
         return {"permits": permits}
-        
+
     except Exception as e:
         logger.error(f"Error fetching recent permits: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch permits data"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch permits data")
+
 
 @app.get("/api/permits/selftest")
 async def permits_selftest():
     """
     Selftest endpoint for permit_id functionality.
-    
+
     Creates a test permit with permit_id using the upsert_permit function
     and returns the result for verification.
-    
+
     Returns:
         Dict with test results and permit data
     """
     try:
         supabase = get_supabase_client()
-        
+
         # Create test permit payload with permit_id
         test_permit = {
             "source": "selftest",
             "source_record_id": "test-selftest-001",
             "permit_id": "SELFTEST-001",
-            "permit_number": "SELFTEST-001", 
+            "permit_number": "SELFTEST-001",
             "jurisdiction": "Austin",
             "county": "Travis",
             "status": "Issued",
@@ -845,30 +901,37 @@ async def permits_selftest():
             "applicant": "Test Applicant",
             "owner": "Test Owner",
             "issued_date": datetime.now().isoformat(),
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         }
-        
+
         # Call upsert_permit function
         logger.info("Creating selftest permit with permit_id: SELFTEST-001")
         result = supabase.rpc("upsert_permit", {"p": test_permit}).execute()
-        
+
         if result.data:
-            upsert_result = result.data[0] if isinstance(result.data, list) else result.data
+            upsert_result = (
+                result.data[0] if isinstance(result.data, list) else result.data
+            )
             permit_uuid = upsert_result.get("id")
             action = upsert_result.get("action", "unknown")
-            
+
             logger.info(f"Upsert completed: {action}, permit UUID: {permit_uuid}")
-            
+
             # Verify the permit was created with correct permit_id
-            verification_query = supabase.table("permits").select(
-                "source, permit_id, permit_number, jurisdiction, status, created_at"
-            ).eq("source", "selftest").eq("permit_id", "SELFTEST-001")
-            
+            verification_query = (
+                supabase.table("permits")
+                .select(
+                    "source, permit_id, permit_number, jurisdiction, status, created_at"
+                )
+                .eq("source", "selftest")
+                .eq("permit_id", "SELFTEST-001")
+            )
+
             verification_result = verification_query.execute()
-            
+
             if verification_result.data:
                 permit_data = verification_result.data[0]
-                
+
                 return {
                     "success": True,
                     "message": "Selftest permit created successfully",
@@ -876,149 +939,159 @@ async def permits_selftest():
                     "permit_uuid": str(permit_uuid),
                     "verification": {
                         "source": permit_data.get("source"),
-                        "permit_id": permit_data.get("permit_id"), 
+                        "permit_id": permit_data.get("permit_id"),
                         "permit_number": permit_data.get("permit_number"),
                         "jurisdiction": permit_data.get("jurisdiction"),
                         "status": permit_data.get("status"),
-                        "created_at": permit_data.get("created_at")
+                        "created_at": permit_data.get("created_at"),
                     },
-                    "test_query": "SELECT source, permit_id, permit_number FROM public.permits WHERE source='selftest'"
+                    "test_query": "SELECT source, permit_id, permit_number FROM public.permits WHERE source='selftest'",
                 }
             else:
                 return {
                     "success": False,
                     "message": "Permit was created but verification failed",
                     "upsert_action": action,
-                    "permit_uuid": str(permit_uuid)
+                    "permit_uuid": str(permit_uuid),
                 }
         else:
             return {
                 "success": False,
                 "message": "upsert_permit function returned no data",
-                "result": result.data
+                "result": result.data,
             }
-            
-    except Exception as e:
+
+    except Exception:
         logger.error("Error in permits selftest", exc_info=True)
-        return {
-            "success": False,
-            "message": "Selftest failed due to an internal error"
-        }
+        return {"success": False, "message": "Selftest failed due to an internal error"}
+
 
 @app.get("/api/leads/scores")
 async def get_lead_scores(
     city: Optional[str] = Query(None, description="Filter by city"),
-    limit: int = Query(50, ge=1, le=100, description="Number of results (1-100)")
+    limit: int = Query(50, ge=1, le=100, description="Number of results (1-100)"),
 ):
     """
     Get last 50 scored permits with scores and reasons.
-    
+
     This endpoint returns recent permits along with their lead scores
     from the gold.lead_scores table, joined with permit data.
-    
+
     Args:
         city: Optional city filter
         limit: Number of results to return (default 50, max 100)
-        
+
     Returns:
         List of permits with their lead scores
     """
     try:
         supabase = get_supabase_client()
-        
+
         # Query to join permits with lead scores
         # Note: Supabase doesn't support complex joins easily, so we'll do it in two queries
-        
+
         # First, get recent lead scores
-        scores_query = supabase.table("gold.lead_scores").select(
-            "lead_id, score, reasons, created_at"
-        ).eq("version", "v0").order("created_at", desc=True).limit(limit)
-        
+        scores_query = (
+            supabase.table("gold.lead_scores")
+            .select("lead_id, score, reasons, created_at")
+            .eq("version", "v0")
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+
         scores_response = scores_query.execute()
-        
+
         if not scores_response.data:
             logger.info("No lead scores found")
             return []
-        
+
         # Extract lead IDs to get corresponding permits
         # lead_id is SHA1 hash of source_id||permit_id, so we need to match differently
         # For now, let's get recent permits and match them up
-        
-        permits_query = supabase.table("gold.permits").select(
-            "source_id, permit_id, city, issued_at, address_full"
-        ).order("updated_at", desc=True).limit(limit * 2)  # Get more to increase match chances
-        
+
+        permits_query = (
+            supabase.table("gold.permits")
+            .select("source_id, permit_id, city, issued_at, address_full")
+            .order("updated_at", desc=True)
+            .limit(limit * 2)
+        )  # Get more to increase match chances
+
         if city:
             permits_query = permits_query.eq("city", city)
-        
+
         permits_response = permits_query.execute()
-        
+
         if not permits_response.data:
             logger.info("No permits found")
             return []
-        
+
         # Build a map of permit records for matching
         permit_map = {}
         for permit in permits_response.data:
             # Compute the same lead_id hash used in publishing
             import hashlib
-            lead_id = hashlib.sha1(f"{permit['source_id']}||{permit['permit_id']}".encode()).hexdigest()
+
+            lead_id = hashlib.sha1(
+                f"{permit['source_id']}||{permit['permit_id']}".encode()
+            ).hexdigest()
             permit_map[lead_id] = permit
-        
+
         # Match scores with permits
         results = []
         for score_record in scores_response.data:
             lead_id = score_record["lead_id"]
-            
+
             if lead_id in permit_map:
                 permit = permit_map[lead_id]
-                
+
                 # Apply city filter if specified
                 if city and permit.get("city") != city:
                     continue
-                
-                results.append(LeadScoreRecord(
-                    permit_id=permit["permit_id"],
-                    city=permit.get("city", ""),
-                    issued_at=permit.get("issued_at"),
-                    score=score_record["score"],
-                    reasons=score_record["reasons"]
-                ))
-        
+
+                results.append(
+                    LeadScoreRecord(
+                        permit_id=permit["permit_id"],
+                        city=permit.get("city", ""),
+                        issued_at=permit.get("issued_at"),
+                        score=score_record["score"],
+                        reasons=score_record["reasons"],
+                    )
+                )
+
         # Sort by score descending
         results.sort(key=lambda x: x.score, reverse=True)
-        
+
         # Limit results
         results = results[:limit]
-        
-        logger.info(f"Returned {len(results)} scored permits (city filter: {city or 'none'})")
+
+        logger.info(
+            f"Returned {len(results)} scored permits (city filter: {city or 'none'})"
+        )
         return results
-        
+
     except Exception as e:
         logger.error(f"Error fetching lead scores: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch lead scores"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch lead scores")
 
 
 # ===== LEAD SCORING API ROUTES =====
+
 
 @app.post("/v1/lead-score", response_model=LeadScoreResponse)
 async def score_lead_v1(request: LeadScoreRequest):
     """
     Score a lead using the specified scoring algorithm version.
-    
+
     This endpoint accepts a normalized lead payload and returns a score (0-100)
     with detailed reasons. Supports versioned scoring algorithms for A/B testing
     and algorithm evolution.
-    
+
     Args:
         request: Lead scoring request containing lead data and optional version
-        
+
     Returns:
         Lead score response with score, reasons, and metadata
-        
+
     Raises:
         HTTPException: For invalid input data or scoring errors
     """
@@ -1027,63 +1100,63 @@ async def score_lead_v1(request: LeadScoreRequest):
         if request.version not in ["v0"]:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported scoring version: {request.version}"
+                detail=f"Unsupported scoring version: {request.version}",
             )
-        
+
         # Convert Pydantic model to dict for scoring function
         lead_data = request.lead.dict(exclude_none=True)
-        
+
         # Generate lead_id if not provided
-        if not lead_data.get('lead_id'):
-            lead_data['lead_id'] = str(uuid.uuid4())
-        
+        if not lead_data.get("lead_id"):
+            lead_data["lead_id"] = str(uuid.uuid4())
+
         # Score the lead using v0 algorithm
         if request.version == "v0":
             result = score_v0(lead_data)
         else:
             raise HTTPException(
-                status_code=500,
-                detail="Scoring algorithm not implemented"
+                status_code=500, detail="Scoring algorithm not implemented"
             )
-        
+
         # Persist score to database
         try:
             await persist_lead_score(
-                lead_id=lead_data['lead_id'],
+                lead_id=lead_data["lead_id"],
                 version=request.version,
-                score=result['score'],
-                reasons=result['reasons']
+                score=result["score"],
+                reasons=result["reasons"],
             )
         except Exception as e:
             logger.warning(f"Failed to persist lead score: {str(e)}")
             # Continue processing even if persistence fails
-        
+
         # Build response
         response = LeadScoreResponse(
-            lead_id=lead_data['lead_id'],
+            lead_id=lead_data["lead_id"],
             version=request.version,
-            score=result['score'],
-            reasons=result['reasons'],
-            scored_at=datetime.now().isoformat()
+            score=result["score"],
+            reasons=result["reasons"],
+            scored_at=datetime.now().isoformat(),
         )
-        
+
         logger.info(f"Lead scored: {lead_data['lead_id']} -> {result['score']}/100")
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error scoring lead: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail="Internal server error during lead scoring"
+            status_code=500, detail="Internal server error during lead scoring"
         )
 
 
-async def persist_lead_score(lead_id: str, version: str, score: int, reasons: List[str]):
+async def persist_lead_score(
+    lead_id: str, version: str, score: int, reasons: List[str]
+):
     """
     Persist lead score to gold.lead_scores table.
-    
+
     Args:
         lead_id: UUID string for the lead
         version: Scoring algorithm version (e.g., 'v0')
@@ -1092,21 +1165,29 @@ async def persist_lead_score(lead_id: str, version: str, score: int, reasons: Li
     """
     try:
         supabase = get_supabase_client()
-        
+
         # Insert into gold.lead_scores table
-        result = supabase.table('gold.lead_scores').insert({
-            'lead_id': lead_id,
-            'version': version,
-            'score': score,
-            'reasons': reasons,  # This will be stored as JSONB
-            'created_at': datetime.now().isoformat()
-        }).execute()
-        
+        result = (
+            supabase.table("gold.lead_scores")
+            .insert(
+                {
+                    "lead_id": lead_id,
+                    "version": version,
+                    "score": score,
+                    "reasons": reasons,  # This will be stored as JSONB
+                    "created_at": datetime.now().isoformat(),
+                }
+            )
+            .execute()
+        )
+
         if not result.data:
             raise Exception("No data returned from insert")
-            
-        logger.info(f"Persisted score for lead {lead_id}: {score}/100 (version {version})")
-        
+
+        logger.info(
+            f"Persisted score for lead {lead_id}: {score}/100 (version {version})"
+        )
+
     except Exception as e:
         logger.error(f"Failed to persist lead score: {str(e)}")
         raise
@@ -1114,93 +1195,109 @@ async def persist_lead_score(lead_id: str, version: str, score: int, reasons: Li
 
 # ===== DEBUG ENDPOINTS =====
 
+
 @app.get("/api/_debug/sb")
-async def debug_sb(request: Request, x_debug_key: str = Header(None, alias="X-Debug-Key")):
+async def debug_sb(
+    request: Request, x_debug_key: str = Header(None, alias="X-Debug-Key")
+):
     """
     Watchdog debug endpoint for Supabase data flow monitoring.
-    
+
     Checks recent permit ingestion and system health for automated monitoring.
     Protected with X-Debug-Key header authentication.
-    
+
     Args:
         x_debug_key: Debug API key provided in X-Debug-Key header
-        
+
     Returns:
         Dict with ok (boolean) and permits (count) fields for watchdog monitoring
     """
     start_time = time.time()
     path = request.url.path
-    
+
     # Validate debug API key
     debug_api_key = os.getenv("DEBUG_API_KEY")
     if not debug_api_key:
-        logger.error({
-            "path": path,
-            "error": "DEBUG_API_KEY not configured",
-            "status": 503
-        })
-        raise HTTPException(
-            status_code=503, 
-            detail="Debug endpoint not configured"
+        logger.error(
+            {"path": path, "error": "DEBUG_API_KEY not configured", "status": 503}
         )
-    
+        raise HTTPException(status_code=503, detail="Debug endpoint not configured")
+
     if not x_debug_key or x_debug_key != debug_api_key:
-        logger.warning({
-            "path": path,
-            "provided_key": hashlib.sha256(x_debug_key.encode()).hexdigest() if x_debug_key else "none",
-            "status": 401
-        })
-        raise HTTPException(
-            status_code=401, 
-            detail="Unauthorized. X-Debug-Key header required."
+        logger.warning(
+            {
+                "path": path,
+                "provided_key": (
+                    hashlib.sha256(x_debug_key.encode()).hexdigest()
+                    if x_debug_key
+                    else "none"
+                ),
+                "status": 401,
+            }
         )
-    
+        raise HTTPException(
+            status_code=401, detail="Unauthorized. X-Debug-Key header required."
+        )
+
     logger.info({"path": path, "method": "GET"})
-    
+
     try:
         supabase = get_supabase_client()
-        
+
         # Check overall system health
         ok = True
         permits_count = 0
-        
+
         # Check database connectivity
         try:
             # Use a fundamental table for health check, e.g., 'permits'
-            result = supabase.table('permits').select('id').limit(1).execute()
+            result = supabase.table("permits").select("id").limit(1).execute()
             if not result.data:
                 ok = False
         except Exception as e:
             logger.error(f"Database connectivity check failed: {str(e)}")
             ok = False
-        
+
         # Check recent permit ingestion (last 24 hours)
         try:
             from datetime import datetime, timezone, timedelta
+
             yesterday = datetime.now(timezone.utc) - timedelta(hours=24)
-            
-            permits_result = supabase.table("gold.permits").select(
-                "permit_id"
-            ).gte("issued_at", yesterday.isoformat()).execute()
-            
+
+            permits_result = (
+                supabase.table("gold.permits")
+                .select("permit_id")
+                .gte("issued_at", yesterday.isoformat())
+                .execute()
+            )
+
             if permits_result.data:
                 permits_count = len(permits_result.data)
-            
+
             # If no recent permits, check if ingestion is stale
             if permits_count == 0:
                 # Check ingestion state
-                ingest_result = supabase.table('meta.ingest_state').select(
-                    'last_run, last_status'
-                ).order('last_run', desc=True).limit(1).execute()
-                
+                ingest_result = (
+                    supabase.table("meta.ingest_state")
+                    .select("last_run, last_status")
+                    .order("last_run", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+
                 if ingest_result.data:
                     last_run = datetime.fromisoformat(
-                        ingest_result.data[0]['last_run'].replace('Z', '+00:00')
+                        ingest_result.data[0]["last_run"].replace("Z", "+00:00")
                     )
-                    age_hours = (datetime.now(timezone.utc) - last_run).total_seconds() / 3600
-                    
+                    age_hours = (
+                        datetime.now(timezone.utc) - last_run
+                    ).total_seconds() / 3600
+
                     # If ingestion is stale (>25 hours) or failed, mark as not ok
-                    if age_hours > 25 or ingest_result.data[0]['last_status'] != 'success':
+                    if (
+                        age_hours > 25
+                        or ingest_result.data[0]["last_status"] != "success"
+                    ):
                         ok = False
                 else:
                     # No ingestion state found
@@ -1209,97 +1306,89 @@ async def debug_sb(request: Request, x_debug_key: str = Header(None, alias="X-De
             logger.error(f"Permits check failed: {str(e)}")
             ok = False
             permits_count = 0
-        
+
         response_time = round((time.time() - start_time) * 1000, 2)
-        
+
         result = {
             "ok": ok,
             "permits": permits_count,
             "response_time_ms": response_time,
-            "ts": int(time.time())
+            "ts": int(time.time()),
         }
-        
-        logger.info({
-            "path": path,
-            "ok": ok,
-            "permits": permits_count,
-            "response_time_ms": response_time,
-            "status": 200
-        })
-        
+
+        logger.info(
+            {
+                "path": path,
+                "ok": ok,
+                "permits": permits_count,
+                "response_time_ms": response_time,
+                "status": 200,
+            }
+        )
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error({
-            "path": path,
-            "error": str(e),
-            "status": 500
-        })
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        logger.error({"path": path, "error": str(e), "status": 500})
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/api/leads/trace/{trace_id}")
 async def get_trace_debug(
     trace_id: str,
     request: Request,
-    x_debug_key: str = Header(None, alias="X-Debug-Key")
+    x_debug_key: str = Header(None, alias="X-Debug-Key"),
 ):
     """
     Debug endpoint to retrieve trace information for a specific trace_id.
-    
+
     Protected with X-Debug-Key header authentication.
     Returns all ingest_logs and related processing information for debugging.
-    
+
     Args:
         trace_id: UUID trace identifier to look up
         x_debug_key: Debug API key provided in X-Debug-Key header
-        
+
     Returns:
         Dict containing ingest_logs, related leads, and processing summary
     """
     start_time = time.time()
     path = request.url.path
-    
+
     # Validate debug API key
     debug_api_key = os.getenv("DEBUG_API_KEY")
     if not debug_api_key:
-        logger.error({
-            "trace_id": trace_id, 
-            "path": path,
-            "error": "DEBUG_API_KEY not configured",
-            "status": 503
-        })
-        raise HTTPException(
-            status_code=503, 
-            detail="Debug endpoint not configured"
+        logger.error(
+            {
+                "trace_id": trace_id,
+                "path": path,
+                "error": "DEBUG_API_KEY not configured",
+                "status": 503,
+            }
         )
-    
+        raise HTTPException(status_code=503, detail="Debug endpoint not configured")
+
     if not x_debug_key or x_debug_key != debug_api_key:
-        logger.warning({
-            "trace_id": trace_id,
-            "path": path,
-            "provided_key": x_debug_key if x_debug_key else "none",
-            "status": 401
-        })
-        raise HTTPException(
-            status_code=401, 
-            detail="Unauthorized. X-Debug-Key header required."
+        logger.warning(
+            {
+                "trace_id": trace_id,
+                "path": path,
+                "provided_key": x_debug_key if x_debug_key else "none",
+                "status": 401,
+            }
         )
-    
-    logger.info({
-        "trace_id": trace_id, 
-        "path": path, 
-        "method": "GET"
-    })
-    
+        raise HTTPException(
+            status_code=401, detail="Unauthorized. X-Debug-Key header required."
+        )
+
+    logger.info({"trace_id": trace_id, "path": path, "method": "GET"})
+
     try:
         # For testing purposes, create a mock response structure
         # In production, this would connect to real Supabase
-        
+
         # Mock Supabase response for testing
         if trace_id == "test-trace-123":
             # Mock ingest logs for demo
@@ -1310,7 +1399,7 @@ async def get_trace_debug(
                     "stage": "validate",
                     "ok": True,
                     "details": {"message": "Lead validation passed"},
-                    "created_at": "2024-01-01T12:00:00Z"
+                    "created_at": "2024-01-01T12:00:00Z",
                 },
                 {
                     "id": 2,
@@ -1318,90 +1407,110 @@ async def get_trace_debug(
                     "stage": "db_insert",
                     "ok": True,
                     "details": {"lead_id": "12345"},
-                    "created_at": "2024-01-01T12:00:01Z"
-                }
+                    "created_at": "2024-01-01T12:00:01Z",
+                },
             ]
-            
+
             # Mock related leads
             related_leads = [
                 {
                     "id": 12345,
                     "address": "123 Test St, Houston, TX",
                     "description": "Test permit for roofing",
-                    "created_at": "2024-01-01T12:00:02Z"
+                    "created_at": "2024-01-01T12:00:02Z",
                 }
             ]
         else:
             # For other trace IDs, try to connect to Supabase
             try:
                 supabase = get_supabase_client()
-                
+
                 # Get all ingest_logs for this trace_id
-                logs_response = supabase.table("ingest_logs").select("*").eq("trace_id", trace_id).order("created_at", desc=False).execute()
-                
+                logs_response = (
+                    supabase.table("ingest_logs")
+                    .select("*")
+                    .eq("trace_id", trace_id)
+                    .order("created_at", desc=False)
+                    .execute()
+                )
+
                 if logs_response.data is None:
                     logs = []
                 else:
                     logs = logs_response.data
-                
+
                 # Try to find related leads by trace_id (if leads table has trace_id field)
                 # or by looking for leads created around the same time
                 related_leads = []
-                
+
                 # First try direct trace_id match (if the leads table has a trace_id field)
                 try:
-                    leads_response = supabase.table("leads").select("*").eq("id", trace_id).execute()
+                    leads_response = (
+                        supabase.table("leads").select("*").eq("id", trace_id).execute()
+                    )
                     if leads_response.data:
                         related_leads = leads_response.data
                 except Exception:
                     # If direct match fails, try time-based lookup
                     pass
-                
+
                 # If no direct match and we have logs, look for leads created around the same time
                 if not related_leads and logs:
                     try:
                         first_log_time = logs[0]["created_at"]
                         # Look for leads created within 1 minute of the trace
-                        
+
                         # Calculate time window (1 minute before and after)
                         from datetime import datetime, timedelta
-                        log_dt = datetime.fromisoformat(first_log_time.replace('Z', '+00:00'))
+
+                        log_dt = datetime.fromisoformat(
+                            first_log_time.replace("Z", "+00:00")
+                        )
                         start_window = (log_dt - timedelta(minutes=1)).isoformat()
                         end_window = (log_dt + timedelta(minutes=1)).isoformat()
-                        
-                        nearby_leads_response = supabase.table("leads").select("*").gte("created_at", start_window).lte("created_at", end_window).order("created_at", desc=True).limit(10).execute()
-                        
+
+                        nearby_leads_response = (
+                            supabase.table("leads")
+                            .select("*")
+                            .gte("created_at", start_window)
+                            .lte("created_at", end_window)
+                            .order("created_at", desc=True)
+                            .limit(10)
+                            .execute()
+                        )
+
                         if nearby_leads_response.data:
                             related_leads = nearby_leads_response.data
                     except Exception as e:
-                        logger.warning({
-                            "trace_id": trace_id,
-                            "error": str(e)
-                        })
+                        logger.warning({"trace_id": trace_id, "error": str(e)})
             except Exception as e:
                 # If Supabase connection fails, return empty but valid response
-                logger.warning({
-                    "trace_id": trace_id,
-                    "error": f"Supabase connection failed: {str(e)}"
-                })
+                logger.warning(
+                    {
+                        "trace_id": trace_id,
+                        "error": f"Supabase connection failed: {str(e)}",
+                    }
+                )
                 logs = []
                 related_leads = []
-        
+
         duration_ms = round((time.time() - start_time) * 1000, 2)
-        
+
         # Build response summary
         successful_stages = [log for log in logs if log.get("ok", False)]
         failed_stages = [log for log in logs if not log.get("ok", True)]
-        
-        logger.info({
-            "trace_id": trace_id,
-            "path": path,
-            "logs_count": len(logs),
-            "leads_count": len(related_leads),
-            "duration_ms": duration_ms,
-            "status": 200
-        })
-        
+
+        logger.info(
+            {
+                "trace_id": trace_id,
+                "path": path,
+                "logs_count": len(logs),
+                "leads_count": len(related_leads),
+                "duration_ms": duration_ms,
+                "status": 200,
+            }
+        )
+
         return {
             "trace_id": trace_id,
             "ingest_logs": logs,
@@ -1411,172 +1520,149 @@ async def get_trace_debug(
                 "successful_stages": len(successful_stages),
                 "failed_stages": len(failed_stages),
                 "stages": [log.get("stage") for log in logs],
-                "duration_ms": duration_ms
-            }
+                "duration_ms": duration_ms,
+            },
         }
-        
+
     except Exception as e:
         duration_ms = round((time.time() - start_time) * 1000, 2)
-        logger.error({
-            "trace_id": trace_id,
-
-            "path": path,
-
-
-            "error": str(e),
-            "duration_ms": duration_ms,
-            "status": 500
-        })
-        
-        raise HTTPException(
-
-            status_code=500,
-            detail="Internal server error"
+        logger.error(
+            {
+                "trace_id": trace_id,
+                "path": path,
+                "error": str(e),
+                "duration_ms": duration_ms,
+                "status": 500,
+            }
         )
+
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 def verify_debug_key(x_debug_key: str = Header(None)) -> bool:
     """
     Verify X-Debug-Key header for trace endpoint access.
-    
+
     Args:
         x_debug_key: Debug key from X-Debug-Key header
-        
+
     Returns:
         True if authentication successful
-        
+
     Raises:
         HTTPException: If authentication fails
     """
     expected_debug_key = os.getenv("X_DEBUG_KEY")
-    
+
     if not expected_debug_key:
         raise HTTPException(
-            status_code=503, 
-            detail="Debug key not configured on server"
+            status_code=503, detail="Debug key not configured on server"
         )
-    
-    if not x_debug_key:
-        raise HTTPException(
-            status_code=401,
-            detail="X-Debug-Key header required"
-        )
-    
-    if not secrets.compare_digest(x_debug_key, expected_debug_key):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid debug key"
-        )
-    
-    return True
 
+    if not x_debug_key:
+        raise HTTPException(status_code=401, detail="X-Debug-Key header required")
+
+    if not secrets.compare_digest(x_debug_key, expected_debug_key):
+        raise HTTPException(status_code=401, detail="Invalid debug key")
+
+    return True
 
 
 @app.get("/api/leads/trace/{trace_id}")
 async def get_trace_logs_endpoint(
-    trace_id: str,
-    debug_auth: bool = Depends(verify_debug_key)
+    trace_id: str, debug_auth: bool = Depends(verify_debug_key)
 ):
     """
     Retrieve all ingest logs for a specific trace ID.
-    
+
     This endpoint is protected by X-Debug-Key header and returns all rows
     from ingest_logs table for the given trace ID.
-    
+
     Args:
         trace_id: The trace ID to retrieve logs for
         debug_auth: Debug authentication (injected by dependency)
-        
+
     Returns:
         List of ingest log entries for the trace ID
     """
     try:
         logs = get_trace_logs(trace_id)
-        
+
         if logs is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Error retrieving trace logs"
-            )
-        
-        return {
-            "trace_id": trace_id,
-            "logs": logs,
-            "total_logs": len(logs)
-        }
-        
+            raise HTTPException(status_code=500, detail="Error retrieving trace logs")
+
+        return {"trace_id": trace_id, "logs": logs, "total_logs": len(logs)}
+
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
         logger.error(f"Error in trace logs endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ===================================================================
 # LEAD SCORING V0 API ENDPOINTS
 # ===================================================================
 
+
 class LeadScoreRequest(BaseModel):
     """Request model for lead scoring."""
+
     lead: Dict[str, Any]
-    
+
+
 class LeadScoreResponse(BaseModel):
     """Response model for lead scoring."""
+
     score: int
     reasons: List[str]
     version: str
+
 
 @app.post("/v1/lead-score", response_model=LeadScoreResponse)
 async def score_lead(request: LeadScoreRequest, user: AuthUser = Depends(auth_user)):
     """
     Score a lead using the v0 algorithm.
-    
-    This endpoint takes a lead payload and returns a score (0-100) with 
+
+    This endpoint takes a lead payload and returns a score (0-100) with
     detailed reasons using the frozen v0 scoring algorithm.
     """
     try:
         # Validate and score the lead
         from scoring.v0 import score_v0, validate_lead_input
-        
+
         # Validate input
         validation_errors = validate_lead_input(request.lead)
         if validation_errors:
             raise HTTPException(
                 status_code=400,
-                detail=f"Lead validation failed: {'; '.join(validation_errors)}"
+                detail=f"Lead validation failed: {'; '.join(validation_errors)}",
             )
-        
+
         # Score the lead
         result = score_v0(request.lead)
-        
+
         return LeadScoreResponse(
-            score=result["score"],
-            reasons=result["reasons"],
-            version="v0"
+            score=result["score"], reasons=result["reasons"], version="v0"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error scoring lead: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to score lead"
-        )
+        raise HTTPException(status_code=500, detail="Failed to score lead")
+
 
 @app.get("/v1/leads/{lead_id}/score")
 async def get_lead_score(
-    lead_id: str, 
+    lead_id: str,
     version: str = Query("v0", description="Scoring version"),
-    user: AuthUser = Depends(auth_user)
+    user: AuthUser = Depends(auth_user),
 ):
     """
     Get the cached score for a specific lead.
-    
+
     This endpoint retrieves the score from gold.lead_scores table
     for the specified lead and version.
     """
@@ -1586,41 +1672,43 @@ async def get_lead_score(
             uuid_obj = uuid.UUID(lead_id)
         except ValueError:
             raise HTTPException(
-                status_code=400,
-                detail="Invalid lead_id format - must be UUID"
+                status_code=400, detail="Invalid lead_id format - must be UUID"
             )
-        
+
         # Query the lead_scores table
         supabase = get_supabase_client()
-        
-        response = supabase.table("gold.lead_scores").select("*").eq(
-            "lead_id", str(uuid_obj)
-        ).eq("version", version).order("created_at", desc=True).limit(1).execute()
-        
+
+        response = (
+            supabase.table("gold.lead_scores")
+            .select("*")
+            .eq("lead_id", str(uuid_obj))
+            .eq("version", version)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
         if not response.data:
             raise HTTPException(
                 status_code=404,
-                detail=f"No score found for lead {lead_id} version {version}"
+                detail=f"No score found for lead {lead_id} version {version}",
             )
-        
+
         score_record = response.data[0]
-        
+
         return {
             "lead_id": lead_id,
             "version": version,
             "score": score_record["score"],
             "reasons": score_record["reasons"],
-            "created_at": score_record["created_at"]
+            "created_at": score_record["created_at"],
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error retrieving lead score: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve lead score"
-        )
+        raise HTTPException(status_code=500, detail="Failed to retrieve lead score")
 
 
 # Global exception handler
@@ -1628,23 +1716,14 @@ async def get_lead_score(
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unhandled errors."""
     logger.error(f"Unhandled exception: {str(exc)}")
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error"}
-    )
+    return JSONResponse(status_code=500, content={"error": "Internal server error"})
+
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Get port from environment variable with default fallback
     port = int(os.getenv("PORT", 8000))
-    
-    # Run the application
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=port,
-        log_level="info",
-        reload=False
-    )
 
+    # Run the application
+    uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=False)

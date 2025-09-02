@@ -1,0 +1,11 @@
+.github/workflows/data-quality.yml
+DATA_QUALITY_IMPLEMENTATION.md
+data/yesterday.csv
+data_quality/__init__.py
+data_quality/permits_validation.py
+data_quality/permits_validation_old.py
+data_quality/tx_validation.py
+data_quality/uncommitted/data_docs/local_site/index.html
+data_quality/validation_results.json
+data_quality/validation_suite.py
+export_yesterday_csv.py
