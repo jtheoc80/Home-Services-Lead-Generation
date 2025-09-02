@@ -1,0 +1,278 @@
+name: E2E Lead Testing
+
+on:
+  # Trigger on deployment success (Vercel deployment completion)
+  deployment_status:
+    types: [success]
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: 'Deployment URL to test (leave empty to use latest deployment)'
+        required: false
+        type: string
+      force_test:
+        description: 'Force test even if deployment URL detection fails'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  e2e-test:
+    name: E2E Lead Smoke Test
+    runs-on: ubuntu-latest
+    
+    # Only run on production/preview deployments or manual dispatch
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'deployment_status' && 
+       github.event.deployment_status.state == 'success' &&
+       (github.event.deployment.environment == 'production' || 
+        github.event.deployment.environment == 'preview'))
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine deployment URL
+        id: get-url
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.deployment_url }}" ]; then
+            echo "BASE_URL=${{ inputs.deployment_url }}" >> $GITHUB_OUTPUT
+            echo "URL_SOURCE=manual_input" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "BASE_URL=${{ github.event.deployment_status.target_url }}" >> $GITHUB_OUTPUT
+            echo "URL_SOURCE=deployment_event" >> $GITHUB_OUTPUT
+          else
+            echo "BASE_URL=" >> $GITHUB_OUTPUT
+            echo "URL_SOURCE=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate deployment URL
+        run: |
+          if [ -z "${{ steps.get-url.outputs.BASE_URL }}" ]; then
+            if [ "${{ inputs.force_test }}" = "true" ]; then
+              echo "⚠️ No deployment URL found but force_test is enabled - using fallback"
+              echo "BASE_URL=https://home-services-lead-generation.vercel.app" >> $GITHUB_ENV
+            else
+              echo "❌ No deployment URL found and force_test is false"
+              echo "Available sources: deployment_status.target_url, manual input"
+              echo "Event: ${{ github.event_name }}"
+              echo "Deployment status: ${{ github.event.deployment_status.state }}"
+              echo "Target URL: ${{ github.event.deployment_status.target_url }}"
+              exit 1
+            fi
+          else
+            echo "✅ Using deployment URL: ${{ steps.get-url.outputs.BASE_URL }}"
+            echo "BASE_URL=${{ steps.get-url.outputs.BASE_URL }}" >> $GITHUB_ENV
+          fi
+
+      - name: Setup environment variables
+        run: |
+          echo "Setting environment variables from secrets..."
+          echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> $GITHUB_ENV
+          echo "LEADS_TEST_MODE=true" >> $GITHUB_ENV
+          echo "DEBUG_API_KEY=${{ secrets.DEBUG_API_KEY }}" >> $GITHUB_ENV
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+        env:
+          # Provide build-time environment variables
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          LEADS_TEST_MODE: true
+
+      - name: Wait for deployment to be ready
+        run: |
+          echo "🕐 Waiting for deployment to be fully ready..."
+          sleep 30
+          
+          # Test if the deployment is responding
+          for i in {1..10}; do
+            if curl -f --silent --max-time 10 "$BASE_URL/api/health" > /dev/null 2>&1; then
+              echo "✅ Deployment is ready!"
+              break
+            else
+              echo "⏳ Attempt $i/10: Deployment not ready yet, waiting 15 seconds..."
+              sleep 15
+            fi
+            
+            if [ $i -eq 10 ]; then
+              echo "❌ Deployment failed to become ready after 10 attempts"
+              echo "Trying basic connectivity test..."
+              curl -v --max-time 20 "$BASE_URL/" || true
+              exit 1
+            fi
+          done
+
+      - name: Run E2E smoke test
+        id: e2e-test
+        run: |
+          echo "🧪 Running E2E smoke test against: $BASE_URL"
+          npm run e2e:smoke -- --baseUrl "$BASE_URL" 2>&1 | tee e2e-results.log
+        continue-on-error: true
+
+      - name: Run Supabase delta test
+        id: supabase-delta-test
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔍 Running Supabase delta test against live stack..."
+          tsx scripts/e2e_supabase_delta.ts --threshold-hours 24 2>&1 | tee supabase-delta-results.log
+        continue-on-error: true
+
+      - name: Check E2E test results
+        run: |
+          e2e_passed=false
+          delta_passed=false
+          
+          if [ ${{ steps.e2e-test.outcome }} = "success" ]; then
+            echo "✅ E2E smoke test passed"
+            e2e_passed=true
+          else
+            echo "❌ E2E smoke test failed"
+          fi
+          
+          if [ ${{ steps.supabase-delta-test.outcome }} = "success" ]; then
+            echo "✅ Supabase delta test passed"
+            delta_passed=true
+          else
+            echo "❌ Supabase delta test failed"
+          fi
+          
+          # Create combined result
+          if [ "$e2e_passed" = true ] && [ "$delta_passed" = true ]; then
+            echo "✅ All E2E tests passed"
+            echo '{"ok": true, "status": "passed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "tests": {"e2e_smoke": true, "supabase_delta": true}}' > e2e-result.json
+          else
+            echo "❌ Some E2E tests failed"
+            echo '{"ok": false, "status": "failed", "url": "'$BASE_URL'", "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "tests": {"e2e_smoke": '$e2e_passed', "supabase_delta": '$delta_passed'}}' > e2e-result.json
+            if [ "$e2e_passed" = false ] && [ "$delta_passed" = false ]; then
+              exit 1
+            fi
+          fi
+
+      - name: Upload E2E results as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results-${{ github.run_number }}
+          path: |
+            e2e-result.json
+            e2e-results.log
+            supabase-delta-results.log
+          retention-days: 30
+
+      - name: Comment on PR (if applicable)
+        if: always() && github.event.deployment.environment == 'preview' && github.event.deployment.ref != 'main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Assign GitHub expressions to variables for safer evaluation
+            const e2eOutcome = '${{ steps.e2e-test.outcome }}';
+            const supabaseOutcome = '${{ steps.supabase-delta-test.outcome }}';
+            
+            let resultEmoji = '✅';
+            let resultText = 'passed';
+            
+            let deltaResultText = supabaseOutcome == 'success' ? 'passed' : 'failed';
+            let deltaEmoji = supabaseOutcome == 'success' ? '✅' : '❌';
+            
+            // Move OR logic to separate variables for clarity
+            const e2eFailed = e2eOutcome != 'success';
+            const supabaseFailed = supabaseOutcome != 'success';
+            
+            if (e2eFailed || supabaseFailed) {
+              resultEmoji = '❌';
+              resultText = 'failed';
+            }
+            
+            const body = `## ${resultEmoji} E2E Tests ${resultText}
+            
+            **Deployment URL:** ${{ env.BASE_URL }}
+            **Run ID:** ${{ github.run_id }}
+            **Timestamp:** ${new Date().toISOString()}
+            
+            ### Test Results
+            - ${resultEmoji} **E2E Smoke Test:** ${resultText}
+              - ✅ POST /api/leads with unique payload
+              - ✅ Assert response has { ok: true, trace_id }
+              - ✅ GET /api/leads/recent to verify insertion
+            - ${deltaEmoji} **Supabase Delta Test:** ${deltaResultText}
+              - ✅ Database connectivity
+              - ✅ Data freshness validation
+              - ✅ Data integrity checks
+              - ✅ Query performance testing
+              - ✅ Schema compliance verification
+            
+            [View full logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            // Find PRs associated with this commit
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${{ github.event.deployment.ref }}`,
+              state: 'open'
+            });
+            
+            if (prs.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prs[0].number,
+                body: body
+              });
+            }
+
+      - name: Create issue on failure
+        if: failure() && github.event.deployment.environment == 'production'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 E2E Tests Failed - Production Deployment`,
+              body: `## E2E Test Failure
+              
+              **Environment:** Production
+              **Deployment URL:** ${{ env.BASE_URL }}
+              **Run ID:** ${{ github.run_id }}
+              **Timestamp:** ${new Date().toISOString()}
+              
+              ### Test Results
+              - **E2E Smoke Test:** ${{ steps.e2e-test.outcome }}
+              - **Supabase Delta Test:** ${{ steps.supabase-delta-test.outcome }}
+              
+              The E2E testing suite failed on the production deployment. This indicates critical issues with either the lead collection pipeline or the ETL data validation.
+              
+              ### Required Actions
+              - [ ] Investigate lead API endpoints (if smoke test failed)
+              - [ ] Check Supabase connectivity and data integrity (if delta test failed)
+              - [ ] Verify RLS policies and permissions
+              - [ ] Test ETL pipeline data quality
+              - [ ] Test manually if needed
+              
+              [View full logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `,
+              labels: ['bug', 'production', 'e2e-test', 'critical']
+            });

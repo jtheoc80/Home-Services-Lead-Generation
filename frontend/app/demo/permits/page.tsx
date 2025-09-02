@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getLeads, type Lead } from '@/lib/actions/leads';
-
+import { supabase } from '@/lib/supabaseClient';
+import type { Lead } from '@/types/leads';
 
 export default function PermitsDemo() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -15,27 +15,23 @@ export default function PermitsDemo() {
         setLoading(true);
         setError(null);
 
-
         // Check if Supabase is configured
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        if (!supabase) {
           throw new Error('Supabase configuration is missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
         }
 
-        // Dynamic import to avoid build-time issues
-        const { supabase } = await import('@/lib/supabaseClient');
-        
-        if (!supabase) {
-          throw new Error('Failed to initialize Supabase client');
+        // Fetch leads using the browser client
+        const { data: leads, error: fetchError } = await supabase
+          .from('leads')
+          .select('id, name, phone, email, address, city, state, county, status, source, lead_score, value, created_at')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (fetchError) {
+          throw new Error(`Failed to fetch leads: ${fetchError.message}`);
         }
 
-        // Use the leads server action instead of direct Supabase query
-        const { data: leadsData, error } = await getLeads();
-
-        if (error) {
-          throw new Error(error);
-        }
-
-        setLeads(leadsData || []);
+        setLeads(leads || []);
       } catch (err) {
         console.error('Error fetching leads:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch leads');
@@ -73,17 +69,10 @@ export default function PermitsDemo() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-
             Permits Demo (Now Using Leads)
           </h1>
           <p className="text-gray-600">
-            Testing the leads table query with fields mapped to permits structure
-
-            Leads Demo
-          </h1>
-          <p className="text-gray-600">
-            Testing the leads table query with proper TypeScript types
-
+            Testing the leads table query with fields mapped to permits structure and proper TypeScript types
           </p>
         </div>
 
@@ -185,8 +174,8 @@ export default function PermitsDemo() {
                           {lead.service || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(lead.value)}
-
+                          {formatCurrency(lead.value ?? null)}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {lead.name || 'N/A'}
                         </td>
@@ -198,18 +187,14 @@ export default function PermitsDemo() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {lead.county || 'N/A'}
-
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {lead.status || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-
                           {formatDate(lead.created_at)}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {lead.address || 'N/A'}
-
                           {lead.source || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -217,7 +202,6 @@ export default function PermitsDemo() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(lead.created_at || '')}
-
                         </td>
                       </tr>
                     ))
