@@ -49,40 +49,11 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      - name: Start frontend application
-        run: |
-          cd frontend
-          npm start &
-          echo $! > ../frontend.pid
-          
-          # Wait for the server to be ready
-          echo "Waiting for frontend to be available at http://localhost:3000..."
-          for i in {1..30}; do
-            if curl -f --silent --max-time 5 http://localhost:3000/ > /dev/null 2>&1; then
-              echo "Frontend is ready!"
-              break
-            fi
-            echo "Attempt $i/30: Frontend not ready yet, waiting 5 seconds..."
-            sleep 5
-          done
-          
-          if [ $i -eq 30 ]; then
-            echo "Frontend failed to start after 150 seconds"
-            exit 1
-          fi
-
       - name: Run Playwright test suite
         run: npx playwright test
         env:
           BASE_URL: http://localhost:3000
-
-      - name: Stop frontend application
-        if: always()
-        run: |
-          if [ -f frontend.pid ]; then
-            kill $(cat frontend.pid) || true
-            rm frontend.pid
-          fi
+          CI: true
 
       - name: Upload Playwright test report
         if: always()
