@@ -124,6 +124,10 @@ class PermitNormalizer:
             normalized['applicant_name'] = self._clean_name(normalized.get('applicant_name'))
             normalized['contractor_name'] = self._clean_name(normalized.get('contractor_name'))
             
+            # Normalize trade using the normalize_trade function
+            from .enrich import normalize_trade
+            normalized['trade'] = normalize_trade(raw_record)
+            
             # Update stats
             self.stats['processed'] += 1
             self.stats['normalized'] += 1
@@ -271,8 +275,7 @@ class PermitNormalizer:
                     elif pattern in ['single.?family', 'dwelling', 'residential']:
                         score += matches * 2  # Residential patterns get medium weight
                     else:
-                    weight = self.PATTERN_WEIGHTS.get(pattern, 1)
-                    score += matches * weight
+                        score += matches * 1  # Default weight for other patterns
             scores[work_type] = score
         
         # Return the work type with the highest score

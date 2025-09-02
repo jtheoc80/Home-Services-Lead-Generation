@@ -297,6 +297,81 @@ def derive_owner_kind(record: Dict[str, Any]) -> Dict[str, Any]:
     return record
 
 
+def normalize_trade(raw_permit: Dict[str, Any]) -> str:
+    """
+    Normalize trade value from raw permit dictionary using prioritized logic.
+    
+    Infers a single trade classification from permit data using the following priority:
+    1. Most specific/high-value trade from work description keywords
+    2. Permit type mapping
+    3. Permit class/category mapping
+    4. Default fallback to 'General'
+    
+    Args:
+        raw_permit: Raw permit data dictionary
+        
+    Returns:
+        Single trade classification string
+    """
+    # Priority mapping for trade types (higher number = higher priority)
+    TRADE_PRIORITY = {
+        'roofing': 10,      # High-value specialty trade
+        'solar': 9,         # High-value specialty trade  
+        'pool': 8,          # High-value specialty trade
+        'kitchen': 7,       # High-value remodel
+        'bath': 6,          # High-value remodel
+        'hvac': 5,          # Important mechanical trade
+        'electrical': 4,    # Important trade
+        'plumbing': 4,      # Important trade
+        'foundation': 3,    # Structural work
+        'windows': 2,       # Common improvement
+        'fence': 1,         # Lower-value work
+    }
+    
+    # Extract relevant text fields for analysis
+    description = str(raw_permit.get('work_description', '') or raw_permit.get('description', '')).lower()
+    permit_type = str(raw_permit.get('permit_type', '')).lower()
+    permit_class = str(raw_permit.get('permit_class', '') or raw_permit.get('work_class', '')).lower()
+    
+    # Combine all text for comprehensive analysis
+    combined_text = f"{description} {permit_type} {permit_class}"
+    
+    # Find matching trades from keywords
+    matching_trades = []
+    for trade, keywords in TRADE_KEYWORDS.items():
+        if any(keyword in combined_text for keyword in keywords):
+            priority = TRADE_PRIORITY.get(trade, 0)
+            matching_trades.append((trade, priority))
+    
+    # Return highest priority trade if any matches found
+    if matching_trades:
+        # Sort by priority (descending) and return the highest priority trade
+        matching_trades.sort(key=lambda x: x[1], reverse=True)
+        return matching_trades[0][0].title()
+    
+    # Fallback to permit_type or permit_class if no keyword matches
+    if permit_type and permit_type not in ['', 'null', 'none']:
+        # Basic permit type mapping
+        if any(word in permit_type for word in ['residential', 'building', 'house']):
+            return 'General Construction'
+        elif any(word in permit_type for word in ['commercial', 'office']):
+            return 'Commercial'
+        elif any(word in permit_type for word in ['electrical', 'electric']):
+            return 'Electrical'
+        elif any(word in permit_type for word in ['plumbing', 'plumb']):
+            return 'Plumbing'
+        elif any(word in permit_type for word in ['mechanical', 'hvac']):
+            return 'HVAC'
+        else:
+            return permit_type.title()
+    
+    if permit_class and permit_class not in ['', 'null', 'none']:
+        return permit_class.title()
+    
+    # Final fallback
+    return 'General'
+
+
 def tag_trades(record: Dict[str, Any]) -> Dict[str, Any]:
     """
     Tag record with relevant trade categories based on description.
