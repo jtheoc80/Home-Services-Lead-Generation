@@ -105,4 +105,4 @@ def main():
 
 if __name__ == "__main__":
     count = main()
-    sys.exit(0 if count >= 0 else 1)
+    sys.exit(0 if count > 0 else 1)
