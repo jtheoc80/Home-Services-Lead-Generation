@@ -264,8 +264,8 @@ def demo_harris_normalization():
         print(f"   applicant_name → applicant: {sample_lead['applicant']}")
         print(f"   (derived) → county: {sample_lead['county']}")
         print(f"   (derived) → jurisdiction: {sample_lead['jurisdiction']}")
-        print(f"   (derived) → primary trade: {sample_lead['trade']}")
-        print(f"   (derived) → trade_tags: {sample_lead['trade_tags']}")
+        print(f"   (derived) → primary trade: <redacted>")
+        print(f"   (derived) → trade_tags: <redacted>")
     
     print("\n🎉 Demo completed successfully!")
     print("\nThis demonstrates the core functionality of normalize_permits_harris():")
