@@ -145,8 +145,12 @@ jobs:
             exit_code=1
           fi
           
-          # Count records processed for this source
-          source_count=$(grep -o "Processed [0-9]\+" logs/etl_output.log | tail -1 | grep -o "[0-9]\+" || echo 0)
+          # Count records processed for this source using structured output
+          if [ -f "etl_record_count.json" ]; then
+            source_count=$(jq '.processed' etl_record_count.json 2>/dev/null || echo 0)
+          else
+            source_count=0
+          fi
           total_records=$((total_records + source_count))
           
           echo "Source $source completed with $source_count records" | tee -a logs/etl_output.log
