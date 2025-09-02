@@ -273,10 +273,11 @@ jobs:
             print(f'Validation error: {e}')
             import traceback
             traceback.print_exc()
-            
+            import hashlib
+            error_hash = hashlib.sha256(str(e).encode('utf-8')).hexdigest()[:16]
             with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                 f.write('validation_success=false\n')
-                f.write(f'run_id=error_{str(e)[:20]}\n')
+                f.write(f'run_id=error_{error_hash}\n')
             sys.exit(1)
         "
 
