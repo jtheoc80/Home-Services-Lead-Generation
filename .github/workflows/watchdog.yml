@@ -81,8 +81,7 @@ jobs:
             cat etl_output.txt
 
             # Extract count from output
-            count=$(grep -oP 'Count from content-range header: \K\d+' \
-              etl_output.txt || echo "0")
+            count=$(grep -o 'Count from content-range header: [0-9]*' etl_output.txt | sed 's/.*: //' || echo "0")
             echo "count=$count" >> $GITHUB_OUTPUT
 
             if [ $exit_code -eq 0 ] && [ "$count" -gt 0 ]; then
