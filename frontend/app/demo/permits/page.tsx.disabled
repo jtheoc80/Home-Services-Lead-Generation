@@ -73,17 +73,10 @@ export default function PermitsDemo() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-
             Permits Demo (Now Using Leads)
           </h1>
           <p className="text-gray-600">
-            Testing the leads table query with fields mapped to permits structure
-
-            Leads Demo
-          </h1>
-          <p className="text-gray-600">
-            Testing the leads table query with proper TypeScript types
-
+            Testing the leads table query with fields mapped to permits structure and proper TypeScript types
           </p>
         </div>
 
@@ -186,7 +179,7 @@ export default function PermitsDemo() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatCurrency(lead.value)}
-
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {lead.name || 'N/A'}
                         </td>
@@ -209,7 +202,8 @@ export default function PermitsDemo() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                           {lead.address || 'N/A'}
-
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {lead.source || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
