@@ -1,155 +1,212 @@
-name: Nightly Ingest Pipeline
+name: Nightly ETL Pipeline
 on:
   schedule:
-    - cron: '0 2 * * *'
+    # Nightly at 12:00 AM America/Chicago (5:00 AM UTC)
+    - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
-      source:
-        description: 'Source to ingest'
+      days:
+        description: 'Look-back window in days'
         required: false
-        default: 'all'
-        type: choice
-        options:
-          - austin
-          - dallas  
-          - houston
-          - all
-      dry_run:
-        description: 'Dry run mode'
+        default: '7'
+        type: string
+      sources:
+        description: 'Comma-separated list of sources (tx-harris,tx-dallas,tx-austin)'
+        required: false
+        default: 'tx-harris'
+        type: string
+      force:
+        description: 'Force ingest even if 0 records found'
         required: false
         default: false
         type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-etl-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
-  CRON_SECRET: ${{ secrets.CRON_SECRET }}
-  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  PYTHON_VERSION: "3.11"
+
 jobs:
-  nightly-ingest:
+  etl:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SOURCES: ${{ github.event.inputs.sources || 'tx-harris' }}
+      
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: "Preflight: verify required secrets"
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: 'permit_leads/requirements.txt'
+        
+    - name: Install ETL dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r permit_leads/requirements.txt
+        
+    - name: Create output directories
+      run: |
+        mkdir -p logs artifacts permit_leads/data
+        
+    - name: Preflight secrets check
       id: preflight
-      shell: bash
-      env:
-        VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
-        CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         ok=1
-        for v in VERCEL_DOMAIN CRON_SECRET SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
-          val="${!v}"
-          if [ -z "$val" ]; then
-            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+          if [ -z "${!v}" ]; then
+            echo "::error title=$v missing::Add $v in GitHub → Settings → Secrets and variables → Actions"
             ok=0
           else
-            echo "::add-mask::$val"
+            echo "::add-mask::${!v}"
           fi
         done
+        
+        # Optional secrets - warn but don't fail
+        for v in SUPABASE_ANON_KEY DATABASE_URL; do
+          if [ -z "${!v}" ]; then
+            echo "::warning title=$v missing::Consider adding $v for enhanced functionality"
+          else
+            echo "::add-mask::${!v}"
+          fi
+        done
+        
         echo "ok=$ok" >> "$GITHUB_OUTPUT"
         [ "$ok" -eq 1 ]
         
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
+    - name: Supabase REST connectivity check
+      if: ${{ steps.preflight.outputs.ok == '1' }}
       run: |
-        python -m pip install --upgrade pip
-        pip install requests psycopg2-binary python-dotenv
-    - name: Determine sources to process
-      id: sources
-      run: |
-        # Set source default using shell logic instead of logical OR
-        SOURCE="${{ github.event.inputs.source }}"
-        [ -z "$SOURCE" ] && SOURCE="all"
-        if [ "$SOURCE" = "all" ]; then
-          echo "sources=austin dallas houston" >> $GITHUB_OUTPUT
-        else
-          echo "sources=$SOURCE" >> $GITHUB_OUTPUT
-        fi
-    - name: Create logs directory
-      run: mkdir -p logs
-      
-    - name: Supabase REST check
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: |
+        echo "Testing Supabase connectivity..."
         code=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
           -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
           -H "Prefer: count=exact, head=true" \
           "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "HTTP=$code"
+        
         if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::error title=Supabase not reachable::HTTP $code"
+          echo "::warning title=Supabase connectivity issue::HTTP $code - ETL may have issues persisting data"
+        else
+          echo "✅ Supabase connectivity verified (HTTP $code)"
+        fi
+        
+    - name: Run ETL process
+      id: etl_run
+      run: |
+        DAYS="${{ github.event.inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="7"
+        
+        SOURCES_LIST="${{ env.SOURCES }}"
+        echo "Running ETL for sources: $SOURCES_LIST with $DAYS days lookback"
+        
+        # Set environment for graceful empty exit
+        export ETL_ALLOW_EMPTY=1
+        
+        # Initialize log file
+        echo "ETL run started at $(date -u)" > logs/etl_output.log
+        echo "Sources: $SOURCES_LIST" >> logs/etl_output.log
+        echo "Days: $DAYS" >> logs/etl_output.log
+        echo "========================================" >> logs/etl_output.log
+        
+        # Run ETL for each source
+        total_records=0
+        exit_code=0
+        
+        IFS=',' read -ra SOURCE_ARRAY <<< "$SOURCES_LIST"
+        for source in "${SOURCE_ARRAY[@]}"; do
+          echo "Processing source: $source" | tee -a logs/etl_output.log
+          
+          set +e
+          python -m permit_leads scrape \
+            --jurisdiction "$source" \
+            --days "$DAYS" \
+            --formats csv sqlite \
+            --verbose 2>&1 | tee -a logs/etl_output.log
+          
+          source_exit=$?
+          set -e
+          
+          if [ $source_exit -ne 0 ]; then
+            echo "::warning title=ETL issue for $source::Exit code $source_exit"
+            exit_code=1
+          fi
+          
+          # Count records processed for this source using structured output
+          if [ -f "etl_record_count.json" ]; then
+            source_count=$(jq '.processed' etl_record_count.json 2>/dev/null || echo 0)
+          else
+            source_count=0
+          fi
+          total_records=$((total_records + source_count))
+          
+          echo "Source $source completed with $source_count records" | tee -a logs/etl_output.log
+          echo "----------------------------------------" >> logs/etl_output.log
+        done
+        
+        echo "ETL completed at $(date -u)" >> logs/etl_output.log
+        echo "Total records processed: $total_records" >> logs/etl_output.log
+        
+        echo "record_count=$total_records" >> "$GITHUB_OUTPUT"
+        echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+        
+        # Force exit with 1 if no records and force is false
+        FORCE_INPUT="${{ github.event.inputs.force }}"
+        FORCE_INPUT_LC=$(echo "$FORCE_INPUT" | tr '[:upper:]' '[:lower:]')
+        if [ "$total_records" -eq 0 ] && ! [[ "$FORCE_INPUT_LC" == "true" || "$FORCE_INPUT_LC" == "1" || "$FORCE_INPUT_LC" == "yes" ]]; then
+          echo "::error title=No records processed::No data found and force=false"
           exit 1
         fi
         
-    - name: Run pre-ingest validation
-      run: |
-        echo "🔍 Running pre-ingest validation..."
-        for source in ${{ steps.sources.outputs.sources }}; do
-          echo "Validating $source data source availability..."
-          echo "✅ $source validation passed"
-        done
-    - name: Execute nightly ingest
-      id: ingest
-      env:
-        VERCEL_DOMAIN: ${{ secrets.VERCEL_DOMAIN }}
-        CRON_SECRET: ${{ secrets.CRON_SECRET }}
-      run: |
-        # Set dry run default using shell logic instead of logical OR
-        DRY_RUN="${{ github.event.inputs.dry_run }}"
-        [ -z "$DRY_RUN" ] && DRY_RUN="false"
-        TOTAL_FETCHED=0
-        TOTAL_UPSERTS=0
-        TOTAL_ERRORS=0
-        for source in ${{ steps.sources.outputs.sources }}; do
-          URL="https://$VERCEL_DOMAIN/api/permits/ingest?source=$source"
-          if [ "$DRY_RUN" == "true" ]; then
-            URL="$URL&dry=1"
-          fi
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -H "x-cron-secret: $CRON_SECRET" \
-            "$URL" | tee "logs/ingest-$source.log")
-          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-          if [ "$HTTP_STATUS" -eq 200 ]; then
-            FETCHED=$(echo "$RESPONSE_BODY" | jq -r '.fetched // 0' 2>/dev/null)
-            UPSERTS=$(echo "$RESPONSE_BODY" | jq -r '.upserts // 0' 2>/dev/null)
-            ERRORS=$(echo "$RESPONSE_BODY" | jq -r '.errors | length // 0' 2>/dev/null)
-            TOTAL_FETCHED=$((TOTAL_FETCHED + FETCHED))
-            TOTAL_UPSERTS=$((TOTAL_UPSERTS + UPSERTS))
-            TOTAL_ERRORS=$((TOTAL_ERRORS + ERRORS))
-          else
-            TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
-          fi
-        done
-        echo "total_fetched=$TOTAL_FETCHED" >> $GITHUB_OUTPUT
-        echo "total_upserts=$TOTAL_UPSERTS" >> $GITHUB_OUTPUT
-        echo "total_errors=$TOTAL_ERRORS" >> $GITHUB_OUTPUT
-    - name: Generate execution summary
-      run: |
-        cat > logs/summary.json << EOF
-        {"timestamp": "$(date -u)", "total_fetched": "${{ steps.ingest.outputs.total_fetched }}", "total_upserts": "${{ steps.ingest.outputs.total_upserts }}", "total_errors": "${{ steps.ingest.outputs.total_errors }}"}
-        EOF
-    - name: Upload ETL artifacts
+        exit $exit_code
+        
+    - name: Upload ETL logs and artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: etl-${{ github.run_id }}
+        name: nightly-etl-logs-${{ github.run_id }}
         path: |
           artifacts/**/*.csv
           logs/**/*.log
-          logs/etl_output.log
+          permit_leads/data/**/*.csv
+          permit_leads/data/**/*.db
         if-no-files-found: warn
         retention-days: 14
+        
+    - name: Generate job summary
+      if: always()
+      run: |
+        SOURCES="${{ env.SOURCES }}"
+        DAYS="${{ github.event.inputs.days || '7' }}"
+        RECORDS="${{ steps.etl_run.outputs.record_count || '0' }}"
+        EXIT_CODE="${{ steps.etl_run.outputs.exit_code || 'unknown' }}"
+        
+        echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Sources processed**: $SOURCES" >> $GITHUB_STEP_SUMMARY
+        echo "- **Days lookback**: $DAYS" >> $GITHUB_STEP_SUMMARY  
+        echo "- **Records processed**: $RECORDS" >> $GITHUB_STEP_SUMMARY
+        echo "- **Exit code**: $EXIT_CODE" >> $GITHUB_STEP_SUMMARY
+        echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f logs/etl_output.log ]; then
+          echo "### ETL Log Tail (last 30 lines)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 30 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ⚠️ No ETL log file found" >> $GITHUB_STEP_SUMMARY
+        fi
