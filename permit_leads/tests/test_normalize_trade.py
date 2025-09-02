@@ -1,7 +1,6 @@
 """
 Test cases for the normalize_trade function.
 """
-import pytest
 from permit_leads.enrich import normalize_trade
 
 
