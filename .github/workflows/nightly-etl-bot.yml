@@ -14,6 +14,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.11"
+  BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
 
 jobs:
   guardian:
@@ -34,8 +35,6 @@ jobs:
             echo "has-bot-token=false" >> $GITHUB_OUTPUT
             echo "Using github.token - some features may be limited"
           fi
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -62,7 +61,7 @@ jobs:
 
       # record whether BOT_TOKEN is set without using it in "if:"
       - name: Flag BOT_TOKEN presence
-        run: echo "BOT_TOKEN_SET=${{ secrets.BOT_TOKEN != '' }}" >> $GITHUB_ENV
+        run: echo "BOT_TOKEN_SET=${{ env.BOT_TOKEN != '' }}" >> $GITHUB_ENV
 
       - name: Create or update PR
         if: ${{ steps.guardian.outputs.changed == 'true' }}
@@ -74,7 +73,7 @@ jobs:
 
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.BOT_TOKEN || github.token }}
+          token: ${{ env.BOT_TOKEN || github.token }}
           branch: bot/fix-etl
           commit-message: "bot(etl): auto-fix nightly workflow (ingest guard, mkdir, log path, artifacts, concurrency)"
           title: "Nightly ETL Bot: auto-fix workflow"
@@ -96,7 +95,7 @@ jobs:
         uses: juliangruber/approve-pull-request-action@v2
 
         with:
-          token: ${{ secrets.BOT_TOKEN }}
+          token: ${{ env.BOT_TOKEN }}
           pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
 
 
@@ -104,7 +103,7 @@ jobs:
         if: ${{ steps.guardian.outputs.changed == 'true' && env.BOT_TOKEN_SET == 'true' && steps.create_pr.outputs.pull-request-number }}
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
-          token: ${{ secrets.BOT_TOKEN }}
+          token: ${{ env.BOT_TOKEN }}
           pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
           merge-method: squash
 
@@ -120,7 +119,7 @@ jobs:
             echo "✅ Auto-merge enabled for PR #${{ steps.create-pr.outputs.pull-request-number }}"
           fi
         env:
-          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GH_TOKEN: ${{ env.BOT_TOKEN }}
 
       - name: Summary
         if: always()
