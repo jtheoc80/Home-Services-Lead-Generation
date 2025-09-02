@@ -78,7 +78,7 @@ jobs:
           commit-message: "ci(bot): auto-fix ingest workflow"
           title: "Nightly ETL Bot: auto-fixes"
           body: |
-            Automated fixes for `.github/workflows/etl.yml`:
+            Automated fixes for `.github/workflows/ingest-nightly.yml`:
             - Ensure output dirs (logs/artifacts/data)
             - Conditional ingestion (records>0 OR force=true)
             - Correct log tail (logs/etl_output.log)
