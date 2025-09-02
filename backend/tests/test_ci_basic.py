@@ -29,8 +29,6 @@ class TestBasicBackend(unittest.TestCase):
     def test_can_import_basic_modules(self):
         """Test that we can import basic Python modules."""
         import json
-        import os
-        import sys
         # These should always work
         self.assertTrue(True)
 
