@@ -5,7 +5,7 @@ on:
     workflows: ["Nightly ETL"]
     types: [completed]
   schedule:
-    - cron: "12 7 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -23,6 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          token: ${{ env.BOT_TOKEN || github.token }}
           fetch-depth: 0
 
       - name: Check BOT_TOKEN availability
@@ -44,14 +45,18 @@ jobs:
       - name: Install fixer deps
         run: |
           python -m pip install --upgrade pip
-          echo 'ruamel.yaml==0.18.6' > tools/requirements.txt
-          pip install -r tools/requirements.txt
+          if [ -f "tools/requirements.txt" ]; then
+            pip install -r tools/requirements.txt
+          else
+            echo 'ruamel.yaml==0.18.6' > tools/requirements.txt
+            pip install -r tools/requirements.txt
+          fi
 
       - name: Run fixer (writes changes if needed)
         id: guardian
         run: |
           python tools/etl_guardian.py --write || true
-          # did we modify the workflow file?
+          # Check if we modified the ETL workflow file
           if git diff --quiet .github/workflows/etl.yml; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
@@ -63,20 +68,15 @@ jobs:
       - name: Flag BOT_TOKEN presence
         run: echo "BOT_TOKEN_SET=${{ env.BOT_TOKEN != '' }}" >> $GITHUB_ENV
 
-      - name: Create or update PR
-        if: ${{ steps.guardian.outputs.changed == 'true' }}
-        id: create_pr
-
       - name: Create Pull Request
         if: steps.guardian.outputs.changed == 'true'
         id: create-pr
-
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ env.BOT_TOKEN || github.token }}
-          branch: bot/fix-etl
-          commit-message: "bot(etl): auto-fix nightly workflow (ingest guard, mkdir, log path, artifacts, concurrency)"
-          title: "Nightly ETL Bot: auto-fix workflow"
+          branch: bot/etl-guardian-fixes
+          commit-message: "ci(bot): auto-fix ingest workflow"
+          title: "Nightly ETL Bot: auto-fixes"
           body: |
             Automated fixes for `.github/workflows/etl.yml`:
             - Ensure output dirs (logs/artifacts/data)
@@ -84,42 +84,23 @@ jobs:
             - Correct log tail (logs/etl_output.log)
             - Single artifact uploader with stable globs
             - Concurrency guard
+          delete-branch: true
 
 
-      - name: Auto-approve
+      - name: Auto-approve PR
         if: ${{ steps.guardian.outputs.changed == 'true' && env.BOT_TOKEN_SET == 'true' }}
-        uses: peter-evans/approve-pull-request@v3
-
-      - name: Auto-approve PR (optional)
-        if: steps.guardian.outputs.changed == 'true' && steps.check-token.outputs.has-bot-token == 'true'
         uses: juliangruber/approve-pull-request-action@v2
-
         with:
           token: ${{ env.BOT_TOKEN }}
-          pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
-
+          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
 
       - name: Enable auto-merge (squash)
-        if: ${{ steps.guardian.outputs.changed == 'true' && env.BOT_TOKEN_SET == 'true' && steps.create_pr.outputs.pull-request-number }}
+        if: ${{ steps.guardian.outputs.changed == 'true' && env.BOT_TOKEN_SET == 'true' && steps.create-pr.outputs.pull-request-number }}
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           token: ${{ env.BOT_TOKEN }}
-          pull-request-number: ${{ steps.create_pr.outputs.pull-request-number }}
+          pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
           merge-method: squash
-
-      - name: Auto-merge PR (optional)
-        if: steps.guardian.outputs.changed == 'true' && steps.check-token.outputs.has-bot-token == 'true'
-        run: |
-          # Wait a moment for the approval to process
-          sleep 10
-          
-          # Enable auto-merge if PR was created
-          if [ -n "${{ steps.create-pr.outputs.pull-request-number }}" ]; then
-            gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --auto --squash
-            echo "✅ Auto-merge enabled for PR #${{ steps.create-pr.outputs.pull-request-number }}"
-          fi
-        env:
-          GH_TOKEN: ${{ env.BOT_TOKEN }}
 
       - name: Summary
         if: always()
@@ -136,6 +117,6 @@ jobs:
             echo "- **Status**: ✅ No issues found" >> $GITHUB_STEP_SUMMARY
             echo "- **Action**: No changes needed" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "- **BOT_TOKEN**: ${{ steps.check-token.outputs.has-bot-token == 'true' && 'Available' || 'Not available' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **BOT_TOKEN**: ${{ env.BOT_TOKEN_SET == 'true' && 'Available' || 'Not available' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
 
