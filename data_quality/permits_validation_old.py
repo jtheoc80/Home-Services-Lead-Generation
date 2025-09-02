@@ -9,8 +9,9 @@ import logging
 import os
 from typing import Dict, Any, Optional
 import great_expectations as gx
-from great_expectations.core.expectation_configuration import ExpectationConfiguration
-from great_expectations.core.expectation_suite import ExpectationSuite
+from great_expectations.expectations.expectation_configuration import ExpectationConfiguration
+from great_expectations.expectations.expectation_suite import ExpectationSuite
+from great_expectations.checkpoint import SimpleCheckpoint
 
 logger = logging.getLogger(__name__)
 
@@ -249,6 +250,155 @@ class PermitsValidationSuite:
                 "successful_expectations": 0,
                 "failed_expectations": 0
             }
+
+
+def create_permits_checkpoint(context=None) -> SimpleCheckpoint:
+    """
+    Create Great Expectations checkpoint for permits validation.
+    
+    Args:
+        context: Optional Great Expectations context
+        
+    Returns:
+        Configured SimpleCheckpoint for permits validation
+    """
+    if context is None:
+        context = gx.get_context()
+    
+    # Create checkpoint configuration
+    checkpoint_config = {
+        "name": "permits_checkpoint",
+        "config_version": 1.0,
+        "class_name": "SimpleCheckpoint",
+        "run_name_template": "permits_validation_%Y%m%d_%H%M%S",
+        "validations": [
+            {
+                "batch_request": {
+                    "datasource_name": "postgres_datasource",
+                    "data_connector_name": "default_runtime_data_connector",
+                    "data_asset_name": "gold.permits",
+                    "batch_identifiers": {"default_identifier_name": "permits_validation"},
+                    "runtime_parameters": {"query": "SELECT * FROM gold.permits LIMIT 10000"}
+                },
+                "expectation_suite_name": "gold_permits_validation"
+            }
+        ],
+        "action_list": [
+            {
+                "name": "store_validation_result",
+                "action": {
+                    "class_name": "StoreValidationResultAction"
+                }
+            },
+            {
+                "name": "store_evaluation_params",
+                "action": {
+                    "class_name": "StoreEvaluationParametersAction"
+                }
+            },
+            {
+                "name": "update_data_docs",
+                "action": {
+                    "class_name": "UpdateDataDocsAction"
+                }
+            }
+        ]
+    }
+    
+    # Create checkpoint
+    checkpoint = SimpleCheckpoint(
+        name="permits_checkpoint",
+        data_context=context,
+        **checkpoint_config
+    )
+    
+    # Add checkpoint to context
+    try:
+        context.add_checkpoint(**checkpoint_config)
+    except Exception:
+        # Checkpoint might already exist
+        pass
+    
+    return checkpoint
+
+
+def run_permits_checkpoint(db_url: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Run the permits_checkpoint to validate permits data.
+    
+    Args:
+        db_url: Database connection URL
+        
+    Returns:
+        Checkpoint validation results
+    """
+    try:
+        # Initialize context
+        context = gx.get_context()
+        
+        # Configure datasource if needed
+        datasource_config = {
+            "name": "postgres_datasource",
+            "class_name": "Datasource",
+            "module_name": "great_expectations.datasource",
+            "execution_engine": {
+                "class_name": "SqlAlchemyExecutionEngine",
+                "connection_string": db_url or os.environ.get('DATABASE_URL')
+            },
+            "data_connectors": {
+                "default_runtime_data_connector": {
+                    "class_name": "RuntimeDataConnector",
+                    "batch_identifiers": ["default_identifier_name"]
+                }
+            }
+        }
+        
+        try:
+            context.add_datasource(**datasource_config)
+        except Exception:
+            # Datasource might already exist
+            pass
+        
+        # Ensure expectation suite exists
+        validator = PermitsValidationSuite(db_url)
+        suite = validator.create_expectation_suite()
+        try:
+            context.add_expectation_suite(expectation_suite=suite)
+        except Exception:
+            context.update_expectation_suite(expectation_suite=suite)
+        
+        # Create and run checkpoint
+        checkpoint = create_permits_checkpoint(context)
+        results = checkpoint.run()
+        
+        # Extract summary
+        validation_results = {
+            "run_id": str(results.run_id),
+            "run_name": results.run_name,
+            "success": results.success,
+            "validation_results": []
+        }
+        
+        # Process individual validation results
+        for validation_result in results.list_validation_results():
+            result_summary = {
+                "success": validation_result.success,
+                "statistics": validation_result.statistics,
+                "meta": validation_result.meta
+            }
+            validation_results["validation_results"].append(result_summary)
+        
+        return validation_results
+        
+    except Exception as e:
+        logger.error(f"Checkpoint run failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "run_id": None,
+            "run_name": None,
+            "validation_results": []
+        }
 
 
 def validate_permits_rowcount_delta(
