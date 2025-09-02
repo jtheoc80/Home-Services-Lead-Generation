@@ -1,0 +1,26 @@
+{
+  "run_id": "permits_validation_manual_validation_20250902_153830",
+  "run_name": "permits_validation_run",
+  "success": true,
+  "validation_results": [
+    {
+      "success": true,
+      "total_expectations": 8,
+      "successful_expectations": 8,
+      "failed_expectations": 0,
+      "passed_checks": [
+        "permit_id_exists",
+        "permit_id_not_null",
+        "address_exists",
+        "address_not_null",
+        "jurisdiction_exists",
+        "jurisdiction_valid",
+        "permit_id_unique",
+        "has_data"
+      ],
+      "failed_checks": [],
+      "run_id": "manual_validation_20250902_153830",
+      "row_count": 2
+    }
+  ]
+}
