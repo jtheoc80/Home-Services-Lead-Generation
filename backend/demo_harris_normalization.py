@@ -106,6 +106,14 @@ class HarrisPermitNormalizer:
         if any(keyword in desc_lower for keyword in ['kitchen', 'bathroom', 'remodel', 'renovation']):
             trade_tags.append('general_contractor')
         
+        # NEW: Use normalize_trade function for primary trade classification
+        try:
+            from permit_leads.enrich import normalize_trade
+            primary_trade = normalize_trade(raw_permit)
+        except ImportError:
+            # Fallback if import fails
+            primary_trade = 'General'
+        
         return {
             'id': len(self.leads) + 1,
             'jurisdiction': 'Harris County',
@@ -123,6 +131,7 @@ class HarrisPermitNormalizer:
             'latitude': raw_permit.get('latitude'),
             'longitude': raw_permit.get('longitude'),
             'trade_tags': trade_tags,
+            'trade': primary_trade,  # NEW: Primary trade classification
             'source_ref': raw_permit.get('event_id'),
             'county': 'Harris',
             'permit_type': raw_permit.get('permit_type'),
@@ -218,7 +227,7 @@ def demo_harris_normalization():
         print(f"\n   📋 {lead['source_ref']}: {lead['permit_id']}")
         print(f"      Address: {lead['address']}")
         print(f"      Category: {lead['category']} | Value: ${lead['value']:,.2f}")
-        print(f"      Trade Tags: {', '.join(lead['trade_tags']) if lead['trade_tags'] else 'None'}")
+        print(f"      Primary Trade: {lead['trade']} | Trade Tags: {', '.join(lead['trade_tags']) if lead['trade_tags'] else 'None'}")
         print(f"      Status: {lead['status']} | County: {lead['county']}")
     
     print("\n4. Testing deduplication...")
@@ -255,7 +264,8 @@ def demo_harris_normalization():
         print(f"   applicant_name → applicant: {sample_lead['applicant']}")
         print(f"   (derived) → county: {sample_lead['county']}")
         print(f"   (derived) → jurisdiction: {sample_lead['jurisdiction']}")
-        print(f"   (derived) → trade_tags: {sample_lead['trade_tags']}")
+        print(f"   (derived) → primary trade: <redacted>")
+        print(f"   (derived) → trade_tags: <redacted>")
     
     print("\n🎉 Demo completed successfully!")
     print("\nThis demonstrates the core functionality of normalize_permits_harris():")
