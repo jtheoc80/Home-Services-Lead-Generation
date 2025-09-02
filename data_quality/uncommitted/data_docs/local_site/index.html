@@ -1,0 +1,66 @@
+
+<html>
+<head>
+    <title>Data Quality Validation Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { background: #e7f3ff; padding: 10px; border-radius: 3px; margin: 10px 0; }
+        .validation-result { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .pass { border-left: 5px solid green; }
+        .fail { border-left: 5px solid red; }
+        ul { margin: 10px 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Data Quality Validation Report</h1>
+        <p>Generated: 2025-09-02 15:38:30.892987</p>
+        <p>Data Source: data/yesterday.csv</p>
+    </div>
+    
+    <div class="validation-result pass">
+        <h2>Validation Summary</h2>
+        <p><strong>Overall Result:</strong> <span class="success">
+        ✅ PASSED</span></p>
+        <p><strong>Run ID:</strong> permits_validation_manual_validation_20250902_153830</p>
+        
+        <div class="info">
+            <h3>Validation Details</h3>
+            <p><strong>Total Checks:</strong> 8</p>
+            <p><strong>Passed Checks:</strong> 8</p>
+            <p><strong>Failed Checks:</strong> 0</p>
+            <p><strong>Row Count:</strong> 2</p>
+            
+            <h4>Passed Checks:</h4>
+            <ul>
+                <li>✅ permit_id_exists</li>
+<li>✅ permit_id_not_null</li>
+<li>✅ address_exists</li>
+<li>✅ address_not_null</li>
+<li>✅ jurisdiction_exists</li>
+<li>✅ jurisdiction_valid</li>
+<li>✅ permit_id_unique</li>
+<li>✅ has_data</li>
+            </ul>
+            
+            
+        </div>
+    </div>
+    
+    <div class="info">
+        <h3>Data Quality Expectations</h3>
+        <p>This validation suite checks the following:</p>
+        <ul>
+            <li>Required columns exist (permit_id, address, jurisdiction)</li>
+            <li>Critical fields are not null</li>
+            <li>Permit IDs are unique</li>
+            <li>Jurisdictions are valid Texas locations</li>
+            <li>Data file contains records</li>
+        </ul>
+    </div>
+</body>
+</html>
