@@ -61,7 +61,7 @@ jobs:
         
     - name: Create output directories
       run: |
-        mkdir -p permit_leads/logs permit_leads/artifacts permit_leads/data
+        mkdir -p logs artifacts permit_leads/data
         
     - name: Preflight secrets check
       id: preflight
@@ -106,7 +106,6 @@ jobs:
         
     - name: Run ETL process
       id: etl_run
-      working-directory: permit_leads
       run: |
         DAYS="${{ github.event.inputs.days }}"
         [ -z "$DAYS" ] && DAYS="7"
@@ -174,8 +173,8 @@ jobs:
       with:
         name: nightly-etl-logs-${{ github.run_id }}
         path: |
-          permit_leads/artifacts/**/*.csv
-          permit_leads/logs/**/*.log
+          artifacts/**/*.csv
+          logs/**/*.log
           permit_leads/data/**/*.csv
           permit_leads/data/**/*.db
         if-no-files-found: warn
@@ -197,10 +196,10 @@ jobs:
         echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        if [ -f permit_leads/logs/etl_output.log ]; then
+        if [ -f logs/etl_output.log ]; then
           echo "### ETL Log Tail (last 30 lines)" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 30 permit_leads/logs/etl_output.log >> $GITHUB_STEP_SUMMARY
+          tail -n 30 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
         else
           echo "### ⚠️ No ETL log file found" >> $GITHUB_STEP_SUMMARY
