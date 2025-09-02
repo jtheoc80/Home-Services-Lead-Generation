@@ -178,7 +178,7 @@ jobs:
 
             // Search for existing open health alert issues
             const issues = await github.rest.search.issuesAndPullRequests({
-              q: \`repo:\${owner}/\${repo} is:issue "System Health Alert" state:open\`
+              q: "repo:" + owner + "/" + repo + ' is:issue "System Health Alert" state:open'
             });
 
             if (issues.data.total_count === 0) {
