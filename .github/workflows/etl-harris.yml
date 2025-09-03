@@ -108,9 +108,9 @@ jobs:
         if: always()
         run: |
           # Extract JSON summary from output for monitoring
-          if [ -f logs/etl_output.log ]; then
+          if [ -f scripts/logs/etl_output.log ]; then
             echo "Extracting JSON logs..."
-            grep -o '{.*"test".*"etl-delta".*}' logs/etl_output.log > logs/etl-summary.json || echo '{"error": "No JSON summary found"}' > logs/etl-summary.json
+            grep -o '{.*"test".*"etl-delta".*}' scripts/logs/etl_output.log > logs/etl-summary.json || echo '{"error": "No JSON summary found"}' > logs/etl-summary.json
             
             echo "ETL Summary:"
             cat logs/etl-summary.json
@@ -190,9 +190,9 @@ jobs:
           echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
           echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f logs/etl_output.log ]; then
+          if [ -f scripts/logs/etl_output.log ]; then
             echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -20 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
+            tail -20 scripts/logs/etl_output.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
