@@ -1,7 +1,7 @@
 name: Failure Reporter
 on:
   workflow_run:
-    workflows: ["Nightly ETL", "Scrape — Harris County", "Scrape — Dallas County"]
+    workflows: ["Nightly ETL", "Harris County ETL Pipeline", "Ingest Agents (Austin/Dallas)"]
     types: [completed]
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
             const {owner, repo} = context.repo;
             const runId = context.payload.workflow_run.id;
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({owner, repo, run_id: runId});
-      # No direct log API; artifact will hold logs.
+            // No direct log API; artifact will hold logs.
       - name: Open issue with artifact link
         uses: actions/github-script@v7
         with:
