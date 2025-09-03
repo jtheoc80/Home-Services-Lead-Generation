@@ -17,6 +17,10 @@ on:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.source }}-${{ github.ref }}
+      cancel-in-progress: true
     timeout-minutes: 15
     strategy:
       fail-fast: false
