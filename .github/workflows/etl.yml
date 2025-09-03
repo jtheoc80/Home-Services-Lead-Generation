@@ -22,8 +22,8 @@ jobs:
   etl:
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
+      group: ${{ github.repository }}-${{ github.ref }}-nightly-etl
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: permit_leads
