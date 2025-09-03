@@ -86,7 +86,7 @@ def ensure_conditional_ingestion(workflow: Dict[str, Any]) -> bool:
         if 'name' in step and 'data ingestion' in step['name'].lower():
             # Check if it has the correct conditional
             current_if = step.get('if', '')
-            expected_if = "${{ steps.scrape.outputs.record_count != '0' || inputs.force == true }}"
+            expected_if = "${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}"
             
             if expected_if not in current_if:
                 step['if'] = expected_if
