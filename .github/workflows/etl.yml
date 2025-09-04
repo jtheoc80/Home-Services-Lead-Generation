@@ -22,7 +22,7 @@ jobs:
   etl:
     runs-on: ubuntu-latest
     concurrency:
-      group: nightly-etl
+      group: nightly-etl-${{ github.repository }}
       cancel-in-progress: false
     defaults:
       run:
