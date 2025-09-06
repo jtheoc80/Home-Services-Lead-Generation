@@ -247,7 +247,7 @@ NOTES FOR REQUESTOR:
                     date_str = csv_file.name.split("_permits_")[1].split(".")[0]
                     file_date = datetime.strptime(date_str, "%Y%m%d")
                 except ValueError:
-                    pass
+                    logger.debug(f"Could not parse date from filename '{csv_file.name}'")
             
             # Fall back to file modification time
             if not file_date:
