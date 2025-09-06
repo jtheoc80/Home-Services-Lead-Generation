@@ -1,0 +1,40 @@
+name: Nightly ETL
+"on":
+  schedule: [{ cron: "0 5 * * *" }]  # 12:00 AM America/Chicago
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SOURCES: "austin,san_antonio,dallas,houston,harris_county"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: pip install -r permit_leads/requirements.txt
+      - name: Run ETL
+        working-directory: permit_leads
+        run: |
+          mkdir -p ../logs
+          python -m permit_leads --sources "$SOURCES" --days 1 --sink supabase \
+            --summary ../logs/etl-summary.json | tee ../logs/etl.log
+      - name: Step summary
+        if: always()
+        run: |
+          echo "### ETL Summary" >> $GITHUB_STEP_SUMMARY
+          [ -f logs/etl-summary.json ] && cat logs/etl-summary.json >> $GITHUB_STEP_SUMMARY || echo "No summary file"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: etl-artifacts-${{ github.run_id }}
+          path: logs/
