@@ -176,7 +176,7 @@ class ArcGISFeatureServiceAdapter(BaseAdapter):
             logger.error(f"Error getting total count: {e}")
             return 0
 
-    # New SourceAdapter interface methods
+    # SourceAdapter interface methods
     def fetch(self, since_days: int) -> Iterable[bytes | str]:
         """Fetch raw JSON data from ArcGIS FeatureServer."""
         since = dt.datetime.utcnow() - dt.timedelta(days=since_days)
