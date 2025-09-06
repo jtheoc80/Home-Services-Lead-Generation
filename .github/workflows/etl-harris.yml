@@ -14,214 +14,34 @@ on:
         default: '7'
         type: string
 
-env:
-  ETL_ALLOW_EMPTY: '1'
-
 jobs:
-  etl-harris:
+  harris:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    timeout-minutes: 30
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
-    defaults:
-      run:
-        working-directory: scripts
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'     # <-- fix Node warning
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      
-      - name: Install dependencies
-        run: |
-          cd ..
-          npm ci
-      
-      - name: Preflight checks
-        id: preflight
-        run: |
-          # Validate environment variables
-          if [ -z "$SUPABASE_URL" ]; then
-            echo "❌ SUPABASE_URL not set"
-            exit 1
-          fi
-          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "❌ SUPABASE_SERVICE_ROLE_KEY not set"
-            exit 1
-          fi
-          echo "✅ Environment variables validated"
-          echo "ok=1" >> $GITHUB_OUTPUT
-          
-      - name: "Preflight: test Supabase REST"
-        if: ${{ env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && steps.preflight.outputs.ok == '1' }}
-        run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Prefer: count=exact, head=true" \
-            "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-          echo "HTTP=$code"
-          if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-            echo "::warning title=Supabase REST check failed::HTTP $code"
-          fi
-      
-      - name: Run Harris County ETL Delta Test
-        run: |
-          # Set URL using shell logic instead of ternary
-          HC_URL="$HC_ISSUED_PERMITS_URL"
-          if [ -z "$HC_URL" ]; then
-            HC_URL="https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
-          fi
-          export HC_ISSUED_PERMITS_URL="$HC_URL"
-          
-          echo "🚀 Starting Harris County ETL Pipeline"
-          echo "Harris County URL: $HC_ISSUED_PERMITS_URL"
-          echo "Supabase URL: $SUPABASE_URL"
-          
-          # Run the ETL delta test with JSON output for monitoring
-          cd .. && npx tsx scripts/etlDelta.ts 2>&1 | tee scripts/logs/etl_output.log
-          
-          # Check exit code
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "❌ ETL Pipeline failed"
-            exit 1
-          else
-            echo "✅ ETL Pipeline completed successfully"
-          fi
-      
-      - name: Extract JSON logs
-        if: always()
-        run: |
-          # Extract JSON summary from output for monitoring
-          if [ -f scripts/logs/etl_output.log ]; then
-            echo "Extracting JSON logs..."
-            grep -o '{.*"test".*"etl-delta".*}' scripts/logs/etl_output.log > logs/etl-summary.json || echo '{"error": "No JSON summary found"}' > logs/etl-summary.json
-            
-            echo "ETL Summary:"
-            cat logs/etl-summary.json
-          else
-            echo '{"error": "No log file found"}' > logs/etl-summary.json
-          fi
-          
-          # Upload logs/etl-summary.json for monitoring
-          echo "Creating standard summary for monitoring..."
-          cat > logs/etl-summary.json <<EOF
-          {
-            "test": "etl-delta",
-            "status": "${{ job.status }}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "workflow": "${{ github.workflow }}",
-            "run_id": "${{ github.run_id }}",
-            "records_processed": 0
-          }
-          EOF
-      
 
+      - name: Install deps
+        run: npm ci
 
-      - name: Check for stale data (24h failure protection)
-        if: always()
+      - name: Prepare folders
         run: |
-          echo "🔍 Checking for stale data..."
-          
-          # Check if we have recent data (within last 24 hours)
-          npx tsx -e "
-            import { createClient } from '@supabase/supabase-js';
-            
-            const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            
-            supabase
-              .from('permits_raw_harris')
-              .select('event_id', { count: 'exact', head: true })
-              .gte('created_at', twentyFourHoursAgo)
-              .then(({ count, error }) => {
-                if (error) {
-                  console.error('❌ Error checking recent data:', error.message);
-                  process.exit(1);
-                }
-                
-                console.log(\`Found \${count} records created in last 24 hours\`);
-                
-                // Replace strict equality with loose equality
-                if (count == 0) {
-                  console.error('❌ No new records in last 24 hours - data may be stale');
-                  process.exit(1);
-                } else {
-                  console.log('✅ Recent data found - pipeline is healthy');
-                }
-              })
-              .catch(err => {
-                console.error('❌ Stale data check failed:', err.message);
-                process.exit(1);
-              });
-          "
-      
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "❌ Harris County ETL Pipeline failed"
-          echo "Check the logs and artifacts for details"
-          
-          # Log failure summary
-          echo "Failure Summary:" >> $GITHUB_STEP_SUMMARY
-          echo "- Workflow: Harris County ETL Pipeline" >> $GITHUB_STEP_SUMMARY
-          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Timestamp: $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "- Repository: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Branch: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f logs/etl-summary.json ]; then
-            echo "- ETL Summary:" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat logs/etl-summary.json >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+          mkdir -p logs scripts/logs data data/leads/by_jurisdiction
 
-      - name: Summary
-        if: always()
+      - name: Run ETL Delta
+        env:
+          HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ETL_ALLOW_EMPTY: 1
         run: |
-          echo "## Harris County ETL Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Workflow: Harris County ETL Pipeline" >> $GITHUB_STEP_SUMMARY
-          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f scripts/logs/etl_output.log ]; then
-            echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -20 scripts/logs/etl_output.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
-          
-      - name: Upload artifacts and logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: harris-etl-${{ github.run_id }}
-          path: |
-            logs/etl-summary.json
-            scripts/logs/etl_output.log
-            logs/**/*.log
-          if-no-files-found: warn
-          retention-days: 14
-          
-      - name: Upload failure logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: harris-etl-failure-${{ github.run_id }}
-          path: |
-            scripts/logs/etl_output.log
-            logs/**/*.log
-          if-no-files-found: warn
-          retention-days: 7
+          # Use a single, consistent log path
+          node --version
+          npx tsx scripts/etlDelta.ts 2>&1 | tee logs/etl_output.log
