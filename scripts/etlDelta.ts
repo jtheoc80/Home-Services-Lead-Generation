@@ -82,49 +82,39 @@ function validateEnvironment(): { supabaseUrl: string; supabaseKey: string; hcUr
   return { supabaseUrl, supabaseKey, hcUrl };
 }
 
+function isArcGIS(url: string): boolean {
+  return /(FeatureServer|MapServer)\/\d+$/i.test(url);
+}
+
 function getSevenDaysAgo(): Date {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
   return sevenDaysAgo;
 }
 
-async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
-  const sinceTimestamp = since.getTime();
-  
-  const queryParams = new URLSearchParams({
-    where: `ISSUEDDATE > ${sinceTimestamp}`,
-    returnCountOnly: 'true',
-    f: 'json'
-  });
-  
-  const url = `${hcUrl}/query?${queryParams}`;
-  console.log(`Checking permit count for last 7 days...`);
-  
-  try {
-    const response = await axios.get(url, {
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Home-Services-Lead-Generation-ETL-Delta/1.0'
-      }
-    });
-    
-    if (response.status !== 200) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = response.data;
-    const count = data.count || 0;
-    
-    console.log(`Found ${count} permits in the last 7 days`);
-    return count;
-    
-  } catch (error) {
-    console.error('Error checking permit count:', error);
-    throw new Error(`Failed to check permit count: ${error instanceof Error ? error.message : String(error)}`);
+async function checkPermitCount(baseUrl: string, sinceMs: number): Promise<number> {
+  if (!isArcGIS(baseUrl)) {
+    // Not ArcGIS → we can't use /query?returnCountOnly; skip the remote count check
+    console.warn(`Skipping ArcGIS count check for non-ArcGIS URL: ${baseUrl}`);
+    return -1; // sentinel meaning "unknown"
   }
+  const url = `${baseUrl.replace(/\/$/, '')}/query` +
+              `?where=ISSUEDDATE+>=+${sinceMs}` +
+              `&returnCountOnly=true&f=json`;
+  const { data } = await axios.get(url, {
+    headers: { 'User-Agent': 'Home-Services-Lead-Generation-ETL-Delta/1.0' },
+    timeout: 30_000,
+  });
+  if (typeof data?.count === 'number') return data.count;
+  throw new Error(`Unexpected ArcGIS response: ${JSON.stringify(data).slice(0,200)}...`);
 }
 
 async function fetchPermits(hcUrl: string, since: Date): Promise<PermitRecord[]> {
+  if (!isArcGIS(hcUrl)) {
+    console.warn(`Cannot fetch permits from non-ArcGIS URL: ${hcUrl}`);
+    return [];
+  }
+  
   const permits: PermitRecord[] = [];
   let offset = 0;
   let hasMore = true;
@@ -367,7 +357,7 @@ async function main(): Promise<void> {
     await ensureTableExists(supabase);
     
     // Check permit count first
-    const permitCount = await checkPermitCount(hcUrl, sevenDaysAgo);
+    const permitCount = await checkPermitCount(hcUrl, sevenDaysAgo.getTime());
     
     if (permitCount === 0) {
       const sinceTimestamp = sevenDaysAgo.getTime();
@@ -387,7 +377,10 @@ async function main(): Promise<void> {
       } else {
         await callEnsureArtifacts();
       }
+    } else if (permitCount > 0) {
+      console.log(`Found ${permitCount} permits in the last 7 days`);
     }
+    // If permitCount === -1 (non-ArcGIS), skip count check and proceed to fetch
     
     // Fetch permits from ArcGIS
     const permits = await fetchPermits(hcUrl, sevenDaysAgo);
