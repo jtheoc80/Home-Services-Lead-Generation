@@ -5,13 +5,15 @@ import time
 import random
 import logging
 import requests
+import json
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from .base import BaseAdapter
 
 logger = logging.getLogger(__name__)
 
 
-class ArcGISFeatureServiceAdapter:
+class ArcGISFeatureServiceAdapter(BaseAdapter):
     """
     Query an ArcGIS FeatureServer/MapServer layer for permits.
     Works with endpoints like:
@@ -38,7 +40,7 @@ class ArcGISFeatureServiceAdapter:
     MIN_REQUEST_INTERVAL = 1.0 / MAX_REQUESTS_PER_SECOND  # 0.2 seconds
     
     def __init__(self, cfg: Dict[str, Any], session=None):
-        self.cfg = cfg
+        super().__init__(cfg, session)
         self.session = session or self._create_session()
         
         # Track last request time for rate limiting
@@ -174,33 +176,10 @@ class ArcGISFeatureServiceAdapter:
             logger.error(f"Error getting total count: {e}")
             return 0
 
-class ArcGISFeatureServiceAdapter:
-    """
-    Query an ArcGIS FeatureServer/MapServer layer for permits.
-    Works with endpoints like:
-      https://<host>/arcgis/rest/services/<path>/<FeatureServer|MapServer>/<layer>/query
-
-    Required config:
-      - name: Display name
-      - type: arcgis_feature_service
-      - url:  full /query endpoint OR layer endpoint (we'll append /query)
-      - date_field: Field to filter by date (e.g., 'GAL_REC_DATE', 'ISSUEDDATE')
-      - mappings: dict for field mapping into normalized record (optional)
-
-    Notes:
-      - We page using resultOffset/resultRecordCount up to 'limit' rows.
-      - Returns raw ArcGIS attributes; normalization handled upstream.
-    """
-    def __init__(self, cfg: Dict[str, Any], session=None):
-        self.cfg = cfg
-        self.session = session
-
-    def _query_url(self) -> str:
-        url = self.cfg["url"]
-        return url if url.rstrip('/').endswith('/query') else url.rstrip('/') + '/query'
-
-    def fetch_since(self, since: dt.datetime, limit: int = 10000) -> Iterable[Dict[str, Any]]:
-        """Fetch records since given datetime with enhanced error handling and rate limiting."""
+    # New SourceAdapter interface methods
+    def fetch(self, since_days: int) -> Iterable[bytes | str]:
+        """Fetch raw JSON data from ArcGIS FeatureServer."""
+        since = dt.datetime.utcnow() - dt.timedelta(days=since_days)
         date_field = self.cfg["date_field"]
         url = self._query_url()
         where = f"{date_field} >= TIMESTAMP '{since.strftime('%Y-%m-%d %H:%M:%S')}'"
@@ -216,7 +195,6 @@ class ArcGISFeatureServiceAdapter:
         # Get layer metadata to respect maxRecordCount
         metadata = self._get_layer_metadata()
         max_record_count = metadata.get('maxRecordCount', 2000)
-        logger.info(f"Using maxRecordCount: {max_record_count}")
         
         # Use the smaller of maxRecordCount or default page size
         page_size = min(max_record_count, 2000)
@@ -224,6 +202,7 @@ class ArcGISFeatureServiceAdapter:
 
         fetched = 0
         offset = 0
+        limit = 10000  # Default limit
         
         while fetched < limit and fetched < total_count:
             # Calculate how many records to request in this batch
@@ -247,19 +226,11 @@ class ArcGISFeatureServiceAdapter:
                 logger.warning("No data returned from request")
                 break
                 
+            # Yield raw JSON response as string
+            yield json.dumps(data)
+            
             feats = data.get("features", [])
-            if not feats:
-                logger.info("No more features available")
-                break
-                
-            for feat in feats:
-                attrs = feat.get("attributes", {})
-                yield attrs
-                fetched += 1
-                if fetched >= limit:
-                    break
-                    
-            logger.info(f"Fetched {len(feats)} records from batch, total so far: {fetched}")
+            fetched += len(feats)
             
             # If we got fewer features than requested, we've reached the end
             if len(feats) < records_to_fetch:
@@ -267,3 +238,71 @@ class ArcGISFeatureServiceAdapter:
                 break
                 
             offset += len(feats)
+
+    def parse(self, raw: bytes | str) -> Iterable[Dict[str, Any]]:
+        """Parse raw ArcGIS JSON response into individual feature records."""
+        try:
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8')
+            
+            data = json.loads(raw)
+            features = data.get("features", [])
+            
+            for feat in features:
+                attrs = feat.get("attributes", {})
+                yield attrs
+                
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.error(f"Failed to parse ArcGIS response: {e}")
+            return
+
+    def normalize(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize ArcGIS feature attributes to standard format."""
+        mappings = self.cfg.get("mappings", {})
+        
+        # Apply field mappings if configured
+        normalized = {}
+        for target_field, source_field in mappings.items():
+            if source_field in row:
+                normalized[target_field] = row[source_field]
+        
+        # Add standard fields with fallbacks
+        normalized.update({
+            "source": self.name,
+            "permit_number": normalized.get("permit_number") or row.get("PERMITNUMBER") or row.get("permit_id") or "",
+            "issued_date": normalized.get("issued_date") or row.get("ISSUEDDATE") or row.get("issue_date") or "",
+            "address": normalized.get("address") or row.get("FULLADDRESS") or row.get("full_address") or "",
+            "description": normalized.get("description") or row.get("PERMITNAME") or row.get("description") or "",
+            "status": normalized.get("status") or row.get("STATUS") or "",
+            "work_class": normalized.get("work_class") or row.get("APPTYPE") or "",
+            "category": normalized.get("category") or row.get("APPTYPE") or "",
+            "applicant": normalized.get("applicant") or row.get("APPLICANTNAME") or "",
+            "value": self._parse_value(normalized.get("value") or row.get("PERMITVALUATION")),
+            "raw_json": row,
+        })
+        
+        return normalized
+
+    def _parse_value(self, value_str: Any) -> Optional[float]:
+        """Parse permit value from string."""
+        if value_str is None:
+            return None
+        
+        try:
+            # Handle various value formats
+            if isinstance(value_str, (int, float)):
+                return float(value_str)
+            
+            value_str = str(value_str).strip()
+            if not value_str:
+                return None
+            
+            # Remove common prefixes and characters
+            value_str = value_str.replace('$', '').replace(',', '').replace(' ', '')
+            
+            if value_str.lower() in ['n/a', 'na', 'none', 'null', '']:
+                return None
+            
+            return float(value_str)
+        except (ValueError, TypeError):
+            return None
