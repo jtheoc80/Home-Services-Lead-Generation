@@ -5,6 +5,7 @@ Provides:
 - score_permit_rows: scoring logic for recent permits
 - export_leads: orchestrator to read from SQLite and write scored CSVs
 """
+
 from __future__ import annotations
 import csv
 import math
@@ -15,8 +16,22 @@ from typing import List, Dict, Any, Tuple
 
 # Fallback keywords (should eventually be centralized with normalization keywords)
 RESIDENTIAL_FALLBACK_KEYWORDS = [
-    "kitchen","bath","roof","remodel","addition","hvac","furnace","plumb","electrical",
-    "siding","window","garage","deck","patio","pool","foundation"
+    "kitchen",
+    "bath",
+    "roof",
+    "remodel",
+    "addition",
+    "hvac",
+    "furnace",
+    "plumb",
+    "electrical",
+    "siding",
+    "window",
+    "garage",
+    "deck",
+    "patio",
+    "pool",
+    "foundation",
 ]
 
 # Work class / category weights (simple heuristic v1)
@@ -34,10 +49,27 @@ WORK_CLASS_WEIGHTS = {
 SCORING_VERSION = "1.0.0"
 
 LEAD_FIELD_ORDER = [
-    "jurisdiction","permit_id","address","description","work_class","category",
-    "status","issue_date","applicant","owner","value","is_residential","scraped_at",
-    "score_total","score_recency","score_residential","score_value","score_work_class","scoring_version"
+    "jurisdiction",
+    "permit_id",
+    "address",
+    "description",
+    "work_class",
+    "category",
+    "status",
+    "issue_date",
+    "applicant",
+    "owner",
+    "value",
+    "is_residential",
+    "scraped_at",
+    "score_total",
+    "score_recency",
+    "score_residential",
+    "score_value",
+    "score_work_class",
+    "scoring_version",
 ]
+
 
 def _score_row(r: Dict[str, Any], now: datetime, lookback_days: int) -> Dict[str, Any]:
     # Parse issue date
@@ -63,7 +95,9 @@ def _score_row(r: Dict[str, Any], now: datetime, lookback_days: int) -> Dict[str
     is_res = r.get("is_residential") == 1
     desc = (r.get("description") or "").lower()
     work_class = (r.get("work_class") or "").lower()
-    residential_hits = sum(1 for kw in RESIDENTIAL_FALLBACK_KEYWORDS if kw in desc or kw in work_class)
+    residential_hits = sum(
+        1 for kw in RESIDENTIAL_FALLBACK_KEYWORDS if kw in desc or kw in work_class
+    )
     score_residential = 20 if is_res else min(10, residential_hits * 2)
 
     # Value score (log-ish scaling)
@@ -96,11 +130,17 @@ def _score_row(r: Dict[str, Any], now: datetime, lookback_days: int) -> Dict[str
     )
     return r
 
-def score_permit_rows(rows: List[sqlite3.Row], lookback_days: int) -> List[Dict[str, Any]]:
+
+def score_permit_rows(
+    rows: List[sqlite3.Row], lookback_days: int
+) -> List[Dict[str, Any]]:
     now = datetime.now(timezone.utc)
     scored = [_score_row(dict(r), now, lookback_days) for r in rows]
-    scored.sort(key=lambda r: (r["score_total"], r.get("issue_date") or ""), reverse=True)
+    scored.sort(
+        key=lambda r: (r["score_total"], r.get("issue_date") or ""), reverse=True
+    )
     return scored
+
 
 def _write_csv(path: Path, rows: List[Dict[str, Any]]):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,11 +157,9 @@ def _write_csv(path: Path, rows: List[Dict[str, Any]]):
         writer.writeheader()
         writer.writerows(rows)
 
+
 def export_leads(
-    db_path: Path,
-    out_dir: Path,
-    lookback_days: int,
-    min_issue_date_only: bool = True
+    db_path: Path, out_dir: Path, lookback_days: int, min_issue_date_only: bool = True
 ) -> Tuple[Path, int]:
     """Generate scored lead CSVs from the permits database.
 
@@ -138,7 +176,9 @@ def export_leads(
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).date().isoformat()
+    cutoff = (
+        (datetime.now(timezone.utc) - timedelta(days=lookback_days)).date().isoformat()
+    )
 
     where_clauses = ["issue_date >= ?"]
     params: List[Any] = [cutoff]
