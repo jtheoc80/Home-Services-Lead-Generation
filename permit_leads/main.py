@@ -125,14 +125,16 @@ def write_json_summary(summary_path: str, record_count: int, sources_processed: 
 def convert_sources_to_jurisdictions(sources: str) -> List[str]:
     """Convert comma-separated source names to jurisdiction slugs"""
     source_to_jurisdiction = {
-        'austin': 'tx-travis',  # Travis County covers Austin
-        'san_antonio': 'tx-bexar',  # Bexar County covers San Antonio  
+        # Only include active jurisdictions from registry
         'dallas': 'tx-dallas',
         'houston': 'tx-harris',  # Harris County covers Houston
         'harris_county': 'tx-harris',
         'fort_bend': 'tx-fort-bend',
         'brazoria': 'tx-brazoria',
-        'galveston': 'tx-galveston'
+        'galveston': 'tx-galveston',
+        # Future areas (commented out in registry) - warn but skip
+        'austin': None,  # tx-travis not active yet  
+        'san_antonio': None,  # tx-bexar not active yet
     }
     
     source_list = [s.strip() for s in sources.split(',')]
@@ -141,7 +143,9 @@ def convert_sources_to_jurisdictions(sources: str) -> List[str]:
     for source in source_list:
         if source in source_to_jurisdiction:
             jurisdiction = source_to_jurisdiction[source]
-            if jurisdiction not in jurisdictions:  # Avoid duplicates
+            if jurisdiction is None:
+                logger.warning(f"Source '{source}' maps to inactive jurisdiction, skipping")
+            elif jurisdiction not in jurisdictions:  # Avoid duplicates
                 jurisdictions.append(jurisdiction)
         else:
             logger.warning(f"Unknown source '{source}', skipping")

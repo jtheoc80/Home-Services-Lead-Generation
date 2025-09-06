@@ -16,7 +16,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SOURCES: "austin,san_antonio,dallas,houston,harris_county"
+      SOURCES: "austin,san_antonio,dallas,houston,harris_county"  # Note: austin,san_antonio map to inactive jurisdictions
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
