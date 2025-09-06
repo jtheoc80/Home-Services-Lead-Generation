@@ -7,7 +7,6 @@ to using the unified interface.
 """
 
 import argparse
-import datetime as dt
 from pathlib import Path
 from typing import List, Dict, Any
 
