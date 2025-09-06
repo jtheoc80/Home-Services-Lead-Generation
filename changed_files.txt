@@ -1,0 +1,11 @@
+SOURCE_ADAPTER_INTERFACE.md
+example_unified_main.py
+example_unified_runner.py
+permit_leads/adapters/__init__.py
+permit_leads/adapters/accela_html_adapter.py
+permit_leads/adapters/arcgis_feature_service.py
+permit_leads/adapters/base.py
+permit_leads/adapters/html_table_adapter.py
+permit_leads/adapters/simple_socrata_adapter.py
+permit_leads/adapters/tpia_adapter.py
+test_source_adapter_interface.py
