@@ -18,7 +18,7 @@ class SourceAdapter(Protocol):
         Returns:
             Iterable of raw data (bytes or strings)
         """
-        ...
+        pass
     
     def parse(self, raw: bytes | str) -> Iterable[Dict[str, Any]]:
         """Parse raw data into structured records.
@@ -29,7 +29,7 @@ class SourceAdapter(Protocol):
         Returns:
             Iterable of parsed dictionaries
         """
-        ...
+        pass
     
     def normalize(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize a parsed record to standard format.
@@ -40,7 +40,7 @@ class SourceAdapter(Protocol):
         Returns:
             Normalized record dictionary
         """
-        ...
+        pass
 
 
 class BaseAdapter:
