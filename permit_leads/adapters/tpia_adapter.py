@@ -5,14 +5,15 @@ Handles CSV processing from manually requested public records.
 
 import csv
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, Iterable, Optional, List
 from pathlib import Path
+from .base import BaseAdapter
 
 logger = logging.getLogger(__name__)
 
 
-class TPIAAdapter:
+class TPIAAdapter(BaseAdapter):
     """
     Adapter for processing CSV files from Texas Public Information Act requests.
     
@@ -21,9 +22,8 @@ class TPIAAdapter:
     """
     
     def __init__(self, cfg: Dict[str, Any], session=None):
-        self.cfg = cfg
+        super().__init__(cfg, session)
         self.jurisdiction = cfg.get("jurisdiction", "unknown")
-        self.session = session
         self.data_dir = Path(cfg.get("data_dir", "./data/tpia"))
         self.template_dir = Path(cfg.get("template_dir", "./templates/tpia"))
         
@@ -228,3 +228,99 @@ NOTES FOR REQUESTOR:
                 "step_4": "Run ETL process to import the CSV data"
             }
         }
+
+    # SourceAdapter interface methods
+    def fetch(self, since_days: int) -> Iterable[bytes | str]:
+        """Fetch raw CSV data from TPIA files."""
+        since_date = datetime.utcnow() - timedelta(days=since_days)
+        csv_files = self.list_available_csv_files()
+        
+        logger.info(f"Processing {len(csv_files)} TPIA CSV files for {self.jurisdiction}")
+        
+        for csv_file in csv_files:
+            # Check if file is newer than since_date based on filename or modification time
+            file_date = None
+            
+            # Try to extract date from filename (e.g., houston_permits_20231201.csv)
+            if "_permits_" in csv_file.name:
+                try:
+                    date_str = csv_file.name.split("_permits_")[1].split(".")[0]
+                    file_date = datetime.strptime(date_str, "%Y%m%d")
+                except ValueError:
+                    logger.debug(f"Could not parse date from filename '{csv_file.name}'")
+            
+            # Fall back to file modification time
+            if not file_date:
+                file_date = datetime.fromtimestamp(csv_file.stat().st_mtime)
+            
+            if file_date >= since_date:
+                logger.info(f"Reading TPIA CSV file: {csv_file}")
+                with open(csv_file, 'r', encoding='utf-8') as f:
+                    yield f.read()
+
+    def parse(self, raw: bytes | str) -> Iterable[Dict[str, Any]]:
+        """Parse raw CSV data into individual records."""
+        try:
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8')
+            
+            # Parse CSV content
+            csv_reader = csv.DictReader(raw.splitlines())
+            
+            for row in csv_reader:
+                yield dict(row)
+                
+        except Exception as e:
+            logger.error(f"Failed to parse TPIA CSV data: {e}")
+            return
+
+    def normalize(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize TPIA CSV record to standard format."""
+        mappings = self.cfg.get("mappings", {})
+        
+        # Apply field mappings if configured
+        normalized = {}
+        for target_field, source_field in mappings.items():
+            if source_field in row:
+                normalized[target_field] = row[source_field]
+        
+        # Add standard fields with fallbacks for common Houston CSV formats
+        normalized.update({
+            "source": self.name,
+            "permit_number": normalized.get("permit_number") or row.get("Permit Number") or row.get("PERMIT_NUMBER") or "",
+            "issued_date": normalized.get("issued_date") or row.get("Issue Date") or row.get("ISSUED_DATE") or "",
+            "address": normalized.get("address") or row.get("Address") or row.get("FULL_ADDRESS") or "",
+            "description": normalized.get("description") or row.get("Description") or row.get("WORK_DESCRIPTION") or "",
+            "status": normalized.get("status") or row.get("Status") or row.get("PERMIT_STATUS") or "",
+            "work_class": normalized.get("work_class") or row.get("Work Class") or row.get("PERMIT_TYPE") or "",
+            "category": normalized.get("category") or row.get("Category") or row.get("PERMIT_TYPE") or "",
+            "applicant": normalized.get("applicant") or row.get("Applicant") or row.get("CONTRACTOR_NAME") or "",
+            "value": self._parse_value(normalized.get("value") or row.get("Value") or row.get("DECLARED_VALUATION")),
+            "raw_json": row,
+        })
+        
+        return normalized
+
+    def _parse_value(self, value_str: Any) -> Optional[float]:
+        """Parse permit value from string."""
+        if value_str is None:
+            return None
+        
+        try:
+            # Handle various value formats
+            if isinstance(value_str, (int, float)):
+                return float(value_str)
+            
+            value_str = str(value_str).strip()
+            if not value_str:
+                return None
+            
+            # Remove common prefixes and characters
+            value_str = value_str.replace('$', '').replace(',', '').replace(' ', '')
+            
+            if value_str.lower() in ['n/a', 'na', 'none', 'null', '']:
+                return None
+            
+            return float(value_str)
+        except (ValueError, TypeError):
+            return None
