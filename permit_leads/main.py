@@ -101,7 +101,15 @@ def write_summary_to_log(record_count: int, message: str) -> None:
 
 
 def write_json_summary(summary_path: str, record_count: int, sources_processed: List[str], success: bool) -> None:
-    """Write JSON summary file for ETL monitoring"""
+    """
+    Write a JSON summary file for ETL monitoring.
+
+    Args:
+        summary_path (str): The file path where the summary JSON will be written.
+        record_count (int): The number of records processed in the ETL run.
+        sources_processed (List[str]): A list of source names that were processed.
+        success (bool): Whether the ETL run was successful.
+    """
     try:
         summary_data = {
             "timestamp": dt.datetime.now().isoformat(),
