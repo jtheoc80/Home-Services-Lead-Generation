@@ -4,7 +4,6 @@ Simple test script to verify the SourceAdapter interface works correctly.
 Does not make external network calls.
 """
 
-import sys
 import json
 from typing import Dict, Any
 from permit_leads.adapters.base import SourceAdapter
