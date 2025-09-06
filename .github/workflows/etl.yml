@@ -22,8 +22,12 @@ jobs:
   etl:
     runs-on: ubuntu-latest
     concurrency:
-      group: nightly-etl-${{ github.repository }}
-      cancel-in-progress: false
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
     defaults:
       run:
         working-directory: permit_leads
@@ -36,6 +40,8 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: permit_leads/requirements.txt
 
     - name: Install deps
       run: |
@@ -56,9 +62,6 @@ jobs:
 
     - name: Preflight secrets
       id: preflight
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         ok=1
         for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
@@ -73,28 +76,19 @@ jobs:
         [ "$ok" -eq 1 ]
 
     - name: Preflight Source URL
-      if: ${{ steps.preflight.outputs.ok == '1' }}
-      env:
-        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
+      if: ${{ env.HC_ISSUED_PERMITS_URL && steps.preflight.outputs.ok == '1' }}
       run: |
-        if [ -z "$HC_ISSUED_PERMITS_URL" ]; then
-          echo "::warning title=Source URL not configured::HC_ISSUED_PERMITS_URL is not set"
+        echo "::add-mask::$HC_ISSUED_PERMITS_URL"
+        code=$(curl -sS --fail --max-time 10 --retry 3 -H 'Range: bytes=0-0' -o /dev/null -w "%{http_code}" "$HC_ISSUED_PERMITS_URL" || echo "000")
+        if [ "$code" = "200" ] || [ "$code" = "206" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+          echo "✅ Source URL accessible (HTTP $code)"
         else
-          echo "::add-mask::$HC_ISSUED_PERMITS_URL"
-          code=$(curl -s -o /dev/null -w "%{http_code}" --head --max-time 10 "$HC_ISSUED_PERMITS_URL" || echo "000")
-          if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
-            echo "✅ Source URL accessible (HTTP $code)"
-          else
-            echo "::warning title=Source URL check failed::HTTP $code from source URL"
-          fi
+          echo "::warning title=Source URL check failed::HTTP $code from source URL"
         fi
 
     - name: Supabase REST probe (non-fatal)
-      if: ${{ steps.preflight.outputs.ok == '1' }}
+      if: ${{ env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && steps.preflight.outputs.ok == '1' }}
       id: supa
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         code=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
@@ -108,8 +102,6 @@ jobs:
 
     - name: Run ETL scraping
       id: etl_run
-      env:
-        HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
       run: |
         SINCE="${{ inputs.since }}"; [ -z "$SINCE" ] && SINCE="1d"
         echo "Running ETL: --since $SINCE"
@@ -141,9 +133,6 @@ jobs:
       # ✅ Only run ingestion if records > 0 OR force=true
     - name: Run data ingestion
       if: ${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         echo "Searching CSVs in artifacts/ ..."
         shopt -s nullglob
@@ -185,6 +174,7 @@ jobs:
           permit_leads/artifacts/**/*.csv
           permit_leads/logs/**/*.log
           permit_leads/logs/etl_output.log
+          permit_leads/logs/etl-summary.json
         if-no-files-found: warn
         retention-days: 14
 

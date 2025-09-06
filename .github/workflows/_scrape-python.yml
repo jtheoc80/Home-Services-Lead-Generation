@@ -42,6 +42,9 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ inputs.name }}-${{ github.ref }}
+      cancel-in-progress: true
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -52,6 +55,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'pip'
+          cache-dependency-path: permit_leads/requirements.txt
 
       - name: Install deps
         run: |
@@ -94,6 +99,7 @@ jobs:
             data/**/*.csv
             logs/**/*.log
             logs/etl_output.log
+            logs/etl-summary.json
             ${{ inputs.artifacts_glob }}
           if-no-files-found: warn
           retention-days: 14
