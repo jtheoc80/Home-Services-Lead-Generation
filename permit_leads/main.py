@@ -100,6 +100,76 @@ def write_summary_to_log(record_count: int, message: str) -> None:
         logger.warning(f"Failed to write to log file: {e}")
 
 
+def write_json_summary(summary_path: str, record_count: int, sources_processed: List[str], success: bool) -> None:
+    """
+    Write a JSON summary file for ETL monitoring.
+
+    Args:
+        summary_path (str): The file path where the summary JSON will be written.
+        record_count (int): The number of records processed in the ETL run.
+        sources_processed (List[str]): A list of source names that were processed.
+        success (bool): Whether the ETL run was successful.
+    """
+    try:
+        summary_data = {
+            "timestamp": dt.datetime.now().isoformat(),
+            "record_count": record_count,
+            "sources_processed": sources_processed,
+            "success": success,
+            "status": "success" if success else "failed"
+        }
+        
+        summary_file = Path(summary_path)
+        summary_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            json.dump(summary_data, f, indent=2)
+        
+        print(f"📊 Summary written to {summary_file}")
+    except Exception as e:
+        logger.warning(f"Failed to write JSON summary: {e}")
+
+
+def convert_sources_to_jurisdictions(sources: str) -> List[str]:
+    """
+    Convert comma-separated source names to jurisdiction slugs.
+
+    Args:
+        sources (str): A comma-separated string of source names (e.g., "dallas,houston").
+
+    Returns:
+        List[str]: A list of jurisdiction slugs corresponding to the recognized sources.
+            Unknown or inactive sources are skipped.
+    """
+    source_to_jurisdiction = {
+        # Only include active jurisdictions from registry
+        'dallas': 'tx-dallas',
+        'houston': 'tx-harris',  # Harris County covers Houston
+        'harris_county': 'tx-harris',
+        'fort_bend': 'tx-fort-bend',
+        'brazoria': 'tx-brazoria',
+        'galveston': 'tx-galveston',
+        # Future areas (commented out in registry) - warn but skip
+        'austin': None,  # tx-travis not active yet  
+        'san_antonio': None,  # tx-bexar not active yet
+    }
+    
+    source_list = [s.strip() for s in sources.split(',')]
+    jurisdictions = []
+    
+    for source in source_list:
+        if source in source_to_jurisdiction:
+            jurisdiction = source_to_jurisdiction[source]
+            if jurisdiction is None:
+                logger.warning(f"Source '{source}' maps to inactive jurisdiction, skipping")
+            elif jurisdiction not in jurisdictions:  # Avoid duplicates
+                jurisdictions.append(jurisdiction)
+        else:
+            logger.warning(f"Unknown source '{source}', skipping")
+    
+    return jurisdictions
+
+
 def write_sqlite_output(permits: List[PermitRecord], output_paths: Dict[str, Path]) -> None:
     if not permits:
         return
@@ -260,6 +330,9 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Multi-source ETL (new interface)
+  python -m permit_leads --sources "austin,san_antonio,dallas,houston,harris_county" --days 1 --sink supabase
+  
   # Scrape using new region-aware system
   python -m permit_leads scrape --region-aware --days 3 --formats csv sqlite jsonl
   
@@ -286,6 +359,9 @@ Examples:
     parser.add_argument("--all", action="store_true", help="Run all available scrapers (legacy)")
     parser.add_argument("--region-aware", action="store_true", help="Use new region-aware scraping system")
     parser.add_argument("--jurisdiction", help="Specific jurisdiction slug to scrape")
+    parser.add_argument("--sources", help="Comma-separated list of sources (e.g., 'austin,dallas,harris_county')")
+    parser.add_argument("--sink", choices=["supabase", "csv", "sqlite", "jsonl"], help="Primary output destination")
+    parser.add_argument("--summary", help="Path to write JSON summary file")
     parser.add_argument("--days", type=int, default=7, help="Look-back window in days (default: 7)")
     parser.add_argument("--limit", type=int, help="Limit number of records per source")
     parser.add_argument("--formats", nargs="+", choices=["csv", "sqlite", "jsonl"], default=["csv", "sqlite"], help="Output formats (default: csv sqlite)")
@@ -358,16 +434,26 @@ def handle_scrape(args: argparse.Namespace):
             print(f"  - {csv_file}")
         print()
         
-        # Determine scraping mode
+        # Determine scraping mode - check new multi-source interface first
+        use_multi_source = getattr(args, 'sources', None)
         use_region_aware = getattr(args, 'region_aware', False) or getattr(args, 'jurisdiction', None)
         
+        # Set up output configuration based on sink argument
+        sink = getattr(args, 'sink', None)
+        if sink:
+            if sink == 'supabase':
+                # Override formats to prioritize Supabase output 
+                args.formats = ['csv']  # Still generate CSV for artifacts
+            elif sink in ['csv', 'sqlite', 'jsonl']:
+                args.formats = [sink]
+        
         if args.command == "__auto__":
-            if not getattr(args, "source", None) and not getattr(args, "all", False) and not use_region_aware:
-                raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction (scrape mode).")
+            if not getattr(args, "source", None) and not getattr(args, "all", False) and not use_region_aware and not use_multi_source:
+                raise SystemExit("Must specify either --source, --all, --region-aware, --jurisdiction, or --sources (scrape mode).")
             output_dir = Path(getattr(args, "output_dir", "data"))
         else:
-            if not args.source and not args.all and not use_region_aware:
-                raise SystemExit("Must specify either --source, --all, --region-aware, or --jurisdiction")
+            if not args.source and not args.all and not use_region_aware and not use_multi_source:
+                raise SystemExit("Must specify either --source, --all, --region-aware, --jurisdiction, or --sources")
             if args.source and args.all:
                 raise SystemExit("Cannot specify both --source and --all")
             output_dir = Path(args.output_dir)
@@ -375,11 +461,26 @@ def handle_scrape(args: argparse.Namespace):
         output_paths = setup_output_directories(output_dir)
         all_permits: List[PermitRecord] = []
         jurisdiction_results = {}  # Initialize for legacy compatibility
+        sources_processed = []
         
-        if use_region_aware:
+        if use_multi_source:
+            # New multi-source interface
+            logger.info(f"Using multi-source interface with sources: {args.sources}")
+            jurisdictions = convert_sources_to_jurisdictions(args.sources)
+            logger.info(f"Converted to jurisdictions: {jurisdictions}")
+            
+            # Process each jurisdiction
+            for jurisdiction in jurisdictions:
+                logger.info(f"Processing jurisdiction: {jurisdiction}")
+                args.jurisdiction = jurisdiction  # Set for the region-aware scraper
+                permits, jur_results = run_region_aware_scraper(args, output_paths, return_jurisdiction_map=True)
+                all_permits.extend(permits)
+                jurisdiction_results.update(jur_results)
+                sources_processed.append(jurisdiction)
+            
+        elif use_region_aware:
             # Use new region-aware system
             logger.info("Using region-aware scraping system")
-            # Initialize for legacy compatibility
             permits, jurisdiction_results = run_region_aware_scraper(args, output_paths, return_jurisdiction_map=True)
             all_permits.extend(permits)
             sources_processed = ["region-aware"]
@@ -397,7 +498,7 @@ def handle_scrape(args: argparse.Namespace):
         if all_permits and not args.dry_run:
             if "jsonl" in args.formats:
                 # For region-aware, use first permit's jurisdiction or fallback
-                if use_region_aware:
+                if use_region_aware or use_multi_source:
                     temp_jur = "multi-jurisdiction"
                 else:
                     temp_jur = SCRAPERS[sources_to_run[0]]("").jurisdiction
@@ -407,12 +508,17 @@ def handle_scrape(args: argparse.Namespace):
             if "sqlite" in args.formats:
                 write_sqlite_output(all_permits, output_paths)
             
-            # Add Supabase sink for all Texas counties
-            if use_region_aware:
+            # Handle Supabase sink (either via --sink supabase or for region-aware TX counties)
+            if sink == 'supabase' or (use_region_aware or use_multi_source):
                 # Support all Texas counties that have Supabase tables
-                tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston']
+                tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston', 'tx-dallas']
                 
-                if args.jurisdiction and args.jurisdiction in tx_counties:
+                if use_multi_source:
+                    # Multi-source case - write each jurisdiction separately
+                    for jurisdiction, permits_list in jurisdiction_results.items():
+                        if jurisdiction in tx_counties and permits_list:
+                            write_supabase_output(permits_list, jurisdiction)
+                elif args.jurisdiction and args.jurisdiction in tx_counties:
                     # Single jurisdiction case
                     write_supabase_output(all_permits, args.jurisdiction)
                 elif not args.jurisdiction:
@@ -421,7 +527,6 @@ def handle_scrape(args: argparse.Namespace):
                         if jurisdiction in tx_counties and permits_list:
                             write_supabase_output(permits_list, jurisdiction)
         
-
         total_permits = len(all_permits)
         residential_permits = sum(1 for p in all_permits if p.is_residential())
         
@@ -429,12 +534,6 @@ def handle_scrape(args: argparse.Namespace):
         if total_permits == 0:
             print("\n=== SCRAPING SUMMARY ===")
             print("No permits found to process")
-
-        # Add Supabase sink for all Texas counties
-        if use_region_aware:
-            # Support all Texas counties that have Supabase tables
-            tx_counties = ['tx-harris', 'tx-fort-bend', 'tx-brazoria', 'tx-galveston', 'tx-dallas']
-
             
             # Write summary to log file
             write_summary_to_log(0, "No input found")
@@ -448,8 +547,13 @@ def handle_scrape(args: argparse.Namespace):
             else:
                 call_ensure_artifacts()
             
+            # Write JSON summary if requested
+            if getattr(args, 'summary', None):
+                write_json_summary(args.summary, 0, sources_processed, True)
+            
             # Use finalize_log for "no new data" case - exit with 0 (expected empty)
             finalize_log(0, True)
+            return
         
         print("\n=== SCRAPING SUMMARY ===")
         print(f"Total permits: {total_permits}")
@@ -458,6 +562,8 @@ def handle_scrape(args: argparse.Namespace):
         if not args.dry_run and total_permits > 0:
             print(f"Output directory: {output_dir}")
             print(f"Formats written: {', '.join(args.formats)}")
+            if sink:
+                print(f"Primary sink: {sink}")
             if "sqlite" in args.formats:
                 storage = Storage(db_path=output_paths['db'])
                 latest = storage.get_latest(5)
@@ -469,6 +575,10 @@ def handle_scrape(args: argparse.Namespace):
         # Write final summary to log file
         write_summary_to_log(total_permits, f"Scraping completed: {total_permits} total permits, {residential_permits} residential")
         
+        # Write JSON summary if requested
+        if getattr(args, 'summary', None):
+            write_json_summary(args.summary, total_permits, sources_processed, True)
+        
         # Call ensure_artifacts.py at the end
         call_ensure_artifacts()
         
@@ -477,6 +587,11 @@ def handle_scrape(args: argparse.Namespace):
         
     except Exception as e:
         logger.error(f"Scraping failed with error: {e}")
+        
+        # Write JSON summary for failure if requested
+        if getattr(args, 'summary', None):
+            write_json_summary(args.summary, 0, [], False)
+        
         # Use finalize_log for failure case - exit with 1
         finalize_log(0, False)
 
