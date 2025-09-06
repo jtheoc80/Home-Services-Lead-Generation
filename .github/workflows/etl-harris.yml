@@ -24,6 +24,10 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
     defaults:
       run:
         working-directory: scripts
@@ -37,6 +41,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       
       - name: Install dependencies
         run: |
@@ -45,9 +50,6 @@ jobs:
       
       - name: Preflight checks
         id: preflight
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           # Validate environment variables
           if [ -z "$SUPABASE_URL" ]; then
@@ -62,10 +64,7 @@ jobs:
           echo "ok=1" >> $GITHUB_OUTPUT
           
       - name: "Preflight: test Supabase REST"
-        if: ${{ steps.preflight.outputs.ok == '1' }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        if: ${{ env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && steps.preflight.outputs.ok == '1' }}
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
@@ -78,12 +77,9 @@ jobs:
           fi
       
       - name: Run Harris County ETL Delta Test
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           # Set URL using shell logic instead of ternary
-          HC_URL="${{ secrets.HC_ISSUED_PERMITS_URL }}"
+          HC_URL="$HC_ISSUED_PERMITS_URL"
           if [ -z "$HC_URL" ]; then
             HC_URL="https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
           fi
@@ -117,14 +113,24 @@ jobs:
           else
             echo '{"error": "No log file found"}' > logs/etl-summary.json
           fi
+          
+          # Upload logs/etl-summary.json for monitoring
+          echo "Creating standard summary for monitoring..."
+          cat > logs/etl-summary.json <<EOF
+          {
+            "test": "etl-delta",
+            "status": "${{ job.status }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "workflow": "${{ github.workflow }}",
+            "run_id": "${{ github.run_id }}",
+            "records_processed": 0
+          }
+          EOF
       
 
 
       - name: Check for stale data (24h failure protection)
         if: always()
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "🔍 Checking for stale data..."
           
@@ -196,3 +202,26 @@ jobs:
             tail -20 scripts/logs/etl_output.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
+          
+      - name: Upload artifacts and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harris-etl-${{ github.run_id }}
+          path: |
+            logs/etl-summary.json
+            scripts/logs/etl_output.log
+            logs/**/*.log
+          if-no-files-found: warn
+          retention-days: 14
+          
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harris-etl-failure-${{ github.run_id }}
+          path: |
+            scripts/logs/etl_output.log
+            logs/**/*.log
+          if-no-files-found: warn
+          retention-days: 7
