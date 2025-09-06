@@ -6,7 +6,7 @@ Used for Dallas and Austin permit data.
 import logging
 import time
 import json
-from typing import List, Optional, Dict, Any, Iterable
+from typing import Optional, Dict, Any, Iterable
 from datetime import datetime, timedelta
 import requests
 from requests.adapters import HTTPAdapter
