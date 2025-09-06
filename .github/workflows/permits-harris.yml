@@ -69,15 +69,13 @@ jobs:
         fi
 
     - name: "Preflight: Source URL"
-      env:
-        SOURCE_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
       run: |
-        if [ -z "$SOURCE_URL" ]; then
+        if [ -z "$HC_ISSUED_PERMITS_URL" ]; then
           echo "::warning title=HC_ISSUED_PERMITS_URL missing::Set this repo secret for Harris source"
         else
-          code=$(curl -s -o /dev/null -w "%{http_code}" -I "$SOURCE_URL" || true)
-          echo "Source HEAD HTTP=$code"
-          if [ "$code" != "200" ] && [ "$code" != "302" ] && [ "$code" != "301" ]; then
+          code=$(curl -sS --fail --max-time 10 --retry 3 -H 'Range: bytes=0-0' -o /dev/null -w "%{http_code}" "$HC_ISSUED_PERMITS_URL" || echo "000")
+          echo "Source ranged GET HTTP=$code"
+          if [ "$code" != "200" ] && [ "$code" != "206" ] && [ "$code" != "302" ] && [ "$code" != "301" ]; then
             echo "::warning title=Source URL not reachable::HTTP $code"
           fi
         fi
