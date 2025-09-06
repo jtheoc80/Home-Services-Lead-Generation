@@ -14,13 +14,24 @@ jobs:
       - name: Check last 24h counts (REST)
         run: |
           python - <<'PY'
-          import os, requests, datetime
+          import os, requests, datetime, sys
           today = datetime.date.today().isoformat()
           url = f"{os.environ['SUPABASE_URL']}/rest/v1/permits?select=count&issue_date=gte.{today}"
           h = {"apikey":os.environ["SUPABASE_SERVICE_ROLE_KEY"],
                "Authorization":"Bearer "+os.environ["SUPABASE_SERVICE_ROLE_KEY"],
                "Prefer":"count=exact"}
-          r = requests.get(url, headers=h, timeout=15)
-          print("content-range:", r.headers.get("content-range"))
+          try:
+              r = requests.get(url, headers=h, timeout=15)
+              if not r.ok:
+                  print(f"Error: Received status code {r.status_code} from {url}", file=sys.stderr)
+                  sys.exit(1)
+              content_range = r.headers.get("content-range")
+              if content_range is None:
+                  print("Error: 'content-range' header missing in response", file=sys.stderr)
+                  sys.exit(1)
+              print("content-range:", content_range)
+          except Exception as e:
+              print(f"Request failed: {e}", file=sys.stderr)
+              sys.exit(1)
           PY
 
