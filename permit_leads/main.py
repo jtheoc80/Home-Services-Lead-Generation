@@ -131,7 +131,16 @@ def write_json_summary(summary_path: str, record_count: int, sources_processed: 
 
 
 def convert_sources_to_jurisdictions(sources: str) -> List[str]:
-    """Convert comma-separated source names to jurisdiction slugs"""
+    """
+    Convert comma-separated source names to jurisdiction slugs.
+
+    Args:
+        sources (str): A comma-separated string of source names (e.g., "dallas,houston").
+
+    Returns:
+        List[str]: A list of jurisdiction slugs corresponding to the recognized sources.
+            Unknown or inactive sources are skipped.
+    """
     source_to_jurisdiction = {
         # Only include active jurisdictions from registry
         'dallas': 'tx-dallas',
