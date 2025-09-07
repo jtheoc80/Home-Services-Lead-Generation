@@ -1,4 +1,3 @@
----
 name: DB Migrations
 "on":
   pull_request:
