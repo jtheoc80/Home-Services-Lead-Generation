@@ -369,6 +369,16 @@ async function main(): Promise<void> {
     await ensureTableExists(supabase);
     
     // Check permit count first
+
+    const ALLOW_EMPTY = process.env.ETL_ALLOW_EMPTY === '1';
+    const DAYS = 7;
+    const sinceMs = sevenDaysAgo.getTime();
+    
+    try {
+      const count = await checkPermitCount(hcUrl, sevenDaysAgo);
+      console.log(`Remote count (last ${DAYS}d):`, count);
+      // proceed with ingest...
+
     const permitCount = await checkPermitCount(hcUrl, daysAgo);
     
     if (permitCount === 0) {
@@ -380,15 +390,34 @@ async function main(): Promise<void> {
       
       // Write summary to log file
       await writeSummaryToLog(0, 'No input found');
+
       
-      // Handle ETL_ALLOW_EMPTY environment variable
-      const allowEmpty = process.env.ETL_ALLOW_EMPTY === '1';
-      if (allowEmpty) {
-        console.log('🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit');
-        await callEnsureArtifacts('--empty-pipeline');
-        process.exit(0);
+      if (count === 0) {
+        const sinceTimestamp = sevenDaysAgo.getTime();
+        const fullUrl = `${hcUrl}/query?where=ISSUEDDATE > ${sinceTimestamp}&returnCountOnly=true&f=json`;
+        console.log(`No permits found for the last 7 days (since ${sevenDaysAgo.toISOString()})`);
+        console.log(`Full URL: ${fullUrl}`);
+        
+        // Write summary to log file
+        await writeSummaryToLog(0, 'No input found');
+        
+        // Handle ETL_ALLOW_EMPTY environment variable
+        const allowEmpty = process.env.ETL_ALLOW_EMPTY === '1';
+        if (allowEmpty) {
+          console.log('🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit');
+          await callEnsureArtifacts('--empty-pipeline');
+          process.exit(0);
+        } else {
+          await callEnsureArtifacts();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check permit count:', err instanceof Error ? err.stack || err.message : err);
+      if (!ALLOW_EMPTY) {
+        process.exitCode = 1; // hard fail only when not allowed to be empty
+        throw err;
       } else {
-        await callEnsureArtifacts();
+        console.warn('ETL_ALLOW_EMPTY=1 → continuing without remote count');
       }
     }
     
