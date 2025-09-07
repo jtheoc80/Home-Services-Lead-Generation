@@ -94,8 +94,40 @@ BEGIN
     -- Count leads before function call
     SELECT COUNT(*) INTO total_before FROM public.leads WHERE permit_id = 'test-upsert-leads-permit-1'::uuid;
     
-    -- Call the function
+    -- Call the function without parameters (should process all permits)
     SELECT * INTO result FROM public.upsert_leads_from_permits();
+    
+    -- Count leads after function call
+    SELECT COUNT(*) INTO total_after FROM public.leads WHERE permit_id = 'test-upsert-leads-permit-1'::uuid;
+    
+    -- Verify function returned valid results
+    IF result.inserted_count IS NULL OR result.updated_count IS NULL OR result.total_processed IS NULL THEN
+        RAISE EXCEPTION 'TEST 3 FAILED: Function returned NULL values';
+    END IF;
+    
+    IF total_after > total_before THEN
+        RAISE NOTICE 'TEST 3 PASSED: Leads were created (before: %, after: %)', total_before, total_after;
+    ELSE
+        RAISE NOTICE 'TEST 3 INFO: No new leads created (before: %, after: %)', total_before, total_after;
+    END IF;
+    
+    RAISE NOTICE 'Function result - Inserted: %, Updated: %, Total: %', 
+                 result.inserted_count, result.updated_count, result.total_processed;
+END;
+$$;
+
+-- Test 4: Test function with p_days parameter for recent permits
+DO $$
+DECLARE
+    result RECORD;
+    total_before INTEGER;
+    total_after INTEGER;
+BEGIN
+    -- Count leads before function call
+    SELECT COUNT(*) INTO total_before FROM public.leads WHERE permit_id = 'test-upsert-leads-permit-1'::uuid;
+    
+    -- Call the function with p_days parameter (should process permits from last 7 days)
+    SELECT * INTO result FROM public.upsert_leads_from_permits(7);
     
     -- Count leads after function call
     SELECT COUNT(*) INTO total_after FROM public.leads WHERE permit_id = 'test-upsert-leads-permit-1'::uuid;
@@ -146,6 +178,13 @@ BEGIN
     ELSE
         RAISE EXCEPTION 'TEST 4 FAILED: Could not find lead data for test permit';
     END IF;
+END;
+$$;
+
+    RAISE NOTICE 'Function with p_days=7 result - Inserted: %, Updated: %, Total: %', 
+                 result.inserted_count, result.updated_count, result.total_processed;
+                 
+    RAISE NOTICE 'TEST 4 PASSED: Function with p_days parameter executed successfully';
 END;
 $$;
 

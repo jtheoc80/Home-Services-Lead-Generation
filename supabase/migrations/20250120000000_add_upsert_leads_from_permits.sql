@@ -1,7 +1,7 @@
 -- Create upsert_leads_from_permits RPC function
 -- This function upserts leads from permits data, ensuring correct date column usage
 
-CREATE OR REPLACE FUNCTION public.upsert_leads_from_permits()
+CREATE OR REPLACE FUNCTION public.upsert_leads_from_permits(p_days INTEGER DEFAULT NULL)
 RETURNS TABLE(
   inserted_count INTEGER,
   updated_count INTEGER,
@@ -15,6 +15,7 @@ DECLARE
   total_processed INTEGER := 0;
 BEGIN
   -- Upsert leads from permits using the correct issued_date column
+  -- Filter by p_days if provided to only process recent permits
   WITH upsert_results AS (
     INSERT INTO public.leads (
       permit_id, 
@@ -49,6 +50,13 @@ BEGIN
       75,
       COALESCE(p.issued_date, p.created_at, NOW())  -- Use correct issued_date column
     FROM public.permits p
+    WHERE 
+      CASE 
+        WHEN p_days IS NOT NULL THEN 
+          COALESCE(p.issued_date, p.created_at, NOW()) >= NOW() - INTERVAL '1 day' * p_days
+        ELSE 
+          TRUE
+      END
     
     
     
@@ -82,5 +90,5 @@ END;
 $$;
 
 -- Add comment for documentation
-COMMENT ON FUNCTION public.upsert_leads_from_permits() IS 
-'RPC function that upserts leads from permits data. Uses public.permits.issued_date (not issue_date) for correct date handling. Returns counts of inserted, updated, and total processed records.';
+COMMENT ON FUNCTION public.upsert_leads_from_permits(INTEGER) IS 
+'RPC function that upserts leads from permits data. Accepts optional p_days parameter to filter permits from the last N days. Uses public.permits.issued_date (not issue_date) for correct date handling. Returns counts of inserted, updated, and total processed records.';
