@@ -49,8 +49,8 @@ BEGIN
       75,
       COALESCE(p.issued_date, p.created_at, NOW())  -- Use correct issued_date column
     FROM public.permits p
-    LEFT JOIN public.leads l ON l.permit_id = p.id
-    WHERE l.permit_id IS NULL  -- Only insert if lead doesn't exist
+    
+    
     
     ON CONFLICT (permit_id) DO UPDATE SET
       name = EXCLUDED.name,
