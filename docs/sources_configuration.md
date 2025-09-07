@@ -11,7 +11,7 @@ Each source entry follows this standard format:
   kind: source_type                    # arcgis, socrata, static_xlsx, etc.
   # ... type-specific configuration
   date_field: field_name              # Field containing the date for incremental queries
-  auth: authentication_method         # none, app_token, basic, etc.
+  auth: authentication_method         # none, app_token, etc.
   lookback_days: number              # Default lookback period for incremental queries
 ```
 
