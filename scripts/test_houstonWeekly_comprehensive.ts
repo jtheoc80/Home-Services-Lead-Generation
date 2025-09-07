@@ -62,9 +62,9 @@ async function runTests() {
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
     // Mock axios.get to return our test data
-    axios.get = jest.fn().mockResolvedValue({
+    axios.get = async () => ({
       data: buffer
-    }) as any;
+    });
 
     console.log('✅ Test data prepared with', testData.length, 'records');
 
