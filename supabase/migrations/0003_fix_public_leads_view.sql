@@ -10,13 +10,16 @@
 DROP VIEW IF EXISTS public.public_leads;
 
 -- Create the view with the required columns from public.leads table
+-- Note: Added id and county fields for frontend compatibility
 CREATE VIEW public.public_leads AS
 SELECT 
+    id,                      -- Added for React key compatibility
     source,
     external_permit_id,
     trade,
     address,
-    zip AS zipcode,  -- Map zip column to zipcode for compatibility
+    zip AS zipcode,          -- Map zip column to zipcode for compatibility
+    county AS jurisdiction,  -- Map county to jurisdiction for frontend compatibility  
     status,
     created_at,
     updated_at
