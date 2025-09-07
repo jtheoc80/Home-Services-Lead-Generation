@@ -1,0 +1,8 @@
+.github/workflows/coh-etl.yml
+.github/workflows/db-migrate.yml
+.github/workflows/etl-harris.yml
+.github/workflows/failure-to-issue.yml
+.pre-commit-config.yaml
+scripts/ingest-coh.ts
+sql/public_permits_setup.sql
+tools/conflict_sweep.sh
