@@ -1,0 +1,88 @@
+# config/sources.yml
+# Unified source registry for probe + ETL systems
+# One registry to rule them all - contains all data source configurations
+
+# Houston Weekly XLSX Source
+- key: city_of_houston_weekly
+  kind: static_xlsx
+  url: ${HOUSTON_WEEKLY_XLSX_URL}
+  parse: houston_weekly_xlsx
+  lookback_days: 365
+  date_field: issue_date
+  auth: none
+
+# Houston Sold Permits (HTML/Web Scraping)
+- key: city_of_houston_sold
+  kind: arcgis
+  base: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+  date_field: ISSUEDDATE
+  date_unit: ms_epoch
+  auth: none
+  lookback_days: 30
+
+# Austin Building Permits (Socrata)
+- key: city_of_austin_permits
+  kind: socrata
+  host: data.austintexas.gov
+  resource: 3syk-w9eu
+  app_token_env: AUSTIN_SOCRATA_APP_TOKEN
+  date_field: issued_date
+  auth: app_token
+  lookback_days: 7
+
+# San Antonio Building Permits (Socrata)
+- key: city_of_san_antonio_permits
+  kind: socrata
+  host: data.sanantonio.gov
+  resource: ${SA_PERMITS_RESOURCE_ID}
+  app_token_env: SA_SOCRATA_APP_TOKEN
+  date_field: issued_date
+  auth: app_token
+  lookback_days: 7
+
+# Dallas Building Permits (Socrata)
+- key: city_of_dallas_permits
+  kind: socrata
+  host: www.dallasopendata.com
+  resource: e7gq-4sah
+  app_token_env: DALLAS_SOCRATA_APP_TOKEN
+  date_field: issued_date
+  auth: app_token
+  lookback_days: 7
+
+# Harris County Permits (ArcGIS FeatureServer)
+- key: harris_county_permits
+  kind: arcgis
+  base: "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0"
+  date_field: ISSUEDDATE
+  date_unit: ms_epoch
+  auth: none
+  lookback_days: 7
+
+# Arlington Permits (ArcGIS FeatureServer)
+- key: city_of_arlington_permits
+  kind: arcgis
+  base: "https://gis.arlingtontx.gov/arcgis/rest/services/OpenData/Permits/FeatureServer/0"
+  date_field: IssueDate
+  date_unit: date
+  auth: none
+  lookback_days: 7
+
+# Galveston County Permits (ArcGIS FeatureServer)
+- key: galveston_county_permits
+  kind: arcgis
+  base: "https://gis.galvestontx.gov/server/rest/services/Accela/Building_Permits/MapServer/0"
+  date_field: GAL_REC_DATE
+  date_unit: date
+  auth: none
+  lookback_days: 7
+
+# Fort Worth Permits (Socrata) 
+- key: city_of_fort_worth_permits
+  kind: socrata
+  host: data.fortworthtx.gov
+  resource: ${FORT_WORTH_PERMITS_RESOURCE_ID}
+  app_token_env: FORT_WORTH_SOCRATA_APP_TOKEN
+  date_field: issued_date
+  auth: app_token
+  lookback_days: 7
