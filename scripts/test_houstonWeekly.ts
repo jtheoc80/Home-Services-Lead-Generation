@@ -55,7 +55,7 @@ try {
 
 // Test 3: Verify imports work correctly
 try {
-  const { normTrade } = require('./houstonWeekly.ts');
+  const { normTrade } = await import('./houstonWeekly');
   console.log('✅ Module imports work correctly');
 } catch (error) {
   console.log('ℹ️  Note: normTrade function is not exported (this is expected)');
