@@ -16,12 +16,12 @@ def get_redis() -> Optional[Redis]:
         return None
     if _redis is None:
         _redis = Redis.from_url(
-            REDIS_URL, 
-            decode_responses=True, 
-            socket_timeout=0.3, 
-            socket_connect_timeout=0.3, 
-            health_check_interval=30, 
-            ssl=REDIS_URL.startswith("rediss://")
+            REDIS_URL,
+            decode_responses=True,
+            socket_timeout=0.3,
+            socket_connect_timeout=0.3,
+            health_check_interval=30,
+            ssl=REDIS_URL.startswith("rediss://"),
         )
     return _redis
 
@@ -47,6 +47,7 @@ async def cache_setex(key: str, ttl_s: int, value: str) -> None:
     r = get_redis()
     None if not r else await r.setex(key, ttl_s, value)
 
+
 async def cache_setex(key: str, ttl_s: int, value: str) -> bool:
     r = get_redis()
     if not r:
@@ -56,6 +57,8 @@ async def cache_setex(key: str, ttl_s: int, value: str) -> bool:
         return True
     except Exception:
         return False
+
+
 async def rate_limit(key: str, limit: int, window_s: int) -> bool:
     r = get_redis()
     if not r:
@@ -70,32 +73,36 @@ async def rate_limit(key: str, limit: int, window_s: int) -> bool:
 async def with_lock(name: str, ttl_s: int = 300):
     r = get_redis()
     if not r:
+
         class _NL:
             async def __aenter__(self):
                 return True
+
             async def __aexit__(self, *a):
                 return False
+
         return _NL()
-    
+
     token = str(uuid.uuid4())
     key = f"lock:{name}"
-    
+
     async def acquire():
         return await r.set(key, token, ex=ttl_s, nx=True)
-    
+
     async def release():
         lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
         try:
             await r.eval(lua, 1, key, token)
         except Exception:
             pass
-    
+
     class _L:
         async def __aenter__(self):
             return await acquire()
+
         async def __aexit__(self, exc_type, exc, tb):
             await release()
-    
+
     return _L()
 
 
@@ -111,15 +118,29 @@ async def dedupe_sadd(set_name: str, member: str, ttl_days: int = 90) -> bool:
 
 async def stream_xadd(stream: str, payload: dict, maxlen: int = 10000) -> str:
     r = get_redis()
-    return "" if not r else await r.xadd(stream, {"payload": json.dumps(payload)}, maxlen=maxlen, approximate=True)
+    return (
+        ""
+        if not r
+        else await r.xadd(
+            stream, {"payload": json.dumps(payload)}, maxlen=maxlen, approximate=True
+        )
+    )
 
 
-async def stream_readgroup(stream: str, group: str, consumer: str, count: int = 10, block_ms: int = 5000):
+async def stream_readgroup(
+    stream: str, group: str, consumer: str, count: int = 10, block_ms: int = 5000
+):
     r = get_redis()
     if not r:
         return []
     try:
-        return await r.xreadgroup(groupname=group, consumername=consumer, streams={stream: ">"}, count=count, block=block_ms)
+        return await r.xreadgroup(
+            groupname=group,
+            consumername=consumer,
+            streams={stream: ">"},
+            count=count,
+            block=block_ms,
+        )
     except Exception:
         return []
 
