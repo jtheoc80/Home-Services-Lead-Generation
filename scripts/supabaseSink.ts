@@ -1,4 +1,8 @@
 
+// Wrapper module for Supabase permit upserting
+export { upsertPermits } from "./lib/supabaseUpsert";
+
+
 export type Permit = {
   source_system: "city_of_houston";
   permit_id: string;
@@ -45,4 +49,5 @@ export async function upsertPermits(rows: Permit[], chunk = 500) {
   }
   return upserted;
 }
+
 
