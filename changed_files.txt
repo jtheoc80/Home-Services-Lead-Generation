@@ -1,0 +1,7 @@
+scripts/HOUSTON_WEEKLY_README.md
+scripts/houstonWeekly.ts
+scripts/supabaseSink.ts
+scripts/test_houstonWeekly.ts
+scripts/test_houstonWeekly_comprehensive.ts
+scripts/test_houstonWeekly_core.ts
+scripts/test_houstonWeekly_integration.ts
