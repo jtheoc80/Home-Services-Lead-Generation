@@ -26,8 +26,12 @@ jobs:
           echo "### Source Health" >> $GITHUB_STEP_SUMMARY
 
           # Extract connection details from SUPABASE_URL
-          DB_HOST=$(echo "$SUPABASE_URL" | sed 's|.*://||' | \
-            sed 's|\..*|.postgres.supabase.co|')
+          # Extract host from SUPABASE_URL
+          DB_HOST=$(echo "$SUPABASE_URL" | awk -F[/:] '{print $4}')
+          # If host ends with .supabase.co, convert to .postgres.supabase.co
+          if [[ "$DB_HOST" =~ ^([^.]+)\.supabase\.co$ ]]; then
+            DB_HOST="${BASH_REMATCH[1]}.postgres.supabase.co"
+          fi
           DB_NAME="postgres"
           DB_USER="postgres"
           DB_PORT="5432"
