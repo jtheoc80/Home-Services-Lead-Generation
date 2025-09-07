@@ -127,7 +127,6 @@ wc -l austin_sample.csv && head -5 austin_sample.csv
 - `created_date`
 
 ### 6. Static XLSX Probe
-```
 
 **Alternative date fields** if `issued_date` doesn't work:
 - `issue_date`
