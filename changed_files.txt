@@ -1,0 +1,6 @@
+logs/etl-summary.json
+package.json
+scripts/houstonWeekly.ts
+scripts/ingest-coh.ts
+scripts/lib/supabaseUpsert.ts
+scripts/supabaseSink.ts
