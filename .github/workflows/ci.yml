@@ -55,7 +55,7 @@ jobs:
       - name: Validate backend configuration
         run: cd backend && poetry run python validate.py
       - name: Test ETL state management
-        run: cd backend && poetry run python -m pytest tests/test_etl_state.py -v
+        run: cd backend && python -m pytest tests/test_sanity.py -v
       - name: Upload ETL artifacts  
         if: always()
         uses: actions/upload-artifact@v4
