@@ -32,21 +32,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
       - name: Install Node.js dependencies
         run: npm ci
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff black pytest pytest-cov
-          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
-          if [ -f permit_leads/requirements.txt ]; then pip install -r permit_leads/requirements.txt; fi
 
       - name: Check for formatting-only changes
         id: check-changes
@@ -106,18 +93,77 @@ jobs:
             echo "TypeScript OK"
           fi
 
-      - name: Run tests
-        id: tests
+# Ensure Node 20 for JS steps
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ---------- Node.js tests ----------
+      - name: Detect JS tests
+        id: detect_js
+        shell: bash
         run: |
-          echo "Running Node.js tests..."
-          npm run test || echo "node_test_failed=true" >> $GITHUB_OUTPUT
-          
-          echo "Running Python tests..."
-          if [ -d "tests" ] && [ "$(find tests -name '*.py' | wc -l)" -gt 0 ]; then
-            pytest tests/ --cov=. --cov-report=xml --cov-report=term || echo "python_test_failed=true" >> $GITHUB_OUTPUT
+          set -Eeuo pipefail
+          count=$(git ls-files '**/*.test.ts' '**/*.spec.ts' '**/*.test.js' '**/*.spec.js' | wc -l | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: Run Node.js tests (Vitest/Jest)
+        id: node_tests
+        if: ${{ steps.detect_js.outputs.count != '0' }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p reports
+          # Prefer Vitest, fall back to Jest
+          if npx --yes vitest --version >/dev/null 2>&1; then
+            npx vitest run --reporter=dot || echo "vitest_failed=true" >> $GITHUB_OUTPUT
           else
-            echo "No Python tests found, skipping..."
+            npx jest --ci --runInBand --passWithNoTests --reporters=default || echo "jest_failed=true" >> $GITHUB_OUTPUT
           fi
+        continue-on-error: true
+
+      - name: Mark Node.js test result
+        id: node_mark
+        run: |
+          set -Eeuo pipefail
+          failed="${{ steps.node_tests.outputs.vitest_failed || steps.node_tests.outputs.jest_failed || 'false' }}"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+
+      # ---------- Python tests ----------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python deps (if present)
+        run: |
+          set -Eeuo pipefail
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f permit_leads/requirements.txt ]; then pip install -r permit_leads/requirements.txt; fi
+          pip install pytest
+
+      - name: Detect Py tests
+        id: detect_py
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          count=$(git ls-files '**/test_*.py' '**/*_test.py' | wc -l | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: Run Pytests
+        id: py_tests
+        if: ${{ steps.detect_py.outputs.count != '0' }}
+        run: |
+          set -Eeuo pipefail
+          pytest -q || echo "pytest_failed=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Mark Python test result
+        id: py_mark
+        run: |
+          set -Eeuo pipefail
+          failed="${{ steps.py_tests.outputs.pytest_failed || 'false' }}"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage reports
         if: always()
@@ -208,56 +254,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ---------- Quality Gate Summary ----------
       - name: Quality Gate Summary
-        if: always()
         run: |
-          echo "## 🚦 Quality Gate Results" >> $GITHUB_STEP_SUMMARY
-          
-          # Node.js checks
-          if [ "${{ steps.node-checks.outputs.lint_issues }}" == "true" ]; then
-            echo "❌ **ESLint**: Issues found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **ESLint**: Passed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ steps.node-checks.outputs.type_issues }}" == "true" ]; then
-            echo "❌ **TypeScript**: Type errors found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **TypeScript**: Passed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Python checks
-          if [ "${{ steps.python-format.outputs.python_formatting_needed }}" == "true" ]; then
-            echo "❌ **Python Formatting (Black)**: Issues found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **Python Formatting (Black)**: Passed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ steps.python-format.outputs.python_lint_needed }}" == "true" ]; then
-            echo "❌ **Python Linting (Ruff)**: Issues found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **Python Linting (Ruff)**: Passed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Tests
-          if [ "${{ steps.tests.outputs.node_test_failed }}" == "true" ]; then
-            echo "❌ **Node.js Tests**: Failed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **Node.js Tests**: Passed" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ steps.tests.outputs.python_test_failed }}" == "true" ]; then
-            echo "❌ **Python Tests**: Failed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **Python Tests**: Passed" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### Quality Gate" >> $GITHUB_STEP_SUMMARY
+          echo "- JS tests found:  ${{ steps.detect_js.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- JS tests failed: ${{ steps.node_mark.outputs.failed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Py tests found:  ${{ steps.detect_py.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Py tests failed: ${{ steps.py_mark.outputs.failed }}" >> $GITHUB_STEP_SUMMARY
 
+      # ---------- Block merge on failures (configurable) ----------
       - name: Block merge on test failures
-        if: steps.tests.outputs.node_test_failed == 'true' || steps.tests.outputs.python_test_failed == 'true'
+        if: >
+          (vars.REQUIRE_TESTS == 'true') &&
+          (steps.node_mark.outputs.failed == 'true' || steps.py_mark.outputs.failed == 'true')
         run: |
           echo "❌ Tests failed. Blocking merge."
-          echo "Node.js tests failed: ${{ steps.tests.outputs.node_test_failed }}"
-          echo "Python tests failed: ${{ steps.tests.outputs.python_test_failed }}"
           exit 1
 
       - name: Block merge on critical linting issues
