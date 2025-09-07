@@ -59,35 +59,64 @@ jobs:
           cache-dependency-path: permit_leads/requirements.txt
 
       - name: Install deps
+        shell: bash
         run: |
+          set -Eeuo pipefail
+          IFS=$'\n\t'
+          
           python -m pip install --upgrade pip
-          if [ -f permit_leads/requirements.txt ]; then pip install -r permit_leads/requirements.txt; fi
+          if [[ -f permit_leads/requirements.txt ]]; then 
+            pip install -r permit_leads/requirements.txt
+          fi
 
       - name: Ensure dirs
-        run: mkdir -p logs artifacts data
+        shell: bash
+        run: |
+          mkdir -p logs artifacts data
 
       - name: Preflight secrets
+        shell: bash
         run: |
+          set -Eeuo pipefail
+          IFS=$'\n\t'
+          
           for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
-            if [ -z "${!v}" ]; then echo "::error::$v missing"; exit 1; fi
+            if [[ -z "${!v:-}" ]]; then 
+              echo "::error::$v missing" 
+              exit 1
+            fi
           done
 
       - name: Run module
         id: run_module
+        shell: bash
+        env:
+          SAMPLE_DATA: ${{ inputs.sample_data == 'true' && '1' || '0' }}
         run: |
+          set -Eeuo pipefail
+          IFS=$'\n\t'
+          
+          # Run the Python module and capture exit code
+          python -m "${{ inputs.module }}" --days "${{ inputs.days }}" \
+            ${{ inputs.sample_data == 'true' && '--sample' || '' }} | tee -a logs/etl_output.log
           EXIT_CODE=${PIPESTATUS[0]}
-          echo "exit=$EXIT_CODE" >> $GITHUB_OUTPUT
-          set -e
+          echo "exit=$EXIT_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Fallback script
         if: steps.run_module.outputs.exit != '0'
+        shell: bash
         run: |
+          set -Eeuo pipefail
+          IFS=$'\n\t'
+          
           # Check if entry_fallback is provided using shell logic
-          if [ -n "${{ inputs.entry_fallback }}" ] && [ "${{ inputs.entry_fallback }}" != "" ]; then
-            ARGS="--days ${{ inputs.days }}"
-            [ "${{ inputs.sample_data }}" = "true" ] && ARGS="$ARGS --sample"
-            python "${{ inputs.entry_fallback }}" $ARGS | tee -a logs/etl_output.log
+          if [[ -n "${FALLBACK:-}" ]]; then
+            ARGS=("--days" "${{ inputs.days }}")
+            [[ "${{ inputs.sample_data }}" == "true" ]] && ARGS+=("--sample")
+            python "$FALLBACK" "${ARGS[@]}" | tee -a logs/etl_output.log
           fi
+        env:
+          FALLBACK: ${{ inputs.entry_fallback }}
 
       - name: Upload artifacts
         if: always()
