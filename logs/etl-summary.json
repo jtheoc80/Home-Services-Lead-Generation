@@ -1,6 +1,6 @@
 {
   "source": "city_of_houston",
   "status": "error",
-  "error": "Missing required environment variable: HOUSTON_WEEKLY_XLSX_URL",
-  "timestamp": "2025-09-07T03:39:18.777Z"
+  "error": "getaddrinfo ENOTFOUND test.com",
+  "timestamp": "2025-09-07T04:48:36.664Z"
 }
