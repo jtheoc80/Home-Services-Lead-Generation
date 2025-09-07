@@ -40,7 +40,7 @@
   auth: app_token
   lookback_days: 7
 
-# Dallas Building Permits (Socrata)
+# Dallas Building Permits (Socrata - existing proven endpoint)
 - key: city_of_dallas_permits
   kind: socrata
   host: www.dallasopendata.com
