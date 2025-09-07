@@ -1,0 +1,6 @@
+{
+  "source": "city_of_houston",
+  "status": "error",
+  "error": "getaddrinfo ENOTFOUND example.com",
+  "timestamp": "2025-09-07T03:34:54.258Z"
+}

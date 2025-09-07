@@ -1,3 +1,4 @@
+
 #!/usr/bin/env tsx
 
 /**
@@ -76,3 +77,4 @@ main().catch(e => {
   console.error(e);
   process.exitCode = 1;
 });
+
