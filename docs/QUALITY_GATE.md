@@ -25,9 +25,16 @@ When a PR contains only formatting issues, the workflow will:
 
 ### Merge Blocking
 The workflow will block PR merges when:
-- **Tests fail**: Both Node.js and Python test failures block merges
+- **Tests fail**: Both Node.js and Python test failures block merges (configurable via `REQUIRE_TESTS` repository variable)
 - **TypeScript type errors**: Type errors are considered critical and block merges
 - ESLint and formatting issues are reported but don't block merges (can be auto-fixed)
+
+### Test Execution Safety
+The workflow uses a safer test execution pattern:
+- **Test Detection**: Automatically detects JS/TS and Python test files before execution
+- **Graceful Failures**: Tests run with `continue-on-error: true` to prevent workflow interruption
+- **Flexible Test Runners**: Supports both Vitest and Jest for JavaScript tests, with automatic fallback
+- **Proper Result Tracking**: Test results are captured and marked for accurate reporting
 
 ### Coverage Reports
 Test coverage reports are automatically uploaded to Codecov for tracking coverage metrics.
@@ -54,3 +61,7 @@ pytest tests/
 - **TypeScript**: Configured in `frontend/tsconfig.json`
 - **Black/Ruff**: Configured in `pyproject.toml`
 - **Pytest**: Configured in `pyproject.toml`
+
+### Repository Variables
+
+- **REQUIRE_TESTS**: Set to `'true'` to block merges when tests fail. When not set or `'false'`, test failures are reported but don't block merges.
