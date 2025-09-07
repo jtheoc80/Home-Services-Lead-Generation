@@ -126,7 +126,7 @@ jobs:
         id: node_mark
         run: |
           set -Eeuo pipefail
-          failed="${{ steps.node_tests.outputs.vitest_failed || steps.node_tests.outputs.jest_failed || 'false' }}"
+          failed="${{ steps.node_tests.outputs.vitest_failed == 'true' || steps.node_tests.outputs.jest_failed == 'true' }}"
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
 
       # ---------- Python tests ----------
