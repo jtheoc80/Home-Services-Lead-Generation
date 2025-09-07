@@ -1,5 +1,6 @@
+---
 name: DB Migrations
-on:
+"on":
   pull_request:
   push:
     branches: [main]
@@ -10,12 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
-      - name: Apply migrations (dry-run on PR, live on main)
+      - name: Apply migrations (diff on PR, push on main)
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }} # postgres connection string (service role)
+          # postgres connection string (service role)
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          set -Eeuo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+            echo "Running database diff for pull request..."
+            supabase db diff --db-url "$SUPABASE_DB_URL"
           else
+            echo "Pushing database changes to main branch..."
             supabase db push --db-url "$SUPABASE_DB_URL"
           fi
