@@ -1,0 +1,8 @@
+.github/workflows/coh-etl.yml
+ETL_RUN_LOGGING_IMPLEMENTATION.md
+logs/etl-summary.json
+package.json
+scripts/ingest-coh.ts
+scripts/lib/logEtlRun.ts
+scripts/test-etl-logging.ts
+sql/etl_runs_table.sql
