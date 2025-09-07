@@ -64,6 +64,13 @@ else
     exit 1
 fi
 
+if [ -f "$SCRIPT_DIR/austin-socrata-manual-test.sh" ] && [ -x "$SCRIPT_DIR/austin-socrata-manual-test.sh" ]; then
+    log_success "austin-socrata-manual-test.sh exists and is executable"
+else
+    log_error "austin-socrata-manual-test.sh missing or not executable"
+    exit 1
+fi
+
 # Test 2: Test help output
 log_info "Testing --help option..."
 help_output=$("$SCRIPT_DIR/source-health-checks.sh" --help 2>&1)
@@ -72,6 +79,15 @@ if echo "$help_output" | grep -q "Quick, source-agnostic health checks"; then
 else
     log_error "Help output missing or incorrect"
     echo "$help_output"
+fi
+
+# Test help output for Austin script
+austin_help_output=$("$SCRIPT_DIR/austin-socrata-manual-test.sh" --help 2>&1)
+if echo "$austin_help_output" | grep -q "Austin Socrata Manual Testing Script"; then
+    log_success "Austin script help output contains expected content"
+else
+    log_error "Austin script help output missing or incorrect"
+    echo "$austin_help_output"
 fi
 
 # Test 3: Test script structure and key functions
@@ -120,6 +136,33 @@ if grep -q "f=pjson" "$SCRIPT_DIR/copy-paste-health-checks.sh"; then
     log_success "ArcGIS JSON format parameter found"
 else
     log_error "ArcGIS JSON format parameter missing"
+fi
+
+# Test Austin script has the specific commands from problem statement
+log_info "Validating Austin manual test script..."
+
+if grep -q "data.austintexas.gov" "$SCRIPT_DIR/austin-socrata-manual-test.sh"; then
+    log_success "Austin data portal URL found"
+else
+    log_error "Austin data portal URL missing"
+fi
+
+if grep -q "\$AUSTIN_DATASET_ID" "$SCRIPT_DIR/austin-socrata-manual-test.sh"; then
+    log_success "Austin dataset ID variable usage found"
+else
+    log_error "Austin dataset ID variable usage missing"
+fi
+
+if grep -q "issued_date" "$SCRIPT_DIR/austin-socrata-manual-test.sh"; then
+    log_success "Issued date filtering found"
+else
+    log_error "Issued date filtering missing"
+fi
+
+if grep -q "austin_sample.csv" "$SCRIPT_DIR/austin-socrata-manual-test.sh"; then
+    log_success "CSV output filename found"
+else
+    log_error "CSV output filename missing"
 fi
 
 # Test 5: Check that required tools are available
@@ -225,3 +268,4 @@ echo "Usage examples:"
 echo "  ./scripts/source-health-checks.sh --help"
 echo "  ./scripts/source-health-checks.sh --test-urls --verbose"
 echo "  ./scripts/copy-paste-health-checks.sh"
+echo "  ./scripts/austin-socrata-manual-test.sh --help"
