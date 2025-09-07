@@ -28,8 +28,8 @@ async function main() {
     fetched_sold: sold.length,
     merged: merged.length,
     upserted,
-    first_issue_date: merged.reduce((m,p)=> m && m < p.issue_date ? m : p.issue_date, merged[0]?.issue_date),
-    last_issue_date: merged.reduce((m,p)=> m && m > p.issue_date ? m : p.issue_date, merged[0]?.issue_date),
+    first_issue_date: merged.length > 0 ? merged.map(p => p.issue_date).reduce((a, b) => a < b ? a : b) : undefined,
+    last_issue_date: merged.length > 0 ? merged.map(p => p.issue_date).reduce((a, b) => a > b ? a : b) : undefined,
   };
   fs.mkdirSync("logs", { recursive: true });
   fs.writeFileSync("logs/etl-summary.json", JSON.stringify(summary, null, 2));
