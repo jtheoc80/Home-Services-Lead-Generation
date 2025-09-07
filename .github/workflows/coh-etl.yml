@@ -26,7 +26,7 @@ jobs:
       - name: Run COH ETL
         run: |
           mkdir -p logs
-          npx tsx scripts/etlHouston.ts 2>&1 | tee logs/etl_output.log
+          npm run ingest:coh 2>&1 | tee logs/etl_output.log
       - name: Step summary
         if: always()
         run: |
