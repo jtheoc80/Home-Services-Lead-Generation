@@ -351,6 +351,12 @@ check_static_xlsx() {
             "https://example.com/houston-weekly-permits.xlsx"
         )
     fi
+
+    # Skip check if placeholder URL is still present
+    if [[ "${xlsx_urls[0]}" == *"example.com"* ]]; then
+        log_warning "Houston Weekly XLSX URL not set. Skipping XLSX health check. Please update scripts/source-health-checks.sh with the real URL."
+        return
+    fi
     
     for xlsx_url in "${xlsx_urls[@]}"; do
         echo
