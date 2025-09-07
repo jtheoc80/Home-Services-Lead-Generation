@@ -51,8 +51,7 @@ jobs:
                   "offline") emoji="❌" ;;
                   *) emoji="❓" ;;
                 esac
-                echo "- $emoji **$source**: $status (${response_time}ms) - \
-                  $records records" >> $GITHUB_STEP_SUMMARY
+                echo "- $emoji **$source**: $status (${response_time}ms) - $records records" >> $GITHUB_STEP_SUMMARY
                 if [ -n "$error" ] && [ "$error" != "" ]; then
                   echo "  - Error: $error" >> $GITHUB_STEP_SUMMARY
                 fi
