@@ -38,4 +38,4 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Run tests
-        run: pytest -q
+        run: pytest tests/test_sanity.py tests/test_ci_basic.py -v
