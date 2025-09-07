@@ -70,10 +70,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: Backfill Houston archives (last ${{ github.event.inputs.archive_weeks || '12' }} weeks)
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ARCHIVE_WEEKS: ${{ github.event.inputs.archive_weeks || '12' }}
         run: |
           node -v
           npx tsx scripts/ingest-coh-archives.ts
