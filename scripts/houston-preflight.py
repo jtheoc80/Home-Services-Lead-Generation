@@ -161,9 +161,12 @@ def check_houston_endpoint(url, name, critical=False):
     except urllib.error.HTTPError as e:
         log_warning(f"{name} HTTP error: {e.code} - {e.reason}")
         # Accept certain HTTP errors as non-fatal (e.g., 403 Forbidden, 404 Not Found)
-        if e.code in (403, 404):
-            log_info(f"HTTP {e.code} is acceptable for {name}")
+        if e.code == 403:
+            log_info(f"HTTP 403 is acceptable for {name}")
             return True, True  # Blocked but reachable
+        elif e.code == 404:
+            log_info(f"HTTP 404 is acceptable for {name}")
+            return True, False  # Not found, not actually reachable
         else:
             if critical:
                 log_error(f"{name} failed with HTTP {e.code}")
