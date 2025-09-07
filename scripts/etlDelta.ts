@@ -3,8 +3,8 @@
 /**
  * ETL Delta Script for Harris County Permits
  * 
- * Reads process.env.HC_ISSUED_PERMITS_URL and fetches permits from the last 7 days.
- * Queries returnCountOnly=true for ISSUEDDATE > now-7d; if 0, exits with clear message and full URL.
+ * Reads process.env.HC_ISSUED_PERMITS_URL and fetches permits from configurable number of days (default: 7).
+ * Queries returnCountOnly=true for ISSUEDDATE > now-Nd; if 0, exits with clear message and full URL.
  * Pages in 2,000-row chunks using resultOffset until empty.
  * Maps fields to { event_id, permit_number, permit_name, app_type, issue_date, full_address, status, project_number, raw }.
  * Converts ISSUEDDATE from ms to ISO format.
@@ -25,6 +25,7 @@
  *   HC_ISSUED_PERMITS_URL - Harris County FeatureServer URL
  *   SUPABASE_URL - Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key for database access
+ *   DAYS - Number of days to look back for permits (default: 7)
  *   ETL_ALLOW_EMPTY - Set to "1" to exit with code 0 instead of 1 when no records found
  */
 
@@ -82,10 +83,10 @@ function validateEnvironment(): { supabaseUrl: string; supabaseKey: string; hcUr
   return { supabaseUrl, supabaseKey, hcUrl };
 }
 
-function getSevenDaysAgo(): Date {
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
-  return sevenDaysAgo;
+function getDaysAgo(): Date {
+  const DAYS = Number(process.env.DAYS || '7');
+  const sinceMs = Date.now() - DAYS * 24 * 60 * 60 * 1000; // subtract days correctly
+  return new Date(sinceMs);
 }
 
 async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
@@ -98,7 +99,8 @@ async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
   });
   
   const url = `${hcUrl}/query?${queryParams}`;
-  console.log(`Checking permit count for last 7 days...`);
+  const daysConfig = Number(process.env.DAYS || '7');
+  console.log(`Checking permit count for last ${daysConfig} days...`);
   
   try {
     const response = await axios.get(url, {
@@ -115,7 +117,7 @@ async function checkPermitCount(hcUrl: string, since: Date): Promise<number> {
     const data = response.data;
     const count = data.count || 0;
     
-    console.log(`Found ${count} permits in the last 7 days`);
+    console.log(`Found ${count} permits in the last ${daysConfig} days`);
     return count;
     
   } catch (error) {
@@ -357,8 +359,8 @@ async function main(): Promise<void> {
     console.log(`Harris County URL: ${hcUrl}`);
     console.log('');
     
-    // Calculate 7 days ago
-    const sevenDaysAgo = getSevenDaysAgo();
+    // Calculate days ago (configurable via DAYS environment variable)
+    const daysAgo = getDaysAgo();
     
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -367,30 +369,60 @@ async function main(): Promise<void> {
     await ensureTableExists(supabase);
     
     // Check permit count first
-    const permitCount = await checkPermitCount(hcUrl, sevenDaysAgo);
+
+    const ALLOW_EMPTY = process.env.ETL_ALLOW_EMPTY === '1';
+    const DAYS = 7;
+    const sinceMs = sevenDaysAgo.getTime();
+    
+    try {
+      const count = await checkPermitCount(hcUrl, sevenDaysAgo);
+      console.log(`Remote count (last ${DAYS}d):`, count);
+      // proceed with ingest...
+
+    const permitCount = await checkPermitCount(hcUrl, daysAgo);
     
     if (permitCount === 0) {
-      const sinceTimestamp = sevenDaysAgo.getTime();
+      const sinceTimestamp = daysAgo.getTime();
       const fullUrl = `${hcUrl}/query?where=ISSUEDDATE > ${sinceTimestamp}&returnCountOnly=true&f=json`;
-      console.log(`No permits found for the last 7 days (since ${sevenDaysAgo.toISOString()})`);
+      const daysConfig = Number(process.env.DAYS || '7');
+      console.log(`No permits found for the last ${daysConfig} days (since ${daysAgo.toISOString()})`);
       console.log(`Full URL: ${fullUrl}`);
       
       // Write summary to log file
       await writeSummaryToLog(0, 'No input found');
+
       
-      // Handle ETL_ALLOW_EMPTY environment variable
-      const allowEmpty = process.env.ETL_ALLOW_EMPTY === '1';
-      if (allowEmpty) {
-        console.log('🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit');
-        await callEnsureArtifacts('--empty-pipeline');
-        process.exit(0);
+      if (count === 0) {
+        const sinceTimestamp = sevenDaysAgo.getTime();
+        const fullUrl = `${hcUrl}/query?where=ISSUEDDATE > ${sinceTimestamp}&returnCountOnly=true&f=json`;
+        console.log(`No permits found for the last 7 days (since ${sevenDaysAgo.toISOString()})`);
+        console.log(`Full URL: ${fullUrl}`);
+        
+        // Write summary to log file
+        await writeSummaryToLog(0, 'No input found');
+        
+        // Handle ETL_ALLOW_EMPTY environment variable
+        const allowEmpty = process.env.ETL_ALLOW_EMPTY === '1';
+        if (allowEmpty) {
+          console.log('🔧 ETL_ALLOW_EMPTY=1 detected, calling ensure_artifacts.py for graceful exit');
+          await callEnsureArtifacts('--empty-pipeline');
+          process.exit(0);
+        } else {
+          await callEnsureArtifacts();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check permit count:', err instanceof Error ? err.stack || err.message : err);
+      if (!ALLOW_EMPTY) {
+        process.exitCode = 1; // hard fail only when not allowed to be empty
+        throw err;
       } else {
-        await callEnsureArtifacts();
+        console.warn('ETL_ALLOW_EMPTY=1 → continuing without remote count');
       }
     }
     
     // Fetch permits from ArcGIS
-    const permits = await fetchPermits(hcUrl, sevenDaysAgo);
+    const permits = await fetchPermits(hcUrl, daysAgo);
     
     if (permits.length === 0) {
       console.log('No valid permits found to process');
