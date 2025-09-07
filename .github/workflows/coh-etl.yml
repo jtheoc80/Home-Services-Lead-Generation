@@ -1,0 +1,39 @@
+name: City of Houston ETL
+on:
+  schedule: [{ cron: "0 6 * * *" }]   # daily 1:00 AM CT
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coh:
+    runs-on: ubuntu-latest
+    env:
+      HOUSTON_WEEKLY_XLSX_URL: ${{ secrets.HOUSTON_WEEKLY_XLSX_URL }}
+      HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_PERMITS_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DAYS: ${{ vars.DAYS || '7' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - name: Run COH ETL
+        run: |
+          mkdir -p logs
+          npx tsx scripts/etlHouston.ts 2>&1 | tee logs/etl_output.log
+      - name: Step summary
+        if: always()
+        run: |
+          echo "### City of Houston ETL" >> $GITHUB_STEP_SUMMARY
+          test -f logs/etl-summary.json && cat logs/etl-summary.json >> $GITHUB_STEP_SUMMARY || echo "no summary"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coh-logs-${{ github.run_id }}
+          path: logs/
