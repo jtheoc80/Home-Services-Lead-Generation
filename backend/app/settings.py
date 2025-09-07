@@ -13,146 +13,143 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
-    
+
     # Database configuration
     database_url: str = Field(
         default="postgresql://localhost/leadledger",
         env="DATABASE_URL",
-        description="PostgreSQL database connection URL"
+        description="PostgreSQL database connection URL",
     )
-    
+
     # Registry and scope configuration
     registry_path: str = Field(
         default=str(Path(__file__).parent.parent.parent / "config" / "registry.yaml"),
         env="REGISTRY_PATH",
-        description="Path to the registry YAML file"
+        description="Path to the registry YAML file",
     )
-    
+
     launch_scope: str = Field(
         default="houston",
         env="LAUNCH_SCOPE",
-        description="Geographic scope for initial launch (houston, texas, national)"
+        description="Geographic scope for initial launch (houston, texas, national)",
     )
-    
+
     default_region: str = Field(
         default="tx-houston",
         env="DEFAULT_REGION",
-        description="Default region slug for new accounts"
+        description="Default region slug for new accounts",
     )
-    
+
     # Export and access control
     allow_exports: bool = Field(
         default=False,
         env="ALLOW_EXPORTS",
-        description="Whether to allow data exports (admin-only when True)"
+        description="Whether to allow data exports (admin-only when True)",
     )
-    
+
     # ML and scoring
     use_ml_scoring: bool = Field(
         default=False,
-        env="USE_ML_SCORING", 
-        description="Whether to use machine learning for lead scoring"
+        env="USE_ML_SCORING",
+        description="Whether to use machine learning for lead scoring",
     )
-    
+
     # Scheduling
     cron_scrape_utc: str = Field(
         default="0 5 * * *",
         env="CRON_SCRAPE_UTC",
-        description="Cron schedule for nightly scraping (UTC timezone)"
+        description="Cron schedule for nightly scraping (UTC timezone)",
     )
-    
+
     # Notification settings
     notification_batch_size: int = Field(
         default=100,
         env="NOTIFICATION_BATCH_SIZE",
-        description="Number of notifications to process in each batch"
+        description="Number of notifications to process in each batch",
     )
-    
+
     min_score_threshold: float = Field(
         default=70.0,
         env="MIN_SCORE_THRESHOLD",
-        description="Minimum lead score to trigger notifications"
+        description="Minimum lead score to trigger notifications",
     )
-    
+
     # External service configuration
     sendgrid_api_key: Optional[str] = Field(
         default=None,
         env="SENDGRID_API_KEY",
-        description="SendGrid API key for email notifications"
+        description="SendGrid API key for email notifications",
     )
-    
+
     twilio_account_sid: Optional[str] = Field(
         default=None,
         env="TWILIO_ACCOUNT_SID",
-        description="Twilio Account SID for SMS notifications"
+        description="Twilio Account SID for SMS notifications",
     )
-    
+
     twilio_auth_token: Optional[str] = Field(
         default=None,
         env="TWILIO_AUTH_TOKEN",
-        description="Twilio Auth Token for SMS notifications"
+        description="Twilio Auth Token for SMS notifications",
     )
-    
+
     # Redis configuration (for caching and job queues)
     redis_url: str = Field(
         default="redis://localhost:6379/0",
         env="REDIS_URL",
-        description="Redis connection URL for caching and queues"
+        description="Redis connection URL for caching and queues",
     )
-    
+
     # Admin configuration
     admin_emails: list[str] = Field(
         default_factory=list,
         env="ADMIN_EMAILS",
-        description="Comma-separated list of admin email addresses"
+        description="Comma-separated list of admin email addresses",
     )
-    
+
     # Application environment
     environment: str = Field(
         default="development",
         env="ENVIRONMENT",
-        description="Application environment (development, staging, production)"
+        description="Application environment (development, staging, production)",
     )
-    
-    debug: bool = Field(
-        default=False,
-        env="DEBUG",
-        description="Enable debug mode"
-    )
-    
+
+    debug: bool = Field(default=False, env="DEBUG", description="Enable debug mode")
+
     # Logging configuration
     log_level: str = Field(
         default="INFO",
         env="LOG_LEVEL",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
-    
+
     # Metrics configuration
     enable_metrics: bool = Field(
         default=False,
         env="ENABLE_METRICS",
-        description="Enable Prometheus metrics collection and /metrics endpoint"
+        description="Enable Prometheus metrics collection and /metrics endpoint",
     )
-    
+
     metrics_username: str = Field(
         default="admin",
         env="METRICS_USERNAME",
-        description="Basic auth username for /metrics endpoint"
+        description="Basic auth username for /metrics endpoint",
     )
-    
+
     metrics_password: str = Field(
         default="changeme",
         env="METRICS_PASSWORD",
-        description="Basic auth password for /metrics endpoint"
+        description="Basic auth password for /metrics endpoint",
     )
-    
+
     class Config:
         """Pydantic configuration."""
+
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
         extra = "allow"  # Allow extra environment variables
-        
+
         @classmethod
         def parse_env_var(cls, field_name: str, raw_val: str) -> any:
             """Custom parsing for environment variables."""
