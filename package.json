@@ -52,6 +52,7 @@
     "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom",
     "etl:houston": "tsx scripts/etlHouston.ts",
     "ingest:coh": "tsx scripts/ingest-coh.ts",
+    "ingest:coh-archives": "tsx scripts/ingest-coh-archives.ts",
     "test:etl-logging": "tsx scripts/test-etl-logging.ts"
   },
   "overrides": {
