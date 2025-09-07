@@ -69,7 +69,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: Backfill Houston archives (last 12 weeks)
+      - name: Backfill Houston archives (last ${{ github.event.inputs.archive_weeks || '12' }} weeks)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
