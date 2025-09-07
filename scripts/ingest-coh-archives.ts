@@ -29,7 +29,12 @@ const ARCHIVE = process.env.HOUSTON_WEEKLY_ARCHIVE_URL || "https://www.houstontx
 const WEEKS = Number(process.env.ARCHIVE_WEEKS || "12");
 
 async function listWeeklyXlsx(n: number): Promise<string[]> {
-  const html = (await axios.get(ARCHIVE, { timeout: 60000 })).data;
+  let html: string;
+  try {
+    html = (await axios.get(ARCHIVE, { timeout: 60000 })).data;
+  } catch (error: any) {
+    throw new Error(`Failed to fetch archive page at ${ARCHIVE}: ${error?.message || error}`);
+  }
   const $ = cheerio.load(html);
   const links = new Set<string>();
   $("a[href$='.xlsx']").each((_, a) => {
