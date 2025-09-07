@@ -1,3 +1,4 @@
+---
 name: Self-Hosted Runner Health Check
 
 on:
@@ -14,22 +15,22 @@ jobs:
   health:
     runs-on: [self-hosted, linux, x64, scrape]
     timeout-minutes: 10
-    
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: 
+        with:
           python-version: "3.12"
-      
+
       - name: Install dependencies
         run: pip install requests pyyaml
-      
+
       - name: Ensure artifacts directory
         run: mkdir -p artifacts
-      
+
       - name: Run source health probe
         run: python scripts/agents/source_probe.py
-      
+
       - name: Upload health report
         if: always()
         uses: actions/upload-artifact@v4
@@ -37,27 +38,31 @@ jobs:
           name: source-health-${{ github.run_id }}
           path: artifacts/source_health.json
           retention-days: 7
-          
+
       - name: Health Summary
         if: always()
         run: |
           echo "## Source Health Check" >> $GITHUB_STEP_SUMMARY
           echo "- **Runner**: Self-hosted" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -f artifacts/source_health.json ]; then
             echo "- **Results**: Available in artifacts" >> $GITHUB_STEP_SUMMARY
-            
+
             # Extract summary if jq is available
             if command -v jq >/dev/null 2>&1; then
-              TOTAL=$(jq -r '.summary.total' artifacts/source_health.json 2>/dev/null || echo "unknown")
-              ONLINE=$(jq -r '.summary.online' artifacts/source_health.json 2>/dev/null || echo "unknown")
-              OFFLINE=$(jq -r '.summary.offline' artifacts/source_health.json 2>/dev/null || echo "unknown")
-              
+              TOTAL=$(jq -r '.summary.total' artifacts/source_health.json \
+                2>/dev/null || echo "unknown")
+              ONLINE=$(jq -r '.summary.online' artifacts/source_health.json \
+                2>/dev/null || echo "unknown")
+              OFFLINE=$(jq -r '.summary.offline' \
+                artifacts/source_health.json 2>/dev/null || echo "unknown")
+
               echo "- **Total Sources**: $TOTAL" >> $GITHUB_STEP_SUMMARY
               echo "- **Online**: $ONLINE" >> $GITHUB_STEP_SUMMARY
               echo "- **Offline**: $OFFLINE" >> $GITHUB_STEP_SUMMARY
             fi
           else
-            echo "- **Results**: No health data generated" >> $GITHUB_STEP_SUMMARY
+            echo "- **Results**: No health data generated" \
+              >> $GITHUB_STEP_SUMMARY
           fi
