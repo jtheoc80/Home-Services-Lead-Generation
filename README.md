@@ -59,6 +59,7 @@ For detailed instructions on manual triggers, reviewing changes, and rollback pr
 - [ETL Pipeline](permit_leads/README.md) - Permit scraping and processing
 - [GitHub Actions Runbook](docs/github-actions-runbook.md) - Workflow setup and troubleshooting
 - [Nightly ETL Guardian Bot](docs/nightly-etl-bot.md) - Manual trigger and rollback guide
+- [Copilot Allowlist Request](COPILOT_ALLOWLIST_REQUEST.md) - Required URL patterns for GitHub Copilot coding agent
 
 ## 🛠️ Development
 
@@ -80,10 +81,10 @@ For detailed instructions on manual triggers, reviewing changes, and rollback pr
    ```bash
    # Frontend
    cd frontend && npm install
-   
+
    # Backend
    cd backend && pip install -r requirements.txt
-   
+
    # ETL Pipeline
    cd permit_leads && pip install -r requirements.txt
    ```
