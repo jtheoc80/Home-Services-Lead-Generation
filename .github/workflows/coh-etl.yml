@@ -25,6 +25,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - name: Network test to Houston weekly page
+        run: |
+          set -Eeuo pipefail
+          curl -I -sS https://www.houstontx.gov/planning/DevelopRegs/dev_reports.html | head -n1
       - name: Ingest → Upsert → Build Leads
         run: |
           mkdir -p logs
