@@ -1,0 +1,4 @@
+PUBLIC_LEADS_VIEW_FIX_SUMMARY.md
+frontend/app/leads/[jurisdiction]/page.tsx
+scripts/test_public_leads_view_fix.ts
+supabase/migrations/0003_fix_public_leads_view.sql

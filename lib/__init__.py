@@ -5,10 +5,10 @@ from .feature_flags import feature_flags, weather_enabled, FeatureFlags
 
 __all__ = [
     "EntityGraph",
-    "Firm", 
+    "Firm",
     "Entity",
     "Relationship",
     "feature_flags",
     "weather_enabled",
-    "FeatureFlags"
+    "FeatureFlags",
 ]
