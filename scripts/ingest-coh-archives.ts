@@ -38,7 +38,10 @@ async function listWeeklyXlsx(n: number): Promise<string[]> {
   const $ = cheerio.load(html);
   const links = new Set<string>();
   $("a[href$='.xlsx']").each((_, a) => {
-    links.add(new URL($(a).attr("href")!, ARCHIVE).toString());
+    const href = $(a).attr("href");
+    if (href) {
+      links.add(new URL(href, ARCHIVE).toString());
+    }
   });
   return Array.from(links).slice(0, n);
 }
