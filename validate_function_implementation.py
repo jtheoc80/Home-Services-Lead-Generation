@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """
 Validation script for upsert_leads_from_permits_limit function
 Tests the exact curl command from the problem statement
