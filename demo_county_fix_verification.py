@@ -126,7 +126,8 @@ def show_sample_leads() -> None:
     ]
     
     for i, lead in enumerate(sample_leads, 1):
-        print(f"   {i}. {lead['name'][:40]}{'...' if len(lead['name']) > 40 else ''}")
+        name = lead['name'] if lead['name'] is not None else "(no name)"
+        print(f"   {i}. {name[:40]}{'...' if len(name) > 40 else ''}")
         print(f"      County: {lead['county']}, City: {lead['city']}")
         print(f"      Has key: {'✅' if lead['permit_id'] else '❌'}, Created: {lead['created_at']}")
         print()
