@@ -1,7 +1,8 @@
+---
 name: Source Health
 on:
-  schedule: [{ cron: "15 * * * *" }]
-  workflow_dispatch:
+  schedule: [{cron: "15 * * * *"}]
+  workflow_dispatch: {}
 
 jobs:
   probe:
@@ -14,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: 'npm' }
+        with: {node-version: '20', cache: 'npm'}
       - run: npm ci
       - name: Probe sources
         run: npx tsx scripts/probeSources.ts
@@ -23,17 +24,22 @@ jobs:
           PGPASSWORD: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "### Source Health" >> $GITHUB_STEP_SUMMARY
-          
+
           # Extract connection details from SUPABASE_URL
-          DB_HOST=$(echo "$SUPABASE_URL" | sed 's|.*://||' | sed 's|\..*|.postgres.supabase.co|')
+          DB_HOST=$(echo "$SUPABASE_URL" | sed 's|.*://||' | \
+            sed 's|\..*|.postgres.supabase.co|')
           DB_NAME="postgres"
           DB_USER="postgres"
           DB_PORT="5432"
-          
+
           # Query health data and format for GitHub
-          psql -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -U "$DB_USER" -t -A -F'|' \
-            -c "SELECT source_key, status, last_check, response_time_ms, error_message, records_available FROM public.source_health_latest ORDER BY source_key;" \
-            2>/dev/null | while IFS='|' read -r source status check_time response_time error records; do
+          psql -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -U "$DB_USER" \
+            -t -A -F'|' \
+            -c "SELECT source_key, status, last_check, response_time_ms, \
+                error_message, records_available \
+                FROM public.source_health_latest ORDER BY source_key;" \
+            2>/dev/null | while IFS='|' read -r source status check_time \
+              response_time error records; do
               if [ -n "$source" ]; then
                 case "$status" in
                   "online") emoji="✅" ;;
@@ -41,9 +47,11 @@ jobs:
                   "offline") emoji="❌" ;;
                   *) emoji="❓" ;;
                 esac
-                echo "- $emoji **$source**: $status (${response_time}ms) - $records records" >> $GITHUB_STEP_SUMMARY
+                echo "- $emoji **$source**: $status (${response_time}ms) - \
+                  $records records" >> $GITHUB_STEP_SUMMARY
                 if [ -n "$error" ] && [ "$error" != "" ]; then
                   echo "  - Error: $error" >> $GITHUB_STEP_SUMMARY
                 fi
               fi
-            done || echo "Unable to connect to database for health summary" >> $GITHUB_STEP_SUMMARY
+            done || echo "Unable to connect to database for health summary" \
+              >> $GITHUB_STEP_SUMMARY

@@ -91,12 +91,12 @@ class SourceHealthProbe {
         timeout: 30000
       },
       
-      // Harris County (placeholder - would need actual ArcGIS endpoint)
+      // Harris County (use a more realistic endpoint structure)
       {
         key: 'harris_county',
-        name: 'Harris County ArcGIS',
+        name: 'Harris County Permits',
         type: 'arcgis',
-        url: 'https://services.arcgis.com/dummy/arcgis/rest/services/permits/FeatureServer/0/query',
+        url: 'https://services.arcgis.com/dummy/ArcGIS/rest/services/Permits/FeatureServer/0',
         timeout: 20000
       }
     ];
@@ -144,6 +144,7 @@ class SourceHealthProbe {
 
       // For ArcGIS endpoints, add basic query parameters
       if (source.type === 'arcgis') {
+        requestConfig.url = `${source.url}/query`;
         requestConfig.params = {
           'where': '1=1',
           'returnCountOnly': 'true',
