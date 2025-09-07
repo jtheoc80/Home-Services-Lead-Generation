@@ -40,6 +40,51 @@ async function callEnsureArtifacts(args?: string): Promise<void> {
   }
 }
 
+async function buildLeadsFromPermits(): Promise<void> {
+  try {
+    console.log('🎯 Building leads from fresh permits...');
+    
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    const missingVars = [];
+    if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+    if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variable${missingVars.length > 1 ? 's' : ''}: ${missingVars.join(', ')}`);
+    }
+    
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_leads_from_permits`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_days: 14 })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`RPC call failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log(`✅ Leads generation completed:`, result);
+    
+    if (Array.isArray(result) && result.length > 0) {
+      const stats = result[0];
+      console.log(`   📈 Inserted: ${stats.inserted_count || 0} leads`);
+      console.log(`   🔄 Updated: ${stats.updated_count || 0} leads`);
+      console.log(`   📊 Total processed: ${stats.total_processed || 0} permits`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to build leads from permits:', error instanceof Error ? error.message : String(error));
+    // Don't throw - we want ETL to continue even if lead generation fails
+  }
+}
+
 /**
  * Main ingestion function
  */
@@ -115,6 +160,9 @@ async function main(): Promise<void> {
     const upsertResult = await upsertPermits(allPermits);
     const upserted = typeof upsertResult === 'number' ? upsertResult : upsertResult.upserted;
     console.log(`✅ Upserted ${upserted} permits`);
+
+    // Build leads from fresh permits
+    await buildLeadsFromPermits();
 
     // Compute first/last issue dates
     const issueDates = allPermits.map(p => p.issue_date).filter(Boolean).sort();
