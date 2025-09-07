@@ -1,0 +1,99 @@
+-- Create upsert_leads_from_permits_limit RPC function
+-- This function extends upsert_leads_from_permits with a limit parameter
+-- for testing and controlled processing of leads from permits data
+
+CREATE OR REPLACE FUNCTION public.upsert_leads_from_permits_limit(
+  p_limit INTEGER DEFAULT NULL,
+  p_days INTEGER DEFAULT NULL
+)
+RETURNS TABLE(
+  inserted_count INTEGER,
+  updated_count INTEGER,
+  total_processed INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  inserted_count INTEGER := 0;
+  updated_count INTEGER := 0;
+  total_processed INTEGER := 0;
+BEGIN
+  -- Upsert leads from permits using the correct issued_date column
+  -- Filter by p_days if provided to only process recent permits
+  -- Limit by p_limit if provided to control batch size
+  WITH upsert_results AS (
+    INSERT INTO public.leads (
+      permit_id, 
+      external_permit_id,
+      name, 
+      address,
+      city,
+      county,
+      service,
+      trade, 
+      source,
+      status, 
+      value, 
+      lead_score, 
+      created_at
+    )
+    SELECT 
+      p.id,
+      p.permit_id,  -- Use canonical permit_id as external_permit_id
+      COALESCE(
+        NULLIF(p.work_description,''),
+        'Permit ' || COALESCE(p.permit_number, p.permit_id, p.id::text, '(no #)')
+      ) as name,
+      p.address,
+      p.city,
+      NULLIF(p.county,'') as county,
+      COALESCE(NULLIF(p.permit_type,''), NULLIF(p.permit_class,''), 'Home Services') as service,
+      COALESCE(NULLIF(p.permit_type,''), NULLIF(p.permit_class,'')) as trade,
+      'permit_ingest' as source,
+      COALESCE(NULLIF(p.status,''),'new') as status,
+      p.valuation,
+      75,
+      COALESCE(p.issued_date, p.created_at, NOW())  -- Use correct issued_date column
+    FROM public.permits p
+    WHERE 
+      CASE 
+        WHEN p_days IS NOT NULL THEN 
+          COALESCE(p.issued_date, p.created_at, NOW()) >= NOW() - INTERVAL '1 day' * p_days
+        ELSE 
+          TRUE
+      END
+    ORDER BY COALESCE(p.issued_date, p.created_at, NOW()) DESC  -- Process most recent first
+    LIMIT CASE WHEN p_limit IS NOT NULL THEN p_limit ELSE NULL END
+    
+    ON CONFLICT (permit_id) DO UPDATE SET
+      name = EXCLUDED.name,
+      external_permit_id = EXCLUDED.external_permit_id,
+      address = EXCLUDED.address,
+      city = EXCLUDED.city,
+      county = EXCLUDED.county,
+      service = EXCLUDED.service,
+      trade = EXCLUDED.trade,
+      source = EXCLUDED.source,
+      status = EXCLUDED.status,
+      value = EXCLUDED.value,
+      lead_score = EXCLUDED.lead_score,
+      updated_at = NOW()
+    RETURNING 
+      CASE WHEN xmax = 0 THEN 1 ELSE 0 END as is_insert,
+      CASE WHEN xmax > 0 THEN 1 ELSE 0 END as is_update
+  )
+  SELECT 
+    SUM(is_insert)::INTEGER,
+    SUM(is_update)::INTEGER,
+    COUNT(*)::INTEGER
+  INTO inserted_count, updated_count, total_processed
+  FROM upsert_results;
+
+  -- Return results
+  RETURN QUERY SELECT inserted_count, updated_count, total_processed;
+END;
+$$;
+
+-- Add comment for documentation
+COMMENT ON FUNCTION public.upsert_leads_from_permits_limit(INTEGER, INTEGER) IS 
+'RPC function that upserts leads from permits data with optional limit and date filtering. Accepts p_limit parameter to control batch size and p_days parameter to filter permits from the last N days. Uses public.permits.issued_date (not issue_date) for correct date handling. Returns counts of inserted, updated, and total processed records.';
