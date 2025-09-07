@@ -1,0 +1,81 @@
+name: Create 50 Leads Sample
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of leads to create (max 50)'
+        required: false
+        default: '50'
+      days:
+        description: 'Days back to look for permits'
+        required: false
+        default: '365'
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  create-leads-sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: "Preflight: verify required secrets"
+      id: preflight
+      shell: bash
+      run: |
+        ok=1
+        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+          val="${!v}"
+          if [ -z "$val" ]; then
+            echo "::error title=$v missing::Set $v in GitHub → Settings → Secrets and variables → Actions"
+            ok=0
+          else
+            echo "::add-mask::$val"
+          fi
+        done
+        echo "ok=$ok" >> "$GITHUB_OUTPUT"
+        [ "$ok" -eq 1 ]
+        
+    - name: Create 50 leads from recent permits
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        # Set defaults using shell logic for inputs
+        LIMIT="${{ inputs.limit }}"
+        [ -z "$LIMIT" ] && LIMIT="50"
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="365"
+        
+        echo "Creating leads with limit=$LIMIT, days=$DAYS"
+        
+        curl -sS "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits_limit" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Content-Type: application/json" \
+          -d "{\"p_limit\":${LIMIT},\"p_days\":${DAYS}}"
+          
+    - name: Workflow Summary
+      if: always()
+      run: |
+        # Set defaults using shell logic
+        LIMIT="${{ inputs.limit }}"
+        [ -z "$LIMIT" ] && LIMIT="50"
+        DAYS="${{ inputs.days }}"
+        [ -z "$DAYS" ] && DAYS="365"
+        
+        echo "## Create Leads Sample - Workflow Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Lead Limit**: $LIMIT" >> $GITHUB_STEP_SUMMARY
+        echo "- **Days Back**: $DAYS" >> $GITHUB_STEP_SUMMARY
+        echo "- **Function Called**: upsert_leads_from_permits_limit" >> $GITHUB_STEP_SUMMARY
+        echo "- **Preflight Status**: ${{ steps.preflight.outcome }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "This workflow demonstrates the limited lead creation functionality" >> $GITHUB_STEP_SUMMARY
+        echo "using the \`upsert_leads_from_permits_limit\` RPC function." >> $GITHUB_STEP_SUMMARY
