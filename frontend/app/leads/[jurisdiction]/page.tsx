@@ -13,11 +13,11 @@ export default async function Leads({ params }: { params: { jurisdiction: string
 
   return (
     <main className="p-6">
-      <h1 className="text-2xl font-bold">Permits — {j}</h1>
+      <h1 className="text-2xl font-bold">Leads — {j}</h1>
       <ul className="mt-4 space-y-2">
-        {(data ?? []).map((r: { id: string; source: string; source_record_id: string; jurisdiction: string }) => (
+        {(data ?? []).map((r: { id: string; source: string; external_permit_id: string; jurisdiction: string }) => (
           <li key={r.id} className="border p-3 rounded">
-            <div className="font-medium">{r.source} — {r.source_record_id}</div>
+            <div className="font-medium">{r.source} — {r.external_permit_id}</div>
             <div className="text-sm opacity-70">Jurisdiction: {r.jurisdiction}</div>
           </li>
         ))}
