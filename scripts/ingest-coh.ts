@@ -1,12 +1,6 @@
 #!/usr/bin/env tsx
 
 /**
-
- * City of Houston ETL Script
- * 
- * This script fetches permit data from City of Houston sources and processes them for storage.
- * It handles both weekly XLSX files and sold permits data, then upserts to Supabase.
-
  * City of Houston Permits Ingestion Script
  * 
  * Main ETL script for ingesting City of Houston permit data.
@@ -18,7 +12,6 @@
  * - Handles error cases gracefully
  * 
  * Usage: tsx scripts/ingest-coh.ts
-
  * 
  * Environment Variables:
  *   HOUSTON_WEEKLY_XLSX_URL - URL for Houston weekly permit XLSX files
@@ -26,7 +19,6 @@
  *   SUPABASE_URL - Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key for database access
  *   DAYS - Number of days to look back (default: 7)
-
  */
 
 import { fetchHoustonWeeklyXlsx } from "./adapters/houstonXlsx";
@@ -34,18 +26,7 @@ import { fetchHoustonSoldPermits } from "./adapters/houstonSoldPermits";
 import { upsertPermits } from "./lib/supabaseUpsert";
 import { logEtlRun, logEtlError } from "./lib/logEtlRun";
 import fs from "node:fs";
-
-async function main() {
-  const startTime = Date.now();
-  
-
- *   ETL_ALLOW_EMPTY - Set to "1" to exit gracefully when no records found
- */
-
-import { fetchHoustonWeeklyPermits, HoustonPermit } from './houstonWeekly.js';
-import { SupabaseSink } from './supabaseSink.js';
-import fs from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execSync } from "node:child_process";
 
 async function callEnsureArtifacts(args?: string): Promise<void> {
   try {
@@ -60,41 +41,11 @@ async function callEnsureArtifacts(args?: string): Promise<void> {
 }
 
 /**
- * Convert Houston permits to database format
- */
-function convertPermitsToDbFormat(permits: HoustonPermit[]): Record<string, any>[] {
-  return permits.map(permit => ({
-    source: 'houston',
-    source_record_id: permit.permit_id || permit.id || `houston-${permit.permit_number || Date.now()}`,
-    permit_number: permit.permit_number,
-    issued_date: permit.issue_date ? new Date(permit.issue_date).toISOString() : null,
-    application_date: permit.application_date ? new Date(permit.application_date).toISOString() : null,
-    expiration_date: permit.expiration_date ? new Date(permit.expiration_date).toISOString() : null,
-    permit_type: permit.permit_type,
-    permit_class: permit.permit_class,
-    work_description: permit.work_description,
-    trade: permit.trade || 'General',
-    address: permit.address,
-    city: permit.city || 'Houston',
-    county: permit.county || 'Harris',
-    zipcode: permit.zipcode,
-    latitude: permit.latitude ? parseFloat(permit.latitude.toString()) : null,
-    longitude: permit.longitude ? parseFloat(permit.longitude.toString()) : null,
-    valuation: permit.valuation ? parseFloat(permit.valuation.toString()) : null,
-    square_feet: permit.square_feet ? parseInt(permit.square_feet.toString()) : null,
-    applicant_name: permit.applicant_name,
-    contractor_name: permit.contractor_name,
-    owner_name: permit.owner_name,
-    status: permit.status || 'Unknown',
-    raw_data: permit
-  }));
-}
-
-/**
  * Main ingestion function
  */
 async function main(): Promise<void> {
-
+  const startTime = Date.now();
+  
   try {
     console.log('🏗️  City of Houston ETL Pipeline');
     console.log('================================');
@@ -114,47 +65,28 @@ async function main(): Promise<void> {
 
     // Fetch permit data
     console.log('⬇️  Fetching weekly permits...');
-    const permits = await fetchHoustonWeeklyPermits(weeklyUrl, days);
-    console.log(`✅ Fetched ${permits.length} permits`);
+    const weeklyPermits = await fetchHoustonWeeklyXlsx(weeklyUrl, days);
+    console.log(`✅ Fetched ${weeklyPermits.length} weekly permits`);
 
-
-    let upserted = 0;
-    if (merged.length === 0) {
-      console.log('⚠️  No permits found for processing');
-    } else {
-      // Upsert to database
-      console.log('💾 Upserting permits to database...');
-      const result = await upsertPermits(merged);
-      upserted = typeof result === 'number' ? result : result.upserted;
-      console.log(`✅ Upserted ${upserted} permits`);
+    // Optionally fetch sold permits if URL is provided
+    let soldPermits: any[] = [];
+    const soldUrl = process.env.HOUSTON_SOLD_PERMITS_URL;
+    if (soldUrl) {
+      try {
+        console.log('⬇️  Fetching sold permits...');
+        soldPermits = await fetchHoustonSoldPermits(soldUrl, days);
+        console.log(`✅ Fetched ${soldPermits.length} sold permits`);
+      } catch (error) {
+        console.warn(`⚠️  Failed to fetch sold permits: ${error}`);
+        // Continue with just weekly permits
+      }
     }
 
-    // Compute first/last issue dates
-    const first_issue_date = merged.length > 0 
-      ? merged.map(p => p.issue_date).reduce((a, b) => a < b ? a : b) 
-      : undefined;
-    const last_issue_date = merged.length > 0 
-      ? merged.map(p => p.issue_date).reduce((a, b) => a > b ? a : b) 
-      : undefined;
+    // Merge permits (weekly + sold)
+    const allPermits = [...weeklyPermits, ...soldPermits];
+    console.log(`📋 Total permits to process: ${allPermits.length}`);
 
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-
-    // Log ETL run to etl_runs table
-    console.log('📝 Logging ETL run...');
-    await logEtlRun({
-      source_system: "city_of_houston",
-      fetched: weekly.length + sold.length,
-      parsed: merged.length,
-      upserted: upserted,
-      errors: 0,
-      first_issue_date: first_issue_date ? first_issue_date.slice(0, 10) : undefined,
-      last_issue_date: last_issue_date ? last_issue_date.slice(0, 10) : undefined,
-      status: 'success',
-      duration_ms: duration
-    });
-
-    if (permits.length === 0) {
+    if (allPermits.length === 0) {
       const message = '⚠️  No permits found for processing';
       console.log(message);
       
@@ -178,34 +110,45 @@ async function main(): Promise<void> {
       return;
     }
 
-    // Convert to database format
-    console.log('🔄 Converting permits to database format...');
-    const dbPermits = convertPermitsToDbFormat(permits);
-    
-    // Initialize Supabase sink and upsert
+    // Upsert to database
     console.log('💾 Upserting permits to database...');
-    const sink = new SupabaseSink();
-    const result = await sink.upsert(dbPermits);
-    console.log(`✅ Upserted ${result.upserted} permits`);
+    const upsertResult = await upsertPermits(allPermits);
+    const upserted = typeof upsertResult === 'number' ? upsertResult : upsertResult.upserted;
+    console.log(`✅ Upserted ${upserted} permits`);
 
+    // Compute first/last issue dates
+    const issueDates = allPermits.map(p => p.issue_date).filter(Boolean).sort();
+    const first_issue_date = issueDates.length > 0 ? issueDates[0] : undefined;
+    const last_issue_date = issueDates.length > 0 ? issueDates[issueDates.length - 1] : undefined;
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    // Log ETL run to etl_runs table
+    console.log('📝 Logging ETL run...');
+    await logEtlRun({
+      source_system: "city_of_houston",
+      fetched: allPermits.length,
+      parsed: allPermits.length,
+      upserted: upserted,
+      errors: 0,
+      first_issue_date: first_issue_date ? first_issue_date.slice(0, 10) : undefined,
+      last_issue_date: last_issue_date ? last_issue_date.slice(0, 10) : undefined,
+      status: 'success',
+      duration_ms: duration
+    });
 
     // Write summary for CI
     const summary = {
       source: "city_of_houston",
-
-      fetched_weekly: weekly.length,
-      fetched_sold: sold.length,
-      merged: merged.length,
+      fetched_weekly: weeklyPermits.length,
+      fetched_sold: soldPermits.length,
+      total_fetched: allPermits.length,
       upserted,
       first_issue_date,
       last_issue_date,
-
-      fetched: permits.length,
-      upserted: result.upserted,
-      first_issue_date: permits.length > 0 ? permits.map(p => p.issue_date).reduce((a, b) => a < b ? a : b) : undefined,
-      last_issue_date: permits.length > 0 ? permits.map(p => p.issue_date).reduce((a, b) => a > b ? a : b) : undefined,
+      status: "success",
       timestamp: new Date().toISOString()
-
     };
 
     // Ensure logs directory exists
@@ -261,19 +204,6 @@ async function main(): Promise<void> {
       console.error('Failed to write error summary:', writeError);
     }
 
-    
-    process.exitCode = 1;
-  }
-}
-
-// Run if called directly
-main().catch(error => {
-  console.error('Unhandled error:', error);
-  process.exitCode = 1;
-});
-
-
-
     // Call ensure_artifacts.py even on error
     try {
       await callEnsureArtifacts();
@@ -281,10 +211,9 @@ main().catch(error => {
       console.error('Failed to call ensure_artifacts.py:', artifactError);
     }
 
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
-
 
 // Only run main if this script is executed directly (ESM compatible check)
 if (process.argv[1] && (process.argv[1].endsWith('ingest-coh.ts') || process.argv[1].endsWith('ingest-coh.js'))) {
