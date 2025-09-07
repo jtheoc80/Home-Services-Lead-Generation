@@ -57,6 +57,43 @@ The script creates:
 - Continues with partial data when possible
 - Can be configured to allow empty result sets
 
+## Preflight Checks
+
+The City of Houston ETL workflow includes preflight connectivity checks via `scripts/houston-preflight.py`. This script:
+
+- **Validates Environment Variables**: Ensures all required variables are set
+- **URL Format Validation**: Verifies all URLs are properly formatted
+- **Supabase Connectivity**: Tests database connection (critical - blocks workflow if failed)
+- **Houston Endpoints**: Tests connectivity to Houston city websites (non-critical - warnings only)
+
+### Connectivity Issues
+
+If you encounter connectivity issues with Houston endpoints:
+
+1. **Network Access**: The runner may not have access to www.houstontx.gov
+   - **Solution**: Add www.houstontx.gov to the allowlist (see `COPILOT_ALLOWLIST_REQUEST.md`)
+   - **Alternative**: Use a self-hosted runner with network access
+
+2. **Endpoint Temporarily Down**: Houston city websites may be temporarily unavailable
+   - **Result**: Workflow continues with warnings but does not fail
+   - **Mitigation**: ETL may work with cached or alternative data sources
+
+3. **Critical vs Non-Critical Failures**:
+   - **Critical**: Supabase connectivity issues will stop the workflow
+   - **Non-Critical**: Houston endpoint issues generate warnings but allow workflow to proceed
+
+### Running Preflight Checks Manually
+
+```bash
+# Set required environment variables first
+export SUPABASE_URL=your_supabase_project_url
+export SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+export HOUSTON_WEEKLY_XLSX_URL=url_to_houston_weekly_xlsx_file
+
+# Run preflight checks
+python scripts/houston-preflight.py
+```
+
 ## Integration
 
 This script integrates with the existing repository infrastructure:
@@ -79,3 +116,36 @@ This test verifies:
 - Script execution without syntax errors
 - NPM script functionality
 - Error handling capabilities
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Houston endpoint connection error" in GitHub Actions
+
+**Symptom**: Workflow fails with connectivity check errors to www.houstontx.gov
+
+**Cause**: GitHub Actions runners may not have access to Houston city government websites
+
+**Solutions**:
+1. **Allowlist the domain**: Request to add www.houstontx.gov to the GitHub Copilot allowlist
+2. **Use self-hosted runner**: Set up a runner with network access to Houston endpoints
+3. **Expected behavior**: As of the latest update, Houston endpoint failures are non-critical and should not stop the workflow
+
+#### Environment Variable Issues
+
+**Symptom**: "Missing required environment variables" error
+
+**Solution**: Ensure all required secrets are configured in GitHub repository settings:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` 
+- `HOUSTON_WEEKLY_XLSX_URL`
+
+#### Supabase Connectivity Issues
+
+**Symptom**: "Supabase connectivity: Health check failed"
+
+**Solutions**:
+- Verify Supabase URL and service role key are correct
+- Check if Supabase project is accessible
+- Ensure service role has proper permissions
