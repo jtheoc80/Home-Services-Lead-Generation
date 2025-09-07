@@ -51,7 +51,8 @@
     "audit:qb": "tsx tools/botctl.ts audit:qb",
     "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom",
     "etl:houston": "tsx scripts/etlHouston.ts",
-    "ingest:coh": "tsx scripts/ingest-coh.ts"
+    "ingest:coh": "tsx scripts/ingest-coh.ts",
+    "test:etl-logging": "tsx scripts/test-etl-logging.ts"
   },
   "overrides": {
     "react": "19.1.1",
