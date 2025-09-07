@@ -21,22 +21,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: 'npm' }
+        with: 
+          node-version: '20'
+          cache: 'npm'
       - run: npm ci
       - name: Ingest → Upsert
         run: |
-          mkdir -p logs
-
-          npm run ingest:coh 2>&1 | tee logs/etl_output.log
-      - name: Step summary
-
+          mkdir -p logs/
           npx tsx scripts/ingest-coh.ts 2>&1 | tee logs/etl_output.log
       - name: Summary
-
         if: always()
         run: |
-          echo "### COH ETL" >> $GITHUB_STEP_SUMMARY
-          test -f logs/etl-summary.json && cat logs/etl-summary.json >> $GITHUB_STEP_SUMMARY || true
+          echo "### COH ETL" >> "$GITHUB_STEP_SUMMARY"
+          if test -f logs/etl-summary.json; then
+            cat logs/etl-summary.json >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

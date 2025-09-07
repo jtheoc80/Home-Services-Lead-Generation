@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.permits (
   permit_type TEXT,
   permit_class TEXT,
   work_description TEXT,
+  trade TEXT DEFAULT 'General',
   
   -- Location information
   address TEXT,
@@ -63,6 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_permits_city ON public.permits(city);
 CREATE INDEX IF NOT EXISTS idx_permits_county ON public.permits(county);
 CREATE INDEX IF NOT EXISTS idx_permits_valuation ON public.permits(valuation);
 CREATE INDEX IF NOT EXISTS idx_permits_status ON public.permits(status);
+CREATE INDEX IF NOT EXISTS idx_permits_trade ON public.permits(trade);
 CREATE INDEX IF NOT EXISTS idx_permits_created_at ON public.permits(created_at);
 
 -- Spatial index for geometry queries
