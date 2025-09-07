@@ -11,8 +11,15 @@ export type Permit = {
   contractor?: string | null;
 };
 
-const url = process.env.SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url) {
+  throw new Error("Missing required environment variable: SUPABASE_URL");
+}
+if (!key) {
+  throw new Error("Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY");
+}
 const sb = createClient(url, key, { auth: { persistSession: false } });
 
 export async function upsertPermits(rows: Permit[], chunk = 500) {
