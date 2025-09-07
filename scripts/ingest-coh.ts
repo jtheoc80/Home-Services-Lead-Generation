@@ -80,7 +80,7 @@ async function buildLeadsFromPermits(): Promise<void> {
     }
     
   } catch (error) {
-    console.error('❌ Failed to build leads from permits:', error instanceof Error ? error.message : String(error));
+    console.error('❌ Failed to build leads from permits:', error);
     // Don't throw - we want ETL to continue even if lead generation fails
   }
 }
