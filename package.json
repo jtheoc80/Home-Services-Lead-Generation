@@ -48,7 +48,8 @@
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb",
     "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom",
-    "etl:houston": "tsx scripts/etlHouston.ts"
+    "etl:houston": "tsx scripts/etlHouston.ts",
+    "ingest:coh": "tsx scripts/ingest-coh.ts"
   },
   "overrides": {
     "react": "19.1.1",
