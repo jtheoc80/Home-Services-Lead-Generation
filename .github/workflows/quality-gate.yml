@@ -162,7 +162,7 @@ jobs:
         id: py_mark
         run: |
           set -Eeuo pipefail
-          failed="${{ steps.py_tests.outputs.pytest_failed || 'false' }}"
+          failed="${{ steps.py_tests.outputs.pytest_failed == 'true' }}"
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
 
       - name: Upload coverage reports
