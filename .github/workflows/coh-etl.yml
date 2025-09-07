@@ -36,10 +36,15 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: Connectivity check
+      - name: Connectivity check (Houston weekly page)
         run: |
-          echo "🔍 Running preflight connectivity checks..."
-          python scripts/houston-preflight.py
+          set -Eeuo pipefail
+          URL="https://www.houstontx.gov/planning/DevelopRegs/dev_reports.html"
+          echo "Checking $URL"
+          getent ahosts www.houstontx.gov || true
+          STATUS=$(curl -sS -I -A "LeadLedgerETL/1.0 (+github-actions)" -o /dev/null -w "%{http_code}" "$URL" || true)
+          echo "HTTP_STATUS=$STATUS"
+          test "$STATUS" = "200" || { echo "❌ Houston page unreachable ($STATUS)"; exit 1; }
       - name: Ingest → Upsert → Build Leads
         run: |
           mkdir -p logs
