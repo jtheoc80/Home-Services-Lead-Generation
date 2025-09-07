@@ -26,11 +26,7 @@ jobs:
       - name: Ingest → Upsert
         run: |
           mkdir -p logs
-
           npm run ingest:coh 2>&1 | tee logs/etl_output.log
-      - name: Step summary
-
-          npx tsx scripts/ingest-coh.ts 2>&1 | tee logs/etl_output.log
       - name: Summary
 
         if: always()
