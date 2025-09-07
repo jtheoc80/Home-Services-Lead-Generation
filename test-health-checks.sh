@@ -7,9 +7,15 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/scripts" && pwd)"
+# Resolve the path to the 'scripts' directory relative to this script's location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts"
 TEST_DIR="/tmp/health-check-tests"
 
+# Check if the scripts directory exists
+if [ ! -d "$SCRIPT_DIR" ]; then
+    echo -e "\033[0;31m[✗]\033[0m 'scripts' directory not found at: $SCRIPT_DIR"
+    exit 1
+fi
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
