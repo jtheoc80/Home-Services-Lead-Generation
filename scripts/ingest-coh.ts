@@ -1,6 +1,12 @@
 #!/usr/bin/env tsx
 
 /**
+
+ * City of Houston ETL Script
+ * 
+ * This script fetches permit data from City of Houston sources and processes them for storage.
+ * It handles both weekly XLSX files and sold permits data, then upserts to Supabase.
+
  * City of Houston Permits Ingestion Script
  * 
  * Main ETL script for ingesting City of Houston permit data.
@@ -12,6 +18,7 @@
  * - Handles error cases gracefully
  * 
  * Usage: tsx scripts/ingest-coh.ts
+
  * 
  * Environment Variables:
  *   HOUSTON_WEEKLY_XLSX_URL - URL for Houston weekly permit XLSX files
@@ -19,6 +26,19 @@
  *   SUPABASE_URL - Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key for database access
  *   DAYS - Number of days to look back (default: 7)
+
+ */
+
+import { fetchHoustonWeeklyXlsx } from "./adapters/houstonXlsx";
+import { fetchHoustonSoldPermits } from "./adapters/houstonSoldPermits";
+import { upsertPermits } from "./lib/supabaseUpsert";
+import { logEtlRun, logEtlError } from "./lib/logEtlRun";
+import fs from "node:fs";
+
+async function main() {
+  const startTime = Date.now();
+  
+
  *   ETL_ALLOW_EMPTY - Set to "1" to exit gracefully when no records found
  */
 
@@ -74,6 +94,7 @@ function convertPermitsToDbFormat(permits: HoustonPermit[]): Record<string, any>
  * Main ingestion function
  */
 async function main(): Promise<void> {
+
   try {
     console.log('🏗️  City of Houston ETL Pipeline');
     console.log('================================');
@@ -95,6 +116,43 @@ async function main(): Promise<void> {
     console.log('⬇️  Fetching weekly permits...');
     const permits = await fetchHoustonWeeklyPermits(weeklyUrl, days);
     console.log(`✅ Fetched ${permits.length} permits`);
+
+
+    let upserted = 0;
+    if (merged.length === 0) {
+      console.log('⚠️  No permits found for processing');
+    } else {
+      // Upsert to database
+      console.log('💾 Upserting permits to database...');
+      const result = await upsertPermits(merged);
+      upserted = typeof result === 'number' ? result : result.upserted;
+      console.log(`✅ Upserted ${upserted} permits`);
+    }
+
+    // Compute first/last issue dates
+    const first_issue_date = merged.length > 0 
+      ? merged.map(p => p.issue_date).reduce((a, b) => a < b ? a : b) 
+      : undefined;
+    const last_issue_date = merged.length > 0 
+      ? merged.map(p => p.issue_date).reduce((a, b) => a > b ? a : b) 
+      : undefined;
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    // Log ETL run to etl_runs table
+    console.log('📝 Logging ETL run...');
+    await logEtlRun({
+      source_system: "city_of_houston",
+      fetched: weekly.length + sold.length,
+      parsed: merged.length,
+      upserted: upserted,
+      errors: 0,
+      first_issue_date: first_issue_date ? first_issue_date.slice(0, 10) : undefined,
+      last_issue_date: last_issue_date ? last_issue_date.slice(0, 10) : undefined,
+      status: 'success',
+      duration_ms: duration
+    });
 
     if (permits.length === 0) {
       const message = '⚠️  No permits found for processing';
@@ -130,14 +188,24 @@ async function main(): Promise<void> {
     const result = await sink.upsert(dbPermits);
     console.log(`✅ Upserted ${result.upserted} permits`);
 
+
     // Write summary for CI
     const summary = {
       source: "city_of_houston",
+
+      fetched_weekly: weekly.length,
+      fetched_sold: sold.length,
+      merged: merged.length,
+      upserted,
+      first_issue_date,
+      last_issue_date,
+
       fetched: permits.length,
       upserted: result.upserted,
       first_issue_date: permits.length > 0 ? permits.map(p => p.issue_date).reduce((a, b) => a < b ? a : b) : undefined,
       last_issue_date: permits.length > 0 ? permits.map(p => p.issue_date).reduce((a, b) => a > b ? a : b) : undefined,
       timestamp: new Date().toISOString()
+
     };
 
     // Ensure logs directory exists
@@ -160,8 +228,23 @@ async function main(): Promise<void> {
     }
 
   } catch (error) {
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
     console.error('');
     console.error('❌ City of Houston ETL failed:', error instanceof Error ? error.message : String(error));
+    
+    // Log error ETL run
+    try {
+      console.log('📝 Logging error ETL run...');
+      await logEtlError(
+        "city_of_houston",
+        error instanceof Error ? error.message : String(error),
+        duration
+      );
+    } catch (logError) {
+      console.error('Failed to log ETL error:', logError instanceof Error ? logError.message : String(logError));
+    }
     
     // Write error summary
     const errorSummary = {
@@ -178,6 +261,19 @@ async function main(): Promise<void> {
       console.error('Failed to write error summary:', writeError);
     }
 
+    
+    process.exitCode = 1;
+  }
+}
+
+// Run if called directly
+main().catch(error => {
+  console.error('Unhandled error:', error);
+  process.exitCode = 1;
+});
+
+
+
     // Call ensure_artifacts.py even on error
     try {
       await callEnsureArtifacts();
@@ -188,6 +284,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 }
+
 
 // Only run main if this script is executed directly (ESM compatible check)
 if (process.argv[1] && (process.argv[1].endsWith('ingest-coh.ts') || process.argv[1].endsWith('ingest-coh.js'))) {
