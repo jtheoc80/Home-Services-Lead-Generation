@@ -165,6 +165,24 @@ jobs:
         sys.exit(0 if ok else 1)
         EOF
 
+    - name: Build leads from fresh permits
+      if: ${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}
+      run: |
+        echo "Building leads from fresh permits (last 7 days)..."
+        response=$(curl -sS "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits" \
+          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{"p_days": 7}')
+        echo "Lead building response: $response"
+        
+        # Extract counts from response if possible
+        if echo "$response" | grep -q "inserted_count\|updated_count\|total_processed"; then
+          echo "✅ Successfully built leads from fresh permits"
+        else
+          echo "⚠️  Lead building completed but response format unexpected"
+        fi
+
     - name: Upload artifacts
       if: always()
       uses: actions/upload-artifact@v4

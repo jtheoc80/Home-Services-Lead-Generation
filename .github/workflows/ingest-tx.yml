@@ -21,6 +21,8 @@ on:
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
   SODA_APP_TOKEN: ${{ secrets.SODA_APP_TOKEN }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   USE_WEATHER: false
 
 jobs:
@@ -119,6 +121,30 @@ jobs:
         cd .. && poetry run python -m pipelines.normalize_permits
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Build leads from fresh permits
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        echo "Building leads from fresh permits (last 7 days)..."
+        if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+          response=$(curl -sS "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_days": 7}')
+          echo "Lead building response: $response"
+          
+          # Extract counts from response if possible
+          if echo "$response" | grep -q "inserted_count\|updated_count\|total_processed"; then
+            echo "✅ Successfully built leads from fresh permits"
+          else
+            echo "⚠️  Lead building completed but response format unexpected"
+          fi
+        else
+          echo "⚠️  Supabase credentials not available, skipping lead building"
+        fi
         
     - name: Publish lead scores
       id: publish

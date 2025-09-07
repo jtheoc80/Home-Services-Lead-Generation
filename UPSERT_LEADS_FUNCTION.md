@@ -19,17 +19,21 @@ Since the `upsert_leads_from_permits()` function did not exist, it was created w
 2. **Comprehensive Lead Creation**: Creates leads from permits data with proper field mapping
 3. **Conflict Handling**: Handles existing leads with UPDATE on conflict
 4. **Return Values**: Returns counts of inserted, updated, and total processed records
+5. **Date Filtering**: Accepts optional `p_days` parameter to process only recent permits
 
 ### Function Signature
 
 ```sql
-CREATE OR REPLACE FUNCTION public.upsert_leads_from_permits()
+CREATE OR REPLACE FUNCTION public.upsert_leads_from_permits(p_days INTEGER DEFAULT NULL)
 RETURNS TABLE(
   inserted_count INTEGER,
   updated_count INTEGER,
   total_processed INTEGER
 )
 ```
+
+**Parameters:**
+- `p_days` (optional): Filter permits to only those from the last N days. If NULL or not provided, processes all permits.
 
 ### Column Mapping
 
@@ -60,8 +64,23 @@ The function maps permit data to lead data as follows:
 
 2. Call the function:
    ```sql
+   -- Process all permits
    SELECT * FROM public.upsert_leads_from_permits();
+   
+   -- Process only permits from last 7 days
+   SELECT * FROM public.upsert_leads_from_permits(7);
    ```
+
+### HTTP RPC Usage
+
+Via Supabase REST API (as used in workflows):
+```bash
+curl -sS "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"p_days": 7}'
+```
 
 ### Testing
 
