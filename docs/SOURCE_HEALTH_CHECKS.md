@@ -30,6 +30,23 @@ Simple script containing the exact commands from the problem statement, ready to
 ./scripts/copy-paste-health-checks.sh
 ```
 
+### 3. `scripts/austin-socrata-manual-test.sh`
+Manual testing workflow specifically for Austin Socrata API as described in the problem statement.
+
+**Usage:**
+```bash
+# Set your token and dataset id (find on the dataset's API page)
+export AUSTIN_SOCRATA_APP_TOKEN=YOUR_TOKEN
+export AUSTIN_DATASET_ID=abcd-1234   # <-- replace with the real resource id
+
+# Run both steps
+./scripts/austin-socrata-manual-test.sh
+
+# Run only specific steps
+./scripts/austin-socrata-manual-test.sh --step1   # HEAD + sample row
+./scripts/austin-socrata-manual-test.sh --step2   # CSV download
+```
+
 ## Health Check Types
 
 ### 1. DNS + TLS + HEAD (Connectivity & Status)
@@ -75,6 +92,48 @@ export SA_SOCRATA_APP_TOKEN="your-sa-token"
 **What to look for:** 
 - JSON array with up to 1 row (success)
 - 401/403 responses indicate missing/invalid App Token
+
+### 5. Austin Socrata Manual Testing
+Complete manual testing workflow for Austin Socrata API including CSV download.
+
+**Environment Variables Required:**
+```bash
+export AUSTIN_SOCRATA_APP_TOKEN="your-austin-token"
+export AUSTIN_DATASET_ID="3syk-w9eu"  # Austin building permits dataset
+```
+
+**Manual Steps:**
+```bash
+# Step 1 — quick HEAD + sample row
+curl -sS -I https://data.austintexas.gov | head -n1
+
+# 1 sample row (should print a small JSON array)
+curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.json?\$limit=1" \
+  -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN"
+
+# Step 2 — download a CSV (no code)
+START=2024-01-01
+curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.csv?\
+\$where=issued_date >= '$START'&\$order=issued_date&\$limit=50000" \
+  -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN" \
+  -o austin_sample.csv
+wc -l austin_sample.csv && head -5 austin_sample.csv
+```
+
+**Alternative date fields** if `issued_date` doesn't work:
+- `issue_date`
+- `file_date`
+- `application_date`
+- `created_date`
+
+### 6. Static XLSX Probe
+```
+
+**Alternative date fields** if `issued_date` doesn't work:
+- `issue_date`
+- `file_date`
+- `application_date`
+- `created_date`
 
 ### 5. Static XLSX Probe
 Tests Houston Weekly permit file accessibility and content type.
@@ -125,6 +184,28 @@ curl -sS "https://data.austintexas.gov/resource/RESOURCE_ID.json?\$limit=1" \
 
 curl -sS "https://data.sanantonio.gov/resource/RESOURCE_ID.json?\$limit=1" \
   -H "X-App-Token: $SA_SOCRATA_APP_TOKEN"
+```
+
+### Austin Socrata Manual Testing (from problem statement)
+```bash
+# set your token and dataset id (find on the dataset's API page)
+export AUSTIN_SOCRATA_APP_TOKEN=YOUR_TOKEN
+export AUSTIN_DATASET_ID=abcd-1234   # <-- replace with the real resource id
+
+# HEAD check (portal reachable)
+curl -sS -I https://data.austintexas.gov | head -n1
+
+# 1 sample row (should print a small JSON array)
+curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.json?\$limit=1" \
+  -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN"
+
+# download a CSV (no code)
+START=2024-01-01
+curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.csv?\
+\$where=issued_date >= '$START'&\$order=issued_date&\$limit=50000" \
+  -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN" \
+  -o austin_sample.csv
+wc -l austin_sample.csv && head -5 austin_sample.csv
 ```
 
 ### XLSX File Check

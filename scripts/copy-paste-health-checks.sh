@@ -118,6 +118,67 @@ echo "==========================================================================
 echo
 
 # =============================================================================
+# 4b) Austin Socrata Manual Testing (from problem statement)
+# =============================================================================
+echo "# 4b) Austin Socrata Manual Testing (from problem statement)"
+echo "# set your token and dataset id (find on the dataset's API page)"
+echo 'export AUSTIN_SOCRATA_APP_TOKEN=YOUR_TOKEN'
+echo 'export AUSTIN_DATASET_ID=abcd-1234   # <-- replace with the real resource id'
+echo
+echo '# HEAD check (portal reachable)'
+echo 'curl -sS -I https://data.austintexas.gov | head -n1'
+echo
+echo '# 1 sample row (should print a small JSON array)'
+echo 'curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.json?\$limit=1" \'
+echo '  -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN"'
+echo
+echo '# download a CSV (no code)'
+echo 'START=2024-01-01'
+echo 'curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.csv?\'
+echo '\$where=issued_date >= '"'"'$START'"'"'&\$order=issued_date&\$limit=50000" \'
+echo '  -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN" \'
+echo '  -o austin_sample.csv'
+echo 'wc -l austin_sample.csv && head -5 austin_sample.csv'
+echo
+
+echo "Austin Manual Testing (if tokens are set)..."
+if [ -n "${AUSTIN_SOCRATA_APP_TOKEN:-}" ] && [ -n "${AUSTIN_DATASET_ID:-}" ]; then
+    echo "Executing Austin manual testing commands..."
+    
+    echo ">>> HEAD check"
+    curl -sS -I https://data.austintexas.gov | head -n1
+    echo
+    
+    echo ">>> Sample row"
+    curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.json?\$limit=1" \
+      -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN" | head -c 300
+    echo
+    echo
+    
+    echo ">>> CSV download test (limited to 10 rows for demo)"
+    START=2024-01-01
+    curl -sS "https://data.austintexas.gov/resource/$AUSTIN_DATASET_ID.csv?\$where=issued_date >= '$START'&\$order=issued_date&\$limit=10" \
+      -H "X-App-Token: $AUSTIN_SOCRATA_APP_TOKEN" \
+      -o austin_sample_demo.csv 2>/dev/null
+    
+    if [ -f austin_sample_demo.csv ]; then
+        echo "Demo CSV created with $(wc -l < austin_sample_demo.csv) lines"
+        echo "First 3 lines:"
+        head -3 austin_sample_demo.csv
+        rm -f austin_sample_demo.csv
+    else
+        echo "CSV download failed"
+    fi
+else
+    echo "⚠️  AUSTIN_SOCRATA_APP_TOKEN and/or AUSTIN_DATASET_ID not set - skipping Austin manual test"
+    echo "   Use: ./scripts/austin-socrata-manual-test.sh for full Austin testing"
+fi
+
+echo
+echo "============================================================================="
+echo
+
+# =============================================================================
 # 5) Static XLSX probe (Houston Weekly) – verify it's a real file
 # =============================================================================
 echo "# 5) Static XLSX probe (Houston Weekly) – verify it's a real file"
