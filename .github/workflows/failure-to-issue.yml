@@ -1,7 +1,7 @@
 name: Failure Reporter
 on:
   workflow_run:
-    workflows: ["Nightly ETL", "Harris County ETL Pipeline", "Ingest Agents (Austin/Dallas)"]
+    workflows: ["Nightly ETL", "City of Houston ETL", "Ingest Agents (Austin/Dallas)"]
     types: [completed]
 
 jobs:
