@@ -19,7 +19,6 @@
  *   SUPABASE_URL - Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key for database access
  *   DAYS - Number of days to look back (default: 7)
- *   ETL_ALLOW_EMPTY - Set to "1" to exit gracefully when no records found
  */
 
 import { fetchHoustonWeeklyXlsx } from "./adapters/houstonXlsx";
