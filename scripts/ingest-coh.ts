@@ -47,8 +47,11 @@ async function buildLeadsFromPermits(): Promise<void> {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing required environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    const missingVars = [];
+    if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+    if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variable${missingVars.length > 1 ? 's' : ''}: ${missingVars.join(', ')}`);
     }
     
     const response = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_leads_from_permits`, {
