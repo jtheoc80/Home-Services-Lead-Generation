@@ -151,12 +151,12 @@ def check_houston_endpoint(url, name, critical=False):
         
         with urllib.request.urlopen(req, timeout=15) as response:
             latency = (time.time() - start_time) * 1000
-            if response.status == 200:
-                log_success(f"{name} OK ({latency:.0f}ms)")
+            if response.status in [200, 301, 302]:
+                log_success(f"{name} OK ({latency:.0f}ms)" if response.status == 200 else f"{name} redirected (status {response.status})")
                 return True, True
             else:
                 log_warning(f"{name} returned status {response.status}")
-                return not critical, response.status in [200, 301, 302]  # Redirects are acceptable
+                return not critical, False
                 
     except urllib.error.HTTPError as e:
         log_warning(f"{name} HTTP error: {e.code} - {e.reason}")
