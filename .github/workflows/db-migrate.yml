@@ -10,16 +10,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
-      - name: Apply migrations (diff on PR, push on main)
+      - name: Link and apply migrations (diff on PR, push on main)
         env:
-          # postgres connection string (service role)
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.PROJECT_REF }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           set -Eeuo pipefail
+          
+          # Link to Supabase project
+          supabase link --project-ref "$PROJECT_REF"
+          
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "Running database diff for pull request..."
-            supabase db diff --db-url "$SUPABASE_DB_URL"
+            supabase db diff
           else
             echo "Pushing database changes to main branch..."
-            supabase db push --db-url "$SUPABASE_DB_URL"
+            supabase db push
           fi
