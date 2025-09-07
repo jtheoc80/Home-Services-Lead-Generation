@@ -20,15 +20,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 try:
     from .metrics import track_request_start, track_request_end
     from .settings import settings
+
     METRICS_AVAILABLE = True
-    
+
     def is_metrics_enabled():
         """Check if metrics are enabled."""
-        return getattr(settings, 'enable_metrics', False)
-        
+        return getattr(settings, "enable_metrics", False)
+
 except ImportError:
     METRICS_AVAILABLE = False
     track_request_start = lambda x: None
+
     def track_request_start(request_id):
         """No-op fallback for track_request_start when metrics are unavailable."""
         return None
@@ -36,34 +38,34 @@ except ImportError:
     def track_request_end(request_id, method, path, status_code):
         """No-op fallback for track_request_end when metrics are unavailable."""
         return None
-    
+
     def is_metrics_enabled():
         return False
 
 
 class JSONFormatter(logging.Formatter):
     """Custom JSON formatter for structured logging."""
-    
+
     def format(self, record):
         # Create the basic log entry
         log_entry = {
             "timestamp": self.formatTime(record),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage()
+            "message": record.getMessage(),
         }
-        
+
         # Add extra fields if present
-        if hasattr(record, 'request_id'):
+        if hasattr(record, "request_id"):
             log_entry["request_id"] = record.request_id
-        
+
         return json.dumps(log_entry)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
     Middleware for logging HTTP requests in JSON format.
-    
+
     This middleware:
     - Generates unique request IDs for each request
     - Measures request duration
@@ -78,89 +80,93 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process the request and response with logging and optional metrics.
-        
+
         Args:
             request: The incoming HTTP request
             call_next: The next middleware or endpoint handler
-            
+
         Returns:
             Response with added request_id header and timing logged
         """
         # Generate unique request ID
         request_id = str(uuid.uuid4())
-        
+
         # Add request_id to request state for access in endpoints if needed
         request.state.request_id = request_id
-        
+
         # Record start time
         start_time = time.time()
-        
+
         # Track request start for metrics (if enabled)
         if METRICS_AVAILABLE and is_metrics_enabled():
             track_request_start(request_id)
-        
+
         # Process the request
         try:
             response = await call_next(request)
         except Exception as exc:
             # Log error and create error response
             duration_ms = round((time.time() - start_time) * 1000, 2)
-            
+
             log_data = {
                 "request_id": request_id,
                 "path": str(request.url.path),
                 "method": request.method,
                 "status": 500,
                 "duration_ms": duration_ms,
-                "error": str(exc)
+                "error": str(exc),
             }
-            
+
             self.logger.error(json.dumps(log_data))
-            
+
             # Track failed request for metrics (if enabled)
             if METRICS_AVAILABLE and is_metrics_enabled():
-                track_request_end(request_id, request.method, str(request.url.path), 500)
-            
+                track_request_end(
+                    request_id, request.method, str(request.url.path), 500
+                )
+
             # Return error response with request_id header
             response = JSONResponse(
                 status_code=500,
-                content={"error": "Internal server error", "request_id": request_id}
+                content={"error": "Internal server error", "request_id": request_id},
             )
             response.headers["X-Request-ID"] = request_id
             return response
-        
+
         # Calculate duration
         duration_ms = round((time.time() - start_time) * 1000, 2)
-        
+
         # Add request_id to response headers
         response.headers["X-Request-ID"] = request_id
-        
+
         # Track successful request for metrics (if enabled)
         if METRICS_AVAILABLE and is_metrics_enabled():
-            track_request_end(request_id, request.method, str(request.url.path), response.status_code)
-        
+            track_request_end(
+                request_id, request.method, str(request.url.path), response.status_code
+            )
+
         # Prepare log data
         log_data = {
             "request_id": request_id,
             "path": str(request.url.path),
             "method": request.method,
             "status": response.status_code,
-            "duration_ms": duration_ms
+            "duration_ms": duration_ms,
         }
-        
+
         # Log the request
         self.logger.info(json.dumps(log_data))
-        
+
         return response
 
 
 def setup_json_logging(logger_name: str = None) -> None:
     """
     Configure JSON logging for the application.
-    
+
     This sets up structured logging that outputs JSON formatted log messages
     suitable for log aggregation systems.
-    
+
     Args:
         logger_name: Name of the logger to configure. If None, configures root logger.
     """
@@ -169,15 +175,15 @@ def setup_json_logging(logger_name: str = None) -> None:
         logger = logging.getLogger(logger_name)
     else:
         logger = logging.getLogger()
-    
+
     # Remove existing handlers to avoid duplication
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Create console handler with JSON formatter
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(JSONFormatter())
-    
+
     # Add handler to logger
     logger.addHandler(console_handler)
     logger.setLevel(logging.INFO)

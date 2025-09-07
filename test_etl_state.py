@@ -23,38 +23,38 @@ logger = logging.getLogger(__name__)
 def test_etl_state_manager():
     """Test the ETL state manager functionality."""
     logger.info("Testing ETL State Manager...")
-    
+
     # Initialize state manager
     state_manager = ETLStateManager()
-    
-    source = 'harris_issued_permits'
-    
+
+    source = "harris_issued_permits"
+
     # Test getting last run (should be None initially)
     logger.info(f"Getting last run for {source}...")
     last_run = state_manager.get_last_run(source)
     logger.info(f"Last run: {last_run}")
-    
+
     # Test getting since timestamp with fallback
     logger.info("Getting since timestamp...")
     since = state_manager.get_since_timestamp(source, fallback_days=7)
     logger.info(f"Since timestamp: {since}")
-    
+
     # Test updating last run
     current_time = datetime.utcnow()
     logger.info(f"Updating last run to: {current_time}")
     success = state_manager.update_last_run(source, current_time)
     logger.info(f"Update successful: {success}")
-    
+
     if success:
         # Verify the update
         logger.info("Verifying update...")
         last_run = state_manager.get_last_run(source)
         logger.info(f"New last run: {last_run}")
-        
+
         # Test since timestamp with existing last run
         since = state_manager.get_since_timestamp(source)
         logger.info(f"Since timestamp with buffer: {since}")
-        
+
         # Verify buffer is applied
         if last_run:
             expected_since = last_run - timedelta(minutes=1)
