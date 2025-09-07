@@ -47,7 +47,8 @@
     "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb",
-    "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom"
+    "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom",
+    "etl:houston": "tsx scripts/etlHouston.ts"
   },
   "overrides": {
     "react": "19.1.1",
