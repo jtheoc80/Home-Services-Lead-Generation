@@ -58,7 +58,8 @@ async function main() {
   const dedup = all.filter(r => {
     const k = `${r.source_system}::${r.permit_id}`;
     if (seen.has(k)) return false;
-    seen.add(k); return true;
+    seen.add(k);
+    return true;
   });
   console.log(`Parsed ${all.length} rows; deduped to ${dedup.length}`);
   const up = await upsertPermits(dedup, 500);
