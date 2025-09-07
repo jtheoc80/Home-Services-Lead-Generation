@@ -47,7 +47,8 @@
     "bot:json-resolve": "tsx tools/bots/jsonResolve.ts",
     "e2e:jt": "tsx tools/botctl.ts e2e:jt",
     "audit:qb": "tsx tools/botctl.ts audit:qb",
-    "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom"
+    "diag:deps": "npm ls react react-dom next @redocly/cli @types/react @types/react-dom",
+    "etl:houston": "tsx scripts/etlHouston.ts"
   },
   "overrides": {
     "react": "19.1.1",
@@ -62,6 +63,7 @@
     "@supabase/supabase-js": "^2.55.0",
     "@types/pg": "^8.15.5",
     "axios": "^1.11.0",
+    "cheerio": "^1.1.2",
     "commander": "^14.0.0",
     "execa": "^9.6.0",
     "glob": "^11.0.3",
@@ -69,7 +71,8 @@
     "pg": "^8.16.3",
     "playwright": "^1.40.0",
     "semver": "^7.7.2",
-    "undici": "^7.15.0"
+    "undici": "^7.15.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.0.0",
