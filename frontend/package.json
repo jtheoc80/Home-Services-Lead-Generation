@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "test": "node test/test-env-structure.cjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@stripe/stripe-js": "^7.8.0",
@@ -17,13 +17,8 @@
     "@tanstack/react-table": "^8.20.5",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-
-    "lucide-react": "^0.540.0",
-    "next": "15.5.0",
-
     "lucide-react": "^0.541.0",
     "next": "15.4.6",
-
     "papaparse": "^5.5.3",
     "pino": "^9.0.0",
     "react": "19.1.1",
@@ -43,7 +38,8 @@
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.4.41",
     "tailwindcss": "^4.1.12",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4"
   },
   "overrides": {
     "react": "19.1.1",
