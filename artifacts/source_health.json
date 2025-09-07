@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-09-07T23:00:02.710243+00:00",
+  "summary": {
+    "total": 4,
+    "online": 0,
+    "limited": 0,
+    "offline": 4
+  },
+  "sources": [
+    {
+      "source_key": "dallas_permits",
+      "source_name": "dallas_permits",
+      "source_url": "https://dallasopendata.com",
+      "last_check": "2025-09-07T23:00:02.705320+00:00",
+      "status": "offline",
+      "status_code": null,
+      "response_time_ms": 3,
+      "content_length": 0,
+      "error_message": "Connection error: HTTPSConnectionPool(host='dallasopendata.com', port=443): Max retries exceeded with url: / (Caused b"
+    },
+    {
+      "source_key": "austin_permits",
+      "source_name": "austin_permits",
+      "source_url": "https://data.austintexas.gov",
+      "last_check": "2025-09-07T23:00:02.707515+00:00",
+      "status": "offline",
+      "status_code": null,
+      "response_time_ms": 2,
+      "content_length": 0,
+      "error_message": "Connection error: HTTPSConnectionPool(host='data.austintexas.gov', port=443): Max retries exceeded with url: / (Caused"
+    },
+    {
+      "source_key": "tx-houston-permits",
+      "source_name": "Houston Building Permits",
+      "source_url": "manual_delivery",
+      "last_check": "2025-09-07T23:00:02.707744+00:00",
+      "status": "offline",
+      "status_code": null,
+      "response_time_ms": 0,
+      "content_length": 0,
+      "error_message": "Error: Invalid URL 'manual_delivery': No scheme supplied. Perhaps you meant https://manual_delivery?"
+    },
+    {
+      "source_key": "tx-harris-county",
+      "source_name": "Harris County Building Permits",
+      "source_url": "https://www.gis.hctx.net/arcgishcpid/rest/services/Permits/IssuedPermits/FeatureServer/0",
+      "last_check": "2025-09-07T23:00:02.710098+00:00",
+      "status": "offline",
+      "status_code": null,
+      "response_time_ms": 2,
+      "content_length": 0,
+      "error_message": "Connection error: HTTPSConnectionPool(host='www.gis.hctx.net', port=443): Max retries exceeded with url: /arcgishcpid/"
+    }
+  ]
+}
