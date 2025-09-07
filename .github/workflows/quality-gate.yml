@@ -140,7 +140,7 @@ jobs:
           set -Eeuo pipefail
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f permit_leads/requirements.txt ]; then pip install -r permit_leads/requirements.txt; fi
-          pip install pytest
+          pip install pytest ruff black pytest-cov
 
       - name: Detect Py tests
         id: detect_py
