@@ -1,0 +1,7 @@
+package-lock.json
+package.json
+scripts/adapters/README.md
+scripts/adapters/houstonSoldPermits.ts
+scripts/adapters/houstonXlsx.ts
+scripts/etlHouston.ts
+scripts/lib/supabaseUpsert.ts

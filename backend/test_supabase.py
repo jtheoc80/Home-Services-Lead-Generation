@@ -24,6 +24,7 @@ router = APIRouter()
 
 class TestLead(BaseModel):
     """Model for test lead creation."""
+
     jurisdiction: str
     permit_id: str
     address: str = "123 Test Street"
@@ -39,38 +40,36 @@ class TestLead(BaseModel):
 async def health_supabase() -> Dict[str, Any]:
     """
     Health check endpoint for Supabase connectivity.
-    
+
     Returns the connection status and current row count in the leads table.
-    
+
     Returns:
         Dict containing:
         - ok: boolean indicating successful connection
         - rows: count of rows in the leads table
-        
+
     Raises:
         HTTPException: If Supabase connection fails
     """
     try:
         # Get Supabase client
         supabase = get_supabase_client()
-        
+
         # Query the leads table to get row count
-        result = supabase.table('leads').select('id', count='exact').execute()
-        
+        result = supabase.table("leads").select("id", count="exact").execute()
+
         row_count = result.count if result.count is not None else 0
-        
-        logger.info(f"Supabase health check successful. Leads table has {row_count} rows.")
-        
-        return {
-            "ok": True,
-            "rows": row_count
-        }
-        
+
+        logger.info(
+            f"Supabase health check successful. Leads table has {row_count} rows."
+        )
+
+        return {"ok": True, "rows": row_count}
+
     except Exception as e:
         logger.error(f"Supabase health check failed: {e}")
         raise HTTPException(
-            status_code=503,
-            detail=f"Supabase connection failed: {str(e)}"
+            status_code=503, detail=f"Supabase connection failed: {str(e)}"
         )
 
 
@@ -78,17 +77,17 @@ async def health_supabase() -> Dict[str, Any]:
 async def test_lead_insertion(lead: Optional[TestLead] = None) -> Dict[str, Any]:
     """
     Test endpoint for inserting a simple lead into Supabase.
-    
+
     This endpoint creates a test lead with either provided data or default values,
     inserts it into the leads table, and returns the inserted record.
-    
+
     Args:
-        lead: Optional TestLead model with lead data. If not provided, 
+        lead: Optional TestLead model with lead data. If not provided,
               a default test lead will be created.
-    
+
     Returns:
         Dict containing the inserted lead data as returned by Supabase
-        
+
     Raises:
         HTTPException: If lead insertion fails
     """
@@ -106,33 +105,36 @@ async def test_lead_insertion(lead: Optional[TestLead] = None) -> Dict[str, Any]
                 is_residential=True,
                 latitude=29.7604,
                 longitude=-95.3698,
-                trade_tags=["test", "api", "demo"]
+                trade_tags=["test", "api", "demo"],
             )
-        
+
         # Convert Pydantic model to dict for the insert_lead function
         lead_data = lead.model_dump()
-        
+
         # Add some additional fields that might be expected
-        lead_data.update({
-            "work_class": "test_work_class",
-            "category": "test_category", 
-            "status": "issued",
-            "applicant": "Test Applicant",
-            "owner": "Test Owner",
-            "scraped_at": datetime.now().isoformat(),
-            "scoring_version": "test_v1.0"
-        })
-        
+        lead_data.update(
+            {
+                "work_class": "test_work_class",
+                "category": "test_category",
+                "status": "issued",
+                "applicant": "Test Applicant",
+                "owner": "Test Owner",
+                "scraped_at": datetime.now().isoformat(),
+                "scoring_version": "test_v1.0",
+            }
+        )
+
         # Insert the lead using the existing insert_lead function
         inserted_lead = insert_lead(lead_data)
-        
-        logger.info(f"Successfully inserted test lead: {lead_data.get('jurisdiction')}/{lead_data.get('permit_id')}")
-        
+
+        logger.info(
+            f"Successfully inserted test lead: {lead_data.get('jurisdiction')}/{lead_data.get('permit_id')}"
+        )
+
         return inserted_lead
-        
+
     except Exception as e:
         logger.error(f"Test lead insertion failed: {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to insert test lead: {str(e)}"
+            status_code=500, detail=f"Failed to insert test lead: {str(e)}"
         )
