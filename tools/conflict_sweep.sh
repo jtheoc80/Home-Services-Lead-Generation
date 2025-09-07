@@ -63,8 +63,8 @@ if git remote -v | grep -q origin; then
     
     current_branch=$(git branch --show-current)
     if git show-ref --verify --quiet "refs/remotes/origin/$current_branch"; then
-        ahead=$(git rev-list --count HEAD..origin/$current_branch 2>/dev/null || echo "0")
-        behind=$(git rev-list --count origin/$current_branch..HEAD 2>/dev/null || echo "0")
+        behind=$(git rev-list --count HEAD..origin/$current_branch 2>/dev/null || echo "0")
+        ahead=$(git rev-list --count origin/$current_branch..HEAD 2>/dev/null || echo "0")
         
         if [ "$ahead" -gt 0 ]; then
             echo "⚠️  Branch is $ahead commits behind origin/$current_branch"
