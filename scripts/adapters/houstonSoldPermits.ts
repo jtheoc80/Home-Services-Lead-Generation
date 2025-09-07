@@ -1,15 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { Permit } from "./houstonXlsx";
-
-const normTrade = (s: string) => {
-  const v = s.toLowerCase();
-  if (v.includes("elect")) return "Electrical";
-  if (v.includes("plumb")) return "Plumbing";
-  if (v.includes("mech")) return "Mechanical";
-  return "General";
-};
-
+import { normTrade } from "./houstonUtils";
 export async function fetchHoustonSoldPermits(listUrl: string, sinceDays = 2): Promise<Permit[]> {
   // NOTE: adjust to the site's query params if available (date filters).
   const html = await axios.get(listUrl, { timeout: 30_000 }).then(r => r.data);
