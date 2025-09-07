@@ -1,3 +1,10 @@
+
+export type Permit = {
+  source_system: "city_of_houston";
+  permit_id: string;
+  issue_date: string;  // ISO
+  trade: string;
+
 import { createClient } from "@supabase/supabase-js";
 
 export type Permit = {
@@ -5,10 +12,14 @@ export type Permit = {
   permit_id: string;
   issue_date: string;      // ISO (or 'YYYY-MM-DD')
   trade?: string;
+
   address?: string;
   zipcode?: string;
   valuation?: number | null;
   contractor?: string | null;
+
+};
+
 };
 
 const url = process.env.SUPABASE_URL;
@@ -34,3 +45,4 @@ export async function upsertPermits(rows: Permit[], chunk = 500) {
   }
   return upserted;
 }
+
