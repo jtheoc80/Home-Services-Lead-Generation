@@ -5,7 +5,10 @@ export async function upsertPermits(perms: Permit[]) {
   if (!perms.length) return { upserted: 0 };
 
   const url = `${process.env.SUPABASE_URL}/rest/v1/permits`;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY environment variable is not set.");
+  }
   const { headers } = await axios.post(url, perms, {
     headers: {
       apikey: key,
