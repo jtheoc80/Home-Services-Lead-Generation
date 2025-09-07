@@ -96,7 +96,7 @@ jobs:
 # Ensure Node 20 for JS steps
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       # ---------- Node.js tests ----------
