@@ -1,0 +1,6 @@
+.gitignore
+docs/coh-etl-script.md
+logs/etl-summary.json
+scripts/ingest-coh.ts
+scripts/test-coh-e2e.ts
+scripts/test-coh-validation.ts
