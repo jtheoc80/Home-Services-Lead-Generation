@@ -251,8 +251,6 @@ class SourceHealthProbe {
     }
   }
 
-
-
   /**
    * Run the complete health probe process
    */
