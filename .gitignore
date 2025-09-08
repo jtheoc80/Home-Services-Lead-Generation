@@ -6,6 +6,10 @@ out/
 *.log
 .DS_Store
 
+# Test and build artifacts
+artifacts/
+logs/
+
 # Frontend environment files
 frontend/.env.local
 frontend/.env
