@@ -54,7 +54,7 @@ sqlite-utils = "*"
 python-dateutil = "*"
 
 # Caching and performance
-redis = {extras = ["async"], version = "^5.0.4"}
+redis = {extras = ["async"], version = "^6.4.0"}
 
 # Notifications
 sendgrid = "^6.0.0"
