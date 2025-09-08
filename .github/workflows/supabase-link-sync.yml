@@ -1,0 +1,60 @@
+name: "Supabase: link & sync"
+
+on:
+  workflow_dispatch:   # run manually the first time
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  db:
+    runs-on: ubuntu-latest   # or your self-hosted runner if you prefer
+    env:
+      PROJECT_REF: ${{ secrets.PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # If you saved a full URL, this will be set; otherwise we build it below:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Show inputs (safe)
+        run: |
+          echo "PROJECT_REF=$PROJECT_REF"
+          if [ -n "${DATABASE_URL:-}" ]; then echo "DATABASE_URL is set"; fi
+
+      - name: Build DATABASE_URL from DB_PASSWORD (if needed)
+        if: ${{ env.DATABASE_URL == '' }}
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db.${PROJECT_REF}.supabase.co:5432/postgres" >> $GITHUB_ENV
+
+      - name: Supabase link
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "$PROJECT_REF"
+
+      - name: PRs => diff, main => push
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Running diff against remote..."
+            supabase db diff --db-url "$DATABASE_URL" || true
+          else
+            echo "Applying migrations to remote..."
+            supabase db push --db-url "$DATABASE_URL" --debug
+          fi
+
+      - name: Upload CLI logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-cli-logs-${{ github.run_id }}
+          path: ~/.supabase/logs
+          if-no-files-found: ignore
