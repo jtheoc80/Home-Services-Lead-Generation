@@ -53,7 +53,10 @@
     "etl:houston": "tsx scripts/etlHouston.ts",
     "ingest:coh": "tsx scripts/ingest-coh.ts",
     "ingest:coh-archives": "tsx scripts/ingest-coh-archives.ts",
-    "test:etl-logging": "tsx scripts/test-etl-logging.ts"
+    "test:etl-logging": "tsx scripts/test-etl-logging.ts",
+    "houston:etl-and-mint": "tsx scripts/run-houston-etl-and-mint-leads.ts",
+    "houston:etl-and-mint:dry-run": "tsx scripts/run-houston-etl-and-mint-leads.ts --dry-run",
+    "houston:validate": "tsx scripts/validate-houston-etl.ts"
   },
   "overrides": {
     "react": "19.1.1",
