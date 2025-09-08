@@ -36,7 +36,7 @@ jobs:
 
       - name: PRs => show diff, Main => push
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL != '' && secrets.DATABASE_URL || env.DATABASE_URL }}
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
