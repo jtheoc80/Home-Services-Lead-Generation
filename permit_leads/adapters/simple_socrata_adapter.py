@@ -47,7 +47,6 @@ class SimpleSocrataAdapter(BaseAdapter):
             pass
         else:
             # Try common environment variable names
-            import os
             env_vars = [
                 'AUSTIN_SODA_APP_TOKEN', 'AUSTIN_SOCRATA_APP_TOKEN',
                 'SA_SOCRATA_APP_TOKEN', 'DALLAS_SOCRATA_APP_TOKEN',
