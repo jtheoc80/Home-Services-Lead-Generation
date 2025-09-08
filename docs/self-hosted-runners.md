@@ -335,7 +335,13 @@ sudo systemctl enable --now dnf-automatic-install.timer
 sudo systemctl enable --now firewalld
 sudo firewall-cmd --set-default-zone=drop
 sudo firewall-cmd --permanent --add-service=ssh
-sudo firewall-cmd --permanent --direct --add-rule ipv4 filter OUTPUT 0 -j ACCEPT
+# Allow outbound DNS (UDP and TCP port 53)
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter OUTPUT 0 -p udp --dport 53 -j ACCEPT
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter OUTPUT 0 -p tcp --dport 53 -j ACCEPT
+# Allow outbound HTTPS (TCP port 443)
+sudo firewall-cmd --permanent --direct --add-rule ipv4 filter OUTPUT 0 -p tcp --dport 443 -j ACCEPT
+# (Optional) Allow outbound HTTP (TCP port 80) if needed
+# sudo firewall-cmd --permanent --direct --add-rule ipv4 filter OUTPUT 0 -p tcp --dport 80 -j ACCEPT
 sudo firewall-cmd --reload
 ```
 
