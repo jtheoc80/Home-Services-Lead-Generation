@@ -62,6 +62,7 @@ This document lists the required GitHub repository secrets needed for the automa
 
 **Used in workflows:**
 - [`db-migrate.yml`](.github/workflows/db-migrate.yml) - For Supabase database migrations and schema changes
+- [`supabase-link-sync.yml`](.github/workflows/supabase-link-sync.yml) - Enhanced Supabase migrations with artifact collection and dynamic DATABASE_URL building
 
 ---
 
