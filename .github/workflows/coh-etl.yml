@@ -98,7 +98,7 @@ jobs:
           test "$STATUS" = "200" || { echo "❌ Houston page unreachable ($STATUS)"; exit 1; }
       - name: Ingest → Upsert → Build Leads
         run: |
-          mkdir -p logs
+          mkdir -p logs artifacts
           npm run ingest:coh 2>&1 | tee logs/etl_output.log
 
       - name: Summary
@@ -108,11 +108,15 @@ jobs:
           if test -f logs/etl-summary.json; then
             cat logs/etl-summary.json >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@v4
+      - name: Upload ETL logs (always)
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: coh-logs-${{ github.run_id }}
-          path: logs/
+          name: etl-logs-${{ github.job }}-${{ github.run_id }}
+          path: |
+            logs/**/*.log
+            artifacts/**/*
+          if-no-files-found: warn
 
   backfill-archives:
     runs-on: [self-hosted, linux, x64, scrape]
