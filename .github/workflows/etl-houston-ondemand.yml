@@ -25,6 +25,10 @@ jobs:
 
       - run: npm ci
 
+      - name: Create output directories
+        run: |
+          mkdir -p logs artifacts
+
       - name: Preflight connectivity (Houston)
         run: |
           set -euxo pipefail
@@ -46,7 +50,17 @@ jobs:
           DAYS:                         ${{ github.event.inputs.days }}
         run: |
           # Use the existing Houston ETL scripts
-          npx tsx scripts/ingest-coh.ts
+          npx tsx scripts/ingest-coh.ts 2>&1 | tee logs/etl_output.log
+
+      - name: Upload ETL logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-logs-${{ github.job }}-${{ github.run_id }}
+          path: |
+            logs/**/*.log
+            artifacts/**/*
+          if-no-files-found: warn
 
       - name: Summarize run output
         if: always()
