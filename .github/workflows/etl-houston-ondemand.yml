@@ -1,0 +1,54 @@
+name: ETL — Houston (on-demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Lookback window in days"
+        required: false
+        default: "14"
+
+jobs:
+  houston:
+    runs-on: [self-hosted, linux, x64, scrape]  # <-- uses your new runner
+    concurrency:
+      group: etl-houston
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Preflight connectivity (Houston)
+        run: |
+          set -euxo pipefail
+          curl -sS -I "${HOUSTON_WEEKLY_XLSX_URL}" | head -n1
+          curl -sS -I "${HOUSTON_SOLD_PERMITS_URL}" | head -n1
+        env:
+          HOUSTON_WEEKLY_XLSX_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
+          HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_URL }}
+
+      - name: Run Houston ETL
+        env:
+          SUPABASE_URL:                 ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY:    ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HOUSTON_WEEKLY_XLSX_URL:      ${{ secrets.HOUSTON_WEEKLY_URL }}
+          HOUSTON_SOLD_PERMITS_URL:     ${{ secrets.HOUSTON_SOLD_URL }}
+          USER_AGENT:                   ${{ secrets.USER_AGENT }}
+          # Turn off the "allow empty" mode if you want the job to fail on no data:
+          ETL_ALLOW_EMPTY:              "0"
+          DAYS:                         ${{ github.event.inputs.days }}
+        run: |
+          # Use the existing Houston ETL scripts
+          npx tsx scripts/ingest-coh.ts
+
+      - name: Summarize run output
+        if: always()
+        run: |
+          echo "Job finished on $(hostname)"

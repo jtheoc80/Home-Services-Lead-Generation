@@ -4,6 +4,29 @@
 
 The `scripts/ingest-coh.ts` script is a complete ETL (Extract, Transform, Load) pipeline for ingesting City of Houston permit data. It fetches permit data from Houston's weekly XLSX files and optionally from sold permits data, then upserts the data to a Supabase database.
 
+## Automation Workflows
+
+### Scheduled ETL (Daily)
+
+The main Houston ETL runs automatically via `.github/workflows/coh-etl.yml`:
+- Runs daily at 6 AM UTC
+- Uses standard GitHub Actions runners
+- Includes optional archive backfill functionality
+
+### On-Demand ETL (Manual)
+
+A new on-demand workflow is available via `.github/workflows/etl-houston-ondemand.yml`:
+- **Trigger**: Manual workflow dispatch from GitHub Actions UI
+- **Runner**: Self-hosted with scraping capabilities `[self-hosted, linux, x64, scrape]`
+- **Configurable**: Lookback window (default: 14 days)
+- **Concurrency**: Single instance with group `etl-houston`
+
+To run the on-demand ETL:
+1. Go to GitHub Actions → "ETL — Houston (on-demand)"
+2. Click "Run workflow"
+3. Optionally adjust the "Lookback window in days" (default: 14)
+4. Click "Run workflow" to start
+
 ## Usage
 
 ```bash
@@ -30,6 +53,21 @@ npm run ingest:coh
 - `HOUSTON_SOLD_PERMITS_URL` - URL for Houston sold permits data (optional)
 - `DAYS` - Number of days to look back for permits (default: 7)
 - `ETL_ALLOW_EMPTY` - Set to "1" to exit gracefully when no records found
+
+## GitHub Secrets Configuration
+
+For the automated workflows to work, configure these secrets in GitHub Settings → Secrets and variables → Actions:
+
+**Required Secrets:**
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `HOUSTON_WEEKLY_URL` - Houston weekly permits XLSX URL
+- `HOUSTON_SOLD_URL` - Houston sold permits URL (optional)
+
+**Optional Secrets:**
+- `USER_AGENT` - Custom user agent for HTTP requests (optional)
+
+The on-demand workflow will validate connectivity to Houston endpoints before starting the ETL process.
 
 ## What the Script Does
 
