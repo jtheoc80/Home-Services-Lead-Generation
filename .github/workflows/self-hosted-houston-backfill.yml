@@ -45,6 +45,51 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sanity check required env
+        run: |
+          set -euo pipefail
+          missing=0
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY USER_AGENT; do
+            if [ -z "${!v:-}" ]; then echo "MISSING $v"; missing=1; fi
+          done
+          # Add city-specific vars below (uncomment what applies)
+          # Dallas
+          # for v in DALLAS_ARCGIS_URL; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
+          # Austin
+          # for v in AUSTIN_SODA_APP_TOKEN AUSTIN_DATASET_ID; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
+          # San Antonio
+          # for v in SANANTONIO_SODA_APP_TOKEN SAN_ANTONIO_DATASET_ID; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
+          # Houston
+          # for v in HOUSTON_WEEKLY_URL HOUSTON_SOLD_URL; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
+          exit $missing
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          USER_AGENT: ${{ secrets.USER_AGENT || 'LeadLedgerETL/1.0' }}
+
+      - name: Preflight connectivity
+        run: |
+          set -euxo pipefail
+          # Un-comment the checks you need. We print only the status line.
+          # Dallas ArcGIS:
+          # curl -sS --get "${DALLAS_ARCGIS_URL}" \
+          #   --data-urlencode 'where=1=1' \
+          #   --data-urlencode 'outFields=*' \
+          #   --data-urlencode 'resultRecordCount=1' \
+          #   --data-urlencode 'f=json' | head -c 200 | tr -d '\n' && echo
+
+          # Austin Socrata:
+          # curl -sS -H "X-App-Token: ${AUSTIN_SODA_APP_TOKEN}" \
+          #   "https://data.austintexas.gov/resource/${AUSTIN_DATASET_ID}.json?\$limit=1" | head -c 200 | tr -d '\n' && echo
+
+          # San Antonio Socrata:
+          # curl -sS -H "X-App-Token: ${SANANTONIO_SODA_APP_TOKEN}" \
+          #   "https://data.sanantonio.gov/resource/${SAN_ANTONIO_DATASET_ID}.json?\$limit=1" | head -c 200 | tr -d '\n' && echo
+
+          # Houston weekly/sold landing pages:
+          # curl -sS -I "${HOUSTON_WEEKLY_URL}" | head -n1
+          # curl -sS -I "${HOUSTON_SOLD_URL}"   | head -n1
+
       - name: Preflight - Check secrets
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
