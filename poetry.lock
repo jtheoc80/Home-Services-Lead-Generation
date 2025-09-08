@@ -1287,14 +1287,14 @@ strenum = ">=0.4.9,<0.5.0"
 
 [[package]]
 name = "prometheus-client"
-version = "0.20.0"
+version = "0.22.1"
 description = "Python client for the Prometheus monitoring system."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "prometheus_client-0.20.0-py3-none-any.whl", hash = "sha256:cde524a85bce83ca359cc837f28b8c0db5cac7aa653a588fd7e84ba061c329e7"},
-    {file = "prometheus_client-0.20.0.tar.gz", hash = "sha256:287629d00b147a32dcb2be0b9df905da599b2d82f80377083ec8463309a4bb89"},
+    {file = "prometheus_client-0.22.1-py3-none-any.whl", hash = "sha256:cca895342e308174341b2cbf99a56bef291fbc0ef7b9e5412a0f26d653ba7094"},
+    {file = "prometheus_client-0.22.1.tar.gz", hash = "sha256:190f1331e783cf21eb60bca559354e0a4d4378facecf78f5428c39b675d20d28"},
 ]
 
 [package.extras]
@@ -2715,10 +2715,15 @@ watchdog = ["watchdog (>=2.3)"]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
 
+
 content-hash = "26380dd71c48338111e7bf783d4dd43db359db16352818533d4f05514ad341ad"
+
+content-hash = "337f94145710f3f65932a2fe85c75b576ab09ed8e2723b7dd5af2e036751ecf2"
+
 
 
 content-hash = "102de5eb800dc8b13f8974fb9d5790df3d92ae7d7a6bb99f338cdb9fffd10bca"
 
 content-hash = "d7978d6c460169e01561e2539acc4430555db7fecc9519fb66f7911c05465e36"
+
 
