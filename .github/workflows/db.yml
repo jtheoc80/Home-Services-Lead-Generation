@@ -27,7 +27,7 @@ jobs:
 
       # Optional: if you prefer DATABASE_URL instead of DB_PASSWORD, skip this step
       - name: Build DB URL from DB_PASSWORD
-        if: ${{ !secrets.DATABASE_URL }}
+        if: ${{ secrets.DATABASE_URL == '' }}
         env:
           PROJECT_REF: ${{ secrets.PROJECT_REF }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
