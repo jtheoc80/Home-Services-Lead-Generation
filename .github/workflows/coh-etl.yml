@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -64,7 +64,7 @@ jobs:
           path: logs/
 
   backfill-archives:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     if: github.event.inputs.include_archives == 'true'
     needs: run
     env:
