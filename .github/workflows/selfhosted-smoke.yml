@@ -5,7 +5,8 @@ jobs:
   smoke:
     runs-on: [self-hosted, linux, x64, scrape]
     steps:
-      - run: |
+      - name: Display system information
+        run: |
           echo "Host: $(hostname)"
           echo "User: $USER"
           echo "Python: $(python3 --version)"
