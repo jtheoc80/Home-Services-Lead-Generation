@@ -13,7 +13,7 @@ import yaml
 import json
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
 def load_sources_config() -> Dict[str, Any]:
