@@ -22,7 +22,7 @@ jobs:
   etl:
     runs-on: [self-hosted, linux, x64, scrape]
     concurrency:
-      group: nightly-etl-${{ github.repository }}
+      group: nightly-etl
       cancel-in-progress: false
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -175,7 +175,7 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{"p_days": 7}')
         echo "Lead building response: $response"
-        
+
         # Extract counts from response if possible
         if echo "$response" | grep -q "inserted_count\|updated_count\|total_processed"; then
           echo "✅ Successfully built leads from fresh permits"
