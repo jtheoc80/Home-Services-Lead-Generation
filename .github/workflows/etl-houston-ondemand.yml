@@ -50,8 +50,6 @@ jobs:
           HOUSTON_WEEKLY_XLSX_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
           HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_URL }}
 
-      - name: Preflight connectivity
-
       - name: Create output directories
         run: |
           mkdir -p logs artifacts
