@@ -387,7 +387,8 @@ if __name__ == "__main__":
         page_size: int = 1000,
         result_offset: int = 0,
         where_clause: Optional[str] = None,
-        out_fields: str = "*"
+        out_fields: str = "*",
+        date_unit: str = "ms_epoch"
     ) -> Dict[str, Any]:
         """
         Query features from ArcGIS FeatureServer.
@@ -399,18 +400,24 @@ if __name__ == "__main__":
             result_offset: Starting offset for pagination
             where_clause: Custom WHERE clause for filtering
             out_fields: Comma-separated list of fields to return
+            date_unit: 'ms_epoch' for UNIX ms timestamps or 'date' for DATE format
             
         Returns:
             ArcGIS query response with features and metadata
         """
         query_url = f"{self.base_url}/query"
         
-        # Build WHERE clause
+        # Build WHERE clause with proper date format
         where_parts = []
         if updated_since:
-            # ArcGIS expects date in Unix timestamp milliseconds
-            timestamp_ms = int(updated_since.timestamp() * 1000)
-            where_parts.append(f"{updated_field} >= timestamp '{timestamp_ms}'")
+            if date_unit == "ms_epoch":
+                # For UNIX millisecond timestamps: ISSUEDDATE > 1724800000000
+                timestamp_ms = int(updated_since.timestamp() * 1000)
+                where_parts.append(f"{updated_field} > {timestamp_ms}")
+            else:
+                # For standard date fields: ISSUEDDATE >= DATE '2024-09-01'
+                date_str = updated_since.strftime('%Y-%m-%d')
+                where_parts.append(f"{updated_field} >= DATE '{date_str}'")
         
         if where_clause:
             where_parts.append(where_clause)
@@ -436,7 +443,8 @@ if __name__ == "__main__":
         updated_since: Optional[datetime] = None,
         updated_field: str = "LAST_EDITED_DATE",
         page_size: int = 1000,
-        max_records: Optional[int] = None
+        max_records: Optional[int] = None,
+        date_unit: str = "ms_epoch"
     ) -> Iterator[Dict[str, Any]]:
         """
         Generator that yields all features with automatic pagination.
@@ -446,6 +454,7 @@ if __name__ == "__main__":
             updated_field: Field name for date filtering
             page_size: Number of records per page
             max_records: Maximum total records to fetch (None for unlimited)
+            date_unit: 'ms_epoch' for UNIX ms timestamps or 'date' for DATE format
             
         Yields:
             Individual feature records with normalized structure
@@ -459,7 +468,8 @@ if __name__ == "__main__":
                     updated_since=updated_since,
                     updated_field=updated_field,
                     page_size=page_size,
-                    result_offset=offset
+                    result_offset=offset,
+                    date_unit=date_unit
                 )
                 
                 features = response.get('features', [])

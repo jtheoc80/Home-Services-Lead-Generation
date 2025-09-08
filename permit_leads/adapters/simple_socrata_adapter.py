@@ -6,6 +6,7 @@ Used for Dallas and Austin permit data.
 import logging
 import time
 import json
+import os
 from typing import Optional, Dict, Any, Iterable
 from datetime import datetime, timedelta
 import requests
@@ -35,6 +36,32 @@ class SimpleSocrataAdapter(BaseAdapter):
         self.field_map = cfg.get('field_map', {})
         self.max_retries = cfg.get('max_retries', 3)
         
+        # Extract app token for X-App-Token header (required for Austin/San Antonio)
+        self.app_token = cfg.get('app_token') or cfg.get('app_token_env')
+        if self.app_token and self.app_token.startswith('${') and self.app_token.endswith('}'):
+            # Handle environment variable format like ${AUSTIN_SODA_APP_TOKEN}
+            env_var = self.app_token[2:-1]  # Remove ${ and }
+            self.app_token = os.getenv(env_var)
+        elif isinstance(self.app_token, str) and not self.app_token.startswith('$'):
+            # Direct token value
+            pass
+        else:
+            # Try common environment variable names
+            env_vars = [
+                'AUSTIN_SODA_APP_TOKEN', 'AUSTIN_SOCRATA_APP_TOKEN',
+                'SA_SOCRATA_APP_TOKEN', 'DALLAS_SOCRATA_APP_TOKEN',
+                'SOCRATA_APP_TOKEN', 'SODA_APP_TOKEN'
+            ]
+            for env_var in env_vars:
+                token = os.getenv(env_var)
+                if token:
+                    self.app_token = token
+                    logger.info(f"Using app token from {env_var}")
+                    break
+            else:
+                self.app_token = None
+                logger.warning(f"No Socrata app token found for {self.name}. Rate limits will be lower.")
+        
         # Track last request time for rate limiting
         self._last_request_time = 0
         
@@ -58,11 +85,18 @@ class SimpleSocrataAdapter(BaseAdapter):
         session.mount("https://", adapter)
         
         # Set headers for Socrata APIs
-        session.headers.update({
+        headers = {
             'User-Agent': 'PermitLeadBot/1.0 (Texas Building Permits)',
             'Accept': 'application/json',
             'Accept-Encoding': 'gzip, deflate'
-        })
+        }
+        
+        # Add X-App-Token header if available (required for higher rate limits)
+        if self.app_token:
+            headers['X-App-Token'] = self.app_token
+            logger.info(f"Using Socrata app token for {self.name}")
+        
+        session.headers.update(headers)
         
         return session
     

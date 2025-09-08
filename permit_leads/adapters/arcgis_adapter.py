@@ -175,13 +175,24 @@ class ArcGISAdapter:
     def scrape_permits(self, since: datetime, limit: Optional[int] = None) -> List[PermitRecord]:
         """Scrape permits from ArcGIS Feature Server with proper paging and rate limiting."""
         try:
-            # Build query parameters
-            since_str = since.strftime('%Y-%m-%d')
-            where_clause = f"{self.date_field} >= DATE '{since_str}'"
+            # Build query parameters with proper date format
+            # Check if the date field uses UNIX timestamps (ms) or standard dates
+            date_unit = self.config.get('date_unit', 'date')  # 'ms_epoch' or 'date'
+            
+            if date_unit == 'ms_epoch':
+                # For UNIX millisecond timestamps: ISSUEDDATE > 1724800000000
+                since_ms = int(since.timestamp() * 1000)
+                where_clause = f"{self.date_field} > {since_ms}"
+                since_str = str(since_ms)
+            else:
+                # For standard date fields: ISSUEDDATE >= DATE '2024-09-01'
+                since_str = since.strftime('%Y-%m-%d')
+                where_clause = f"{self.date_field} >= DATE '{since_str}'"
             
             # Get total count first and log it
             total_count = self._get_total_count(where_clause)
             logger.info(f"ArcGIS total count for {self.jurisdiction.name} since {since_str}: {total_count}")
+            
             
             if total_count == 0:
                 logger.info(f"No records found for {self.jurisdiction.name}")
