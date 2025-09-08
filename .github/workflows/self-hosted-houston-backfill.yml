@@ -1,0 +1,117 @@
+---
+name: Self-Hosted Houston Backfill
+
+on:
+  # Manual trigger with parameters
+  workflow_dispatch:
+    inputs:
+      archive_weeks:
+        description: 'Number of weeks to backfill'
+        required: false
+        default: '12'
+        type: string
+      create_leads_limit:
+        description: 'Number of leads to create (max 100)'
+        required: false
+        default: '50'
+        type: string
+
+  # Weekly schedule - Sundays at 2 AM UTC
+  schedule:
+    - cron: "0 2 * * 0"
+
+# Prevent overlapping scrapes on self-hosted runners
+concurrency:
+  group: scrape-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: [self-hosted, linux, x64, scrape]
+    timeout-minutes: 60
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ARCHIVE_WEEKS: ${{ inputs.archive_weeks || '12' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Preflight - Check secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Missing required Supabase secrets"
+            exit 1
+          fi
+          echo "✅ Required secrets are configured"
+
+      - name: Connectivity check
+        run: |
+          set -Eeuo pipefail
+          echo "🔗 Testing connectivity to Houston permits endpoint..."
+          curl -sS -I \
+            https://www.houstontx.gov/planning/DevelopRegs/dev_reports.html \
+            | head -n1
+          echo "✅ Houston permits endpoint is reachable"
+
+      - name: Run Houston archives backfill
+        run: |
+          echo "📥 Starting Houston archives backfill for $ARCHIVE_WEEKS weeks..."
+          npx tsx scripts/ingest-coh-archives.ts
+
+      - name: Create leads from fresh permits
+        env:
+          LEADS_LIMIT: ${{ inputs.create_leads_limit || '50' }}
+        run: |
+          echo "🎯 Creating up to $LEADS_LIMIT leads from fresh permits..."
+
+          # Validate leads limit (max 100 for safety)
+          if [ "$LEADS_LIMIT" -gt 100 ]; then
+            echo "⚠️  Leads limit reduced to 100 for safety (was $LEADS_LIMIT)"
+            LEADS_LIMIT=100
+          fi
+
+          # Call Supabase function to create leads
+          response=$(curl -sS \
+            "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits_limit" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"p_limit\":$LEADS_LIMIT,\"p_days\":365}")
+
+          echo "📊 Lead creation response: $response"
+
+          # Try to extract counts for reporting
+          if command -v jq >/dev/null 2>&1; then
+            inserted=$(echo "$response" | jq -r '.inserted_count // "unknown"' \
+              2>/dev/null)
+            updated=$(echo "$response" | jq -r '.updated_count // "unknown"' \
+              2>/dev/null)
+            echo "✅ Leads processed - Inserted: $inserted, Updated: $updated"
+          fi
+
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "## Houston Backfill Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner**: Self-hosted scraper" >> $GITHUB_STEP_SUMMARY
+          echo "- **Archive Weeks**: $ARCHIVE_WEEKS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Leads Limit**: ${{ inputs.create_leads_limit || '50' }}" \
+            >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+
+          # Add concurrency info
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Concurrency Control" >> $GITHUB_STEP_SUMMARY
+          echo "- **Group**: scrape-${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cancel in Progress**: false (prevents overlapping scrapes)" \
+            >> $GITHUB_STEP_SUMMARY

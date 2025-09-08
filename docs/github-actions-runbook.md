@@ -281,6 +281,26 @@ Consider adding:
 - Performance monitoring
 - Lead scoring alerts
 
+## Self-Hosted Runners
+
+For high-volume scraping and processing workloads, consider using self-hosted GitHub Actions runners:
+
+- **Cost Efficiency**: More economical for workflows requiring >500 minutes/month
+- **Better Performance**: Dedicated resources and consistent environment
+- **Network Control**: Better handling of rate limits and geographic restrictions
+- **Custom Configuration**: Pre-installed tools and optimized for scraping workflows
+
+See [Self-Hosted Runners Setup Guide](./self-hosted-runners.md) for detailed configuration instructions.
+
+### Example Self-Hosted Workflows
+
+The repository includes example workflows for self-hosted runners:
+
+- **`self-hosted-health.yml`** - Source health monitoring every 30 minutes
+- **`self-hosted-houston-backfill.yml`** - Houston permit archive processing with lead generation
+
+These workflows use `runs-on: [self-hosted, linux, x64, scrape]` and include concurrency controls to prevent overlapping scrapes.
+
 ## Support
 
 For issues with the workflows:
