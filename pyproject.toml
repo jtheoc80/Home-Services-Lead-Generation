@@ -54,14 +54,14 @@ sqlite-utils = "*"
 python-dateutil = "*"
 
 # Caching and performance
-redis = {extras = ["async"], version = "^5.0.4"}
+redis = {extras = ["async"], version = "^6.4.0"}
 
 # Notifications
 sendgrid = "^6.0.0"
 twilio = "^7.0.0"
 
 # Monitoring and metrics
-prometheus-client = "^0.20.0"
+prometheus-client = "^0.22.1"
 
 # Payment processing
 stripe = "^8.0.0"
@@ -73,7 +73,7 @@ pytest-cov = "^4.0.0"
 pytest-asyncio = "^0.21.0"
 
 # Code quality
-ruff = "^0.12.9"
+ruff = "^0.12.12"
 black = "^23.0.0"
 mypy = "^1.0.0"
 
