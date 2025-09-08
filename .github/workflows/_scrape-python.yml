@@ -41,7 +41,7 @@ on:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     concurrency:
       group: ${{ github.workflow }}-${{ inputs.name }}-${{ github.ref }}
       cancel-in-progress: true

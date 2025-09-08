@@ -16,7 +16,7 @@ on:
 
 jobs:
   ingest:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.source }}-${{ github.ref }}
@@ -82,7 +82,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
   verify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     timeout-minutes: 10
     needs: ingest
     steps:
@@ -127,7 +127,7 @@ jobs:
 
   # Add GitHub Agent invocation after successful ingestion
   gh-agent:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     timeout-minutes: 5
     needs: verify
     if: success()

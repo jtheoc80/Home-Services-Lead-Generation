@@ -33,7 +33,7 @@ env:
 
 jobs:
   etl:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, scrape]
     timeout-minutes: 60
     
     env:
