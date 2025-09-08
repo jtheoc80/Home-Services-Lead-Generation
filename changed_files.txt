@@ -1,0 +1,6 @@
+.github/workflows/self-hosted-health.yml
+.github/workflows/self-hosted-houston-backfill.yml
+.gitignore
+docs/github-actions-runbook.md
+docs/self-hosted-runners.md
+scripts/agents/source_probe.py
