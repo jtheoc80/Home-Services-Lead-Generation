@@ -1,0 +1,3 @@
+ingest/arcgis.py
+permit_leads/adapters/arcgis_adapter.py
+permit_leads/adapters/simple_socrata_adapter.py

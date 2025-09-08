@@ -13,9 +13,9 @@ from pathlib import Path
 import sys
 
 # Add the scripts directory to the path so we can import the scanner
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from scan_workflow_secrets import WorkflowSecretsScanner, SecretUsage
+from scan_workflow_secrets import WorkflowSecretsScanner
 
 
 class TestWorkflowSecretsScanner(unittest.TestCase):
@@ -30,12 +30,13 @@ class TestWorkflowSecretsScanner(unittest.TestCase):
     def tearDown(self):
         """Clean up temporary files"""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def create_test_workflow(self, filename: str, content: str):
         """Helper to create a test workflow file"""
         workflow_file = self.workflows_dir / filename
-        with open(workflow_file, 'w') as f:
+        with open(workflow_file, "w") as f:
             f.write(content)
         return workflow_file
 
@@ -55,15 +56,15 @@ jobs:
         run: echo "test"
 """
         self.create_test_workflow("test.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         # Should find both Supabase secrets
         secret_names = {usage.secret_name for usage in usages}
         self.assertIn("SUPABASE_URL", secret_names)
         self.assertIn("SUPABASE_SERVICE_ROLE_KEY", secret_names)
-        
+
         # Both should be marked as required
         for usage in usages:
             self.assertTrue(usage.is_required)
@@ -84,10 +85,10 @@ jobs:
         run: echo "scraping"
 """
         self.create_test_workflow("permits.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         secret_names = {usage.secret_name for usage in usages}
         self.assertIn("HC_ISSUED_PERMITS_URL", secret_names)
         self.assertIn("DALLAS_PERMITS_URL", secret_names)
@@ -108,10 +109,10 @@ jobs:
         run: echo "deploying"
 """
         self.create_test_workflow("deploy.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         secret_names = {usage.secret_name for usage in usages}
         self.assertIn("VERCEL_TOKEN", secret_names)
         self.assertIn("RAILWAY_TOKEN", secret_names)
@@ -131,10 +132,10 @@ jobs:
         run: echo "test"
 """
         self.create_test_workflow("fallback.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         # Should find the secret
         self.assertEqual(len(usages), 1)
         usage = usages[0]
@@ -163,12 +164,12 @@ jobs:
         run: echo "Using token"
 """
         self.create_test_workflow("validation.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         # Debug output
-        
+
         # Should find the secret and mark it as required due to validation
         # Filter to just VERCEL_TOKEN usages
         vercel_usages = [u for u in usages if u.secret_name == "VERCEL_TOKEN"]
@@ -192,10 +193,10 @@ jobs:
         run: echo "Using Vercel"
 """
         self.create_test_workflow("conditional.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         # Should find the secret - exact behavior might vary based on context analysis
         secret_names = {usage.secret_name for usage in usages}
         self.assertIn("VERCEL_TOKEN", secret_names)
@@ -216,16 +217,16 @@ jobs:
         run: echo "test"
 """
         self.create_test_workflow("multi.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         # Test report generation
         report = scanner.generate_report()
         self.assertIn("Workflow Secrets Scanner Report", report)
         self.assertIn("SUPABASE_URL", report)
         self.assertIn("VERCEL_TOKEN", report)
-        
+
         # Test unique secrets
         unique_secrets = scanner.get_unique_secrets()
         self.assertIn("SUPABASE_URL", unique_secrets)
@@ -244,10 +245,10 @@ jobs:
         run: echo "no secrets here"
 """
         self.create_test_workflow("nosecrets.yml", content)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         self.assertEqual(len(usages), 0)
         self.assertEqual(len(scanner.get_unique_secrets()), 0)
 
@@ -264,7 +265,7 @@ jobs:
     steps:
       - run: echo "test"
 """
-        
+
         workflow2 = """
 name: Workflow 2
 env:
@@ -275,18 +276,18 @@ jobs:
     steps:
       - run: echo "test"
 """
-        
+
         self.create_test_workflow("workflow1.yml", workflow1)
         self.create_test_workflow("workflow2.yml", workflow2)
-        
+
         scanner = WorkflowSecretsScanner(str(self.workflows_dir))
         usages = scanner.scan_all_workflows()
-        
+
         # Should find secrets from both files
         secret_names = {usage.secret_name for usage in usages}
         self.assertIn("SUPABASE_URL", secret_names)
         self.assertIn("VERCEL_TOKEN", secret_names)
-        
+
         # Test grouping by file
         by_file = scanner.group_by_file()
         self.assertEqual(len(by_file), 2)
