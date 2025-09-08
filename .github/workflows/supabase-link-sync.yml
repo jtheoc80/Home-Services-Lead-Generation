@@ -29,7 +29,7 @@ jobs:
           if [ -n "${DATABASE_URL:-}" ]; then echo "DATABASE_URL is set"; fi
 
       - name: Build DATABASE_URL from DB_PASSWORD (if needed)
-        if: ${{ env.DATABASE_URL == '' }}
+        if: ${{ !env.DATABASE_URL }}
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
