@@ -28,12 +28,16 @@ jobs:
   run:
     runs-on: [self-hosted, linux, x64, scrape]
     steps:
+      - name: Create output directories
+        run: |
+          mkdir -p logs artifacts
+          
       - name: Self-test before ingest
         run: |
-          echo "Running self-test to verify API connectivity..."
+          echo "Running self-test to verify API connectivity..." | tee -a logs/etl_output.log
           response=$(curl -s -X POST "$INGEST_URL/selftest" \
             -H "Content-Type: application/json")
-          echo "Self-test response: $response"
+          echo "Self-test response: $response" | tee -a logs/etl_output.log
           
       - name: Trigger permit ingest
         run: |
@@ -57,13 +61,23 @@ jobs:
           fi
           
           for src in $sources; do
-            echo "Triggering ingest for source: $src"
+            echo "Triggering ingest for source: $src" | tee -a logs/etl_output.log
             response=$(curl -s -X POST "$INGEST_URL?source=$src$dry_param" \
               -H "x-cron-secret: $CRON_SECRET" \
               -H "Content-Type: application/json")
-            echo "Response for $src: $response"
-            echo "---"
+            echo "Response for $src: $response" | tee -a logs/etl_output.log
+            echo "---" | tee -a logs/etl_output.log
           done
+          
+      - name: Upload ETL logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-logs-${{ github.job }}-${{ github.run_id }}
+          path: |
+            logs/**/*.log
+            artifacts/**/*
+          if-no-files-found: warn
           
     env:
       INGEST_URL: ${{ secrets.INGEST_URL }}   # e.g. https://your-app.vercel.app/api/permits/ingest

@@ -36,6 +36,10 @@ jobs:
         source: [austin, dallas, houston, san_antonio]
     
     steps:
+    - name: Create output directories
+      run: |
+        mkdir -p logs artifacts
+        
     - name: "Preflight: verify required secrets"
       id: preflight
       shell: bash
@@ -66,9 +70,9 @@ jobs:
         DRY_RUN="${{ inputs.dry_run }}"
         [ -z "$DRY_RUN" ] && DRY_RUN="false"
         
-        echo "🚀 Triggering permit ingestion for source: $SOURCE"
-        echo "🧪 Dry run mode: $DRY_RUN"
-        echo "📡 Target: https://$VERCEL_DOMAIN/api/permits/permits/ingest"
+        echo "🚀 Triggering permit ingestion for source: $SOURCE" | tee -a logs/etl_output.log
+        echo "🧪 Dry run mode: $DRY_RUN" | tee -a logs/etl_output.log
+        echo "📡 Target: https://$VERCEL_DOMAIN/api/permits/permits/ingest" | tee -a logs/etl_output.log
         
         # Prepare URL with query parameters
         URL="https://$VERCEL_DOMAIN/api/permits/permits/ingest?source=$SOURCE"
@@ -76,7 +80,7 @@ jobs:
           URL="$URL&dry=1"
         fi
         
-        echo "📞 Making request to: $URL"
+        echo "📞 Making request to: $URL" | tee -a logs/etl_output.log
         
         # Make the API call to the permits ingest endpoint
         RESPONSE=$(curl -s -w "\n%{http_code}" \
@@ -89,9 +93,9 @@ jobs:
         HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
         RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
         
-        echo "📊 HTTP Status: $HTTP_STATUS"
-        echo "📋 Response:"
-        echo "$RESPONSE_BODY" | jq '.' 2>/dev/null || echo "$RESPONSE_BODY"
+        echo "📊 HTTP Status: $HTTP_STATUS" | tee -a logs/etl_output.log
+        echo "📋 Response:" | tee -a logs/etl_output.log
+        echo "$RESPONSE_BODY" | jq '.' 2>/dev/null | tee -a logs/etl_output.log || echo "$RESPONSE_BODY" | tee -a logs/etl_output.log
         
         # Check if successful
         if [ "$HTTP_STATUS" -eq 200 ]; then
@@ -148,4 +152,14 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "🔗 [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload ETL logs (always)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: etl-logs-${{ github.job }}-${{ github.run_id }}
+        path: |
+          logs/**/*.log
+          artifacts/**/*
+        if-no-files-found: warn
 

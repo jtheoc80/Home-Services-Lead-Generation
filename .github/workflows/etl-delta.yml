@@ -56,14 +56,14 @@ jobs:
           echo "🚀 Starting ETL Delta process..."
           npx tsx scripts/etlDelta-working.ts
           
-      - name: Upload artifacts
+      - name: Upload ETL logs (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: etl-delta-${{ github.run_id }}
+          name: etl-logs-${{ github.job }}-${{ github.run_id }}
           path: |
-            logs/
-            artifacts/
+            logs/**/*.log
+            artifacts/**/*
           if-no-files-found: warn
           retention-days: 7
           

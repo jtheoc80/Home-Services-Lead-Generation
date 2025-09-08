@@ -20,6 +20,10 @@ jobs:
   guardian:
     runs-on: ubuntu-latest
     steps:
+      - name: Create output directories
+        run: |
+          mkdir -p logs artifacts
+          
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -55,7 +59,7 @@ jobs:
       - name: Run fixer (writes changes if needed)
         id: guardian
         run: |
-          python tools/etl_guardian.py --write || true
+          python tools/etl_guardian.py --write 2>&1 | tee logs/etl_output.log || true
           # Check if we modified the ETL workflow file
           if git diff --quiet .github/workflows/etl.yml; then
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -119,4 +123,14 @@ jobs:
           fi
           echo "- **BOT_TOKEN**: ${{ env.BOT_TOKEN_SET == 'true' && 'Available' || 'Not available' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload ETL logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-logs-${{ github.job }}-${{ github.run_id }}
+          path: |
+            logs/**/*.log
+            artifacts/**/*
+          if-no-files-found: warn
 

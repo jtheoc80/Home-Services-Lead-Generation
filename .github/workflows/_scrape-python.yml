@@ -118,17 +118,15 @@ jobs:
         env:
           FALLBACK: ${{ inputs.entry_fallback }}
 
-      - name: Upload artifacts
+      - name: Upload ETL logs (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.name }}-etl-${{ github.run_id }}
+          name: etl-logs-${{ github.job }}-${{ github.run_id }}
           path: |
-            artifacts/**/*.csv
-            data/**/*.csv
             logs/**/*.log
-            logs/etl_output.log
-            logs/etl-summary.json
+            artifacts/**/*
+            data/**/*.csv
             ${{ inputs.artifacts_glob }}
           if-no-files-found: warn
           retention-days: 14

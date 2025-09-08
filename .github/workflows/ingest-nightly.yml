@@ -173,14 +173,14 @@ jobs:
         
         exit $exit_code
         
-    - name: Upload ETL logs and artifacts
+    - name: Upload ETL logs (always)
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: nightly-etl-logs-${{ github.run_id }}
+        name: etl-logs-${{ github.job }}-${{ github.run_id }}
         path: |
-          artifacts/**/*.csv
           logs/**/*.log
+          artifacts/**/*
           permit_leads/data/**/*.csv
           permit_leads/data/**/*.db
         if-no-files-found: warn

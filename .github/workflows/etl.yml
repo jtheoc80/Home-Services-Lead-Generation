@@ -183,16 +183,16 @@ jobs:
           echo "⚠️  Lead building completed but response format unexpected"
         fi
 
-    - name: Upload artifacts
+    - name: Upload ETL logs (always)
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: nightly-etl-${{ github.run_id }}
+        name: etl-logs-${{ github.job }}-${{ github.run_id }}
         path: |
+          logs/**/*.log
+          artifacts/**/*
           permit_leads/artifacts/**/*.csv
           permit_leads/logs/**/*.log
-          permit_leads/logs/etl_output.log
-          permit_leads/logs/etl-summary.json
         if-no-files-found: warn
         retention-days: 14
 
