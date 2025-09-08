@@ -40,7 +40,13 @@ def load_sources_config() -> Dict[str, Any]:
                                 source_id = source['id']
                                 # Create a proper URL for health checking
                                 if source.get('kind') == 'socrata' and source.get('domain'):
-                                    url = f"https://{source['domain']}"
+                                    domain = source['domain']
+                                    # Check if domain already includes a protocol
+                                    if domain.startswith('http://') or domain.startswith('https://'):
+                                        url = domain
+                                    else:
+                                        protocol = source.get('protocol', 'https')
+                                        url = f"{protocol}://{domain}"
                                 else:
                                     url = source.get('url') or source.get('endpoint')
                                 
