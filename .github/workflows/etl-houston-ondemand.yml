@@ -40,14 +40,14 @@ jobs:
           # San Antonio
           # for v in SANANTONIO_SODA_APP_TOKEN SAN_ANTONIO_DATASET_ID; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
           # Houston
-          for v in HOUSTON_WEEKLY_URL HOUSTON_SOLD_URL; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
+          for v in HOUSTON_WEEKLY_XLSX_URL HOUSTON_SOLD_PERMITS_URL; do [ -z "${!v:-}" ] && echo "MISSING $v" && missing=1; done
           exit $missing
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           USER_AGENT: ${{ secrets.USER_AGENT }}
-          HOUSTON_WEEKLY_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
-          HOUSTON_SOLD_URL: ${{ secrets.HOUSTON_SOLD_URL }}
+          HOUSTON_WEEKLY_XLSX_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
+          HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_URL }}
 
       - name: Preflight connectivity
         run: |
@@ -69,11 +69,11 @@ jobs:
           #   "https://data.sanantonio.gov/resource/${SAN_ANTONIO_DATASET_ID}.json?\$limit=1" | head -c 200 | tr -d '\n' && echo
 
           # Houston weekly/sold landing pages:
-          curl -sS -I "${HOUSTON_WEEKLY_URL}" | head -n1
-          curl -sS -I "${HOUSTON_SOLD_URL}"   | head -n1
+          curl -sS -I "${HOUSTON_WEEKLY_XLSX_URL}" | head -n1
+          curl -sS -I "${HOUSTON_SOLD_PERMITS_URL}" | head -n1
         env:
-          HOUSTON_WEEKLY_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
-          HOUSTON_SOLD_URL: ${{ secrets.HOUSTON_SOLD_URL }}
+          HOUSTON_WEEKLY_XLSX_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
+          HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_URL }}
 
       - name: Run Houston ETL
         env:
