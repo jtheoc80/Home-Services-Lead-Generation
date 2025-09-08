@@ -1,0 +1,11 @@
+.github/workflows/_scrape-python.yml
+.github/workflows/coh-etl.yml
+.github/workflows/etl-delta.yml
+.github/workflows/etl.yml
+.github/workflows/ingest-agents-min.yml
+.github/workflows/ingest-agents.yml
+.github/workflows/ingest-nightly.yml
+.github/workflows/ingest-tx.yml
+.github/workflows/nightly-etl.yml
+.github/workflows/permit-ingest.yml
+scripts/etlDelta-working.ts
