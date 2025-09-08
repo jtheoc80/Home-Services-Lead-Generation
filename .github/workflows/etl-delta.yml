@@ -1,0 +1,77 @@
+name: ETL Delta Workflow
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 6 AM UTC
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run even if no new data'
+        required: false
+        default: false
+        type: boolean
+
+# Prevent overlapping runs on self-hosted runners
+concurrency:
+  group: scrape-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  etl:
+    runs-on: [self-hosted, linux, x64, scrape]
+    timeout-minutes: 30
+    
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Preflight checks - Validate secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Missing required Supabase secrets"
+            echo "Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          echo "✅ Required secrets are configured"
+          echo "::add-mask::$SUPABASE_URL"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
+
+      - name: Create output directories
+        run: |
+          mkdir -p logs artifacts
+          
+      - name: Run ETL Delta Script
+        run: |
+          echo "🚀 Starting ETL Delta process..."
+          npx tsx scripts/etlDelta-working.ts
+          
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-delta-${{ github.run_id }}
+          path: |
+            logs/
+            artifacts/
+          if-no-files-found: warn
+          retention-days: 7
+          
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "## ETL Delta Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner**: Self-hosted" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
