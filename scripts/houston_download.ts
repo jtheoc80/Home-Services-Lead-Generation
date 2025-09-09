@@ -40,7 +40,9 @@ async function downloadFrom(pageUrl: string, containsText: RegExp) {
 
 (async () => {
   const which = process.argv[2]; // weekly|sold
-  if (!which) throw new Error("Usage: tsx scripts/houston_download.ts <weekly|sold>");
+  if (!which || (which !== "weekly" && which !== "sold")) {
+    throw new Error("Usage: tsx scripts/houston_download.ts <weekly|sold>");
+  }
   const url = which === "weekly" ? WEEKLY_URL : SOLD_URL;
   const regex = which === "weekly" ? /weekly/i : /sold/i;
   const file = await downloadFrom(url, regex);
