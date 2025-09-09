@@ -1,5 +1,5 @@
 // scripts/houston_download.ts
-import { chromium, Download } from "playwright";
+import { chromium } from "playwright";
 import * as fs from "fs/promises";
 import * as path from "path";
 
