@@ -54,6 +54,9 @@ jobs:
         run: |
           mkdir -p logs artifacts
 
+      # Install browsers + OS deps (works with yum/dnf on Amazon Linux 2023)
+      - run: npx playwright install --with-deps chromium
+
       - name: Preflight connectivity (Houston)
 
         run: |
@@ -80,6 +83,22 @@ jobs:
         env:
           HOUSTON_WEEKLY_XLSX_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
           HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_URL }}
+
+      # Download the XLSX (weekly or sold)
+      - name: Houston weekly download
+        env:
+          HOUSTON_WEEKLY_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
+          HOUSTON_SOLD_URL:   ${{ secrets.HOUSTON_SOLD_URL }}
+          USER_AGENT:         ${{ secrets.USER_AGENT }}
+          OUT_DIR:            artifacts/houston
+        run: npx tsx scripts/houston_download.ts weekly
+
+      # (Optional) upload file as artifact for debugging
+      - uses: actions/upload-artifact@v4
+        with:
+          name: houston-xlsx
+          path: artifacts/houston/*.xls*
+          if-no-files-found: error
 
       - name: Run Houston ETL
         env:
