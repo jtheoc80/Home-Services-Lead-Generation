@@ -39,22 +39,36 @@ Deno.serve(async (req) => {
       const sig = req.headers.get("X-Webhook-Secret");
       if (sig !== WEBHOOK_SECRET) return new Response("forbidden", { status: 403 });
     }
-    const payload = (await req.json()) as Payload;
+    const body = await req.json();
+    let payload = body;
+    if (body?.record && body?.type) {
+      // map DB webhook → agent event
+      const r = body.record;
+      payload = {
+        event: r.status === 'failed' ? 'etl_failed' : 'etl_succeeded',
+        etl_id: r.id,
+        city: r.city,
+        days: r.lookback_days,
+        details: r.details
+      };
+    }
 
-    switch (payload.event) {
+    const agentPayload = payload as Payload;
+
+    switch (agentPayload.event) {
       case "etl_failed": {
-        const title = `ETL failed${payload.city ? ` — ${payload.city}` : ""}`;
+        const title = `ETL failed${agentPayload.city ? ` — ${agentPayload.city}` : ""}`;
         const body = [
-          `**ETL failed**${payload.etl_id ? ` (run id: ${payload.etl_id})` : ""}`,
-          payload.city ? `- city: \`${payload.city}\`` : "",
-          payload.days ? `- lookback days: \`${payload.days}\`` : "",
-          payload.details ? `\n\`\`\`json\n${JSON.stringify(payload.details, null, 2)}\n\`\`\`` : ""
+          `**ETL failed**${agentPayload.etl_id ? ` (run id: ${agentPayload.etl_id})` : ""}`,
+          agentPayload.city ? `- city: \`${agentPayload.city}\`` : "",
+          agentPayload.days ? `- lookback days: \`${agentPayload.days}\`` : "",
+          agentPayload.details ? `\n\`\`\`json\n${JSON.stringify(agentPayload.details, null, 2)}\n\`\`\`` : ""
         ].filter(Boolean).join("\n");
         await ghFetch(`/issues`, { title, body, labels: ["etl", "failure"] });
         break;
       }
       case "etl_succeeded": {
-        const title = `ETL succeeded${payload.city ? ` — ${payload.city}` : ""}`;
+        const title = `ETL succeeded${agentPayload.city ? ` — ${agentPayload.city}` : ""}`;
         await ghFetch(`/issues`, { title, body: "✅ ETL completed", labels: ["etl", "success"] });
         break;
       }
@@ -62,14 +76,14 @@ Deno.serve(async (req) => {
         // Kick a workflow by file name (change file path to yours)
         const file = ".github/workflows/etl.yml";
         const ref = "main";
-        const inputs = { city: payload.city ?? "houston_weekly", days: String(payload.days ?? 14) };
+        const inputs = { city: agentPayload.city ?? "houston_weekly", days: String(agentPayload.days ?? 14) };
         await ghFetch(`/actions/workflows/${encodeURIComponent(file)}/dispatches`,
           { ref, inputs });
         break;
       }
       case "comment_pr": {
-        if (!payload.pr_number) throw new Error("pr_number is required");
-        await ghFetch(`/issues/${payload.pr_number}/comments`, { body: payload.message ?? "Update from Supabase agent." });
+        if (!agentPayload.pr_number) throw new Error("pr_number is required");
+        await ghFetch(`/issues/${agentPayload.pr_number}/comments`, { body: agentPayload.message ?? "Update from Supabase agent." });
         break;
       }
       default:
