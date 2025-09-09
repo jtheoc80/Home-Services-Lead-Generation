@@ -10,6 +10,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
+      - name: Debug env
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.PROJECT_REF }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "PROJECT_REF: $PROJECT_REF"
+          echo "SUPABASE_ACCESS_TOKEN: ${#SUPABASE_ACCESS_TOKEN} characters"
+          echo "DB_PASSWORD: ${#DB_PASSWORD} characters"
       - name: Link and apply migrations (diff on PR, push on main)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
