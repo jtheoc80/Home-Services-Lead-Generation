@@ -93,4 +93,3 @@ serve(async (req) => {
 ## Related Files
 
 - `.env.example` - Contains the webhook secret template
-- `supabase/functions/gh-agent/index.ts` - Example edge function with secret authentication
