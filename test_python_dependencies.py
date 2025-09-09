@@ -18,15 +18,15 @@ def test_python_version():
     version_info = sys.version_info
     print(f"Current Python version: {version_info.major}.{version_info.minor}.{version_info.micro}")
     
-    # Check minimum Python 3.11 requirement
-    if version_info < (3, 11):
-        print("❌ Python version too old. Requires Python >= 3.11")
+    # Check minimum Python 3.10 requirement
+    if version_info < (3, 10):
+        print("❌ Python version too old. Requires Python >= 3.10")
         return False
     elif version_info >= (4, 0):
         print("❌ Python version too new. Requires Python < 4.0")
         return False
     else:
-        print("✅ Python version meets requirements (>=3.11, <4.0)")
+        print("✅ Python version meets requirements (>=3.10, <4.0)")
         return True
 
 
