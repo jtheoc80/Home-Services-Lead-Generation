@@ -1,215 +1,110 @@
-name: Nightly ETL
+name: ETL (Cities)
 
 on:
-  schedule:
-  - cron: "0 * * * *"       # hourly
   workflow_dispatch:
     inputs:
-      since:
-        description: "Window (e.g., 1d, 2h, 30m)"
-        required: false
-        default: "1d"
-      force:
-        description: "Force ingest even if 0 records"
-        required: false
-        type: boolean
-        default: false
-
-env:
-  PYTHON_VERSION: "3.11"
+      days:
+        description: Lookback window (days)
+        default: "14"
+  schedule:
+    - cron: "20 2 * * *"   # nightly 02:20
 
 jobs:
-  etl:
-    runs-on: [self-hosted, linux, x64, scrape]
-    concurrency:
-      group: nightly-etl
-      cancel-in-progress: false
+  scrape:
+    runs-on: [self-hosted, linux, x64, scrape]  # your runner labels
+    strategy:
+      fail-fast: false
+      matrix:
+        city: [houston_weekly, houston_sold, dallas, austin]  # add san_antonio later
+
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HC_ISSUED_PERMITS_URL: ${{ secrets.HC_ISSUED_PERMITS_URL }}
-    defaults:
-      run:
-        working-directory: permit_leads
+      # Supabase (server-side)
+      SUPABASE_URL:               ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      # City/API secrets
+      HOUSTON_WEEKLY_URL:         ${{ secrets.HOUSTON_WEEKLY_URL }}
+      HOUSTON_SOLD_URL:           ${{ secrets.HOUSTON_SOLD_URL }}
+      DALLAS_ARCGIS_URL:          ${{ secrets.DALLAS_ARCGIS_URL }}
+      AUSTIN_SODA_APP_TOKEN:      ${{ secrets.AUSTIN_SODA_APP_TOKEN }}
+      AUSTIN_DATASET_ID:          ${{ secrets.AUSTIN_DATASET_ID }}
+
+      # Controls
+      LOOKBACK_DAYS:              ${{ github.event.inputs.days || '14' }}
+      PIP_CACHE_DIR:              ~/.cache/pip
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
-        cache-dependency-path: permit_leads/requirements.txt
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
-    - name: Install deps
-      run: |
-        cd ..
-        python -m pip install --upgrade pip
-        if [ -f "poetry.lock" ]; then
-          pipx install poetry
-          poetry install --no-interaction --no-ansi
-        elif [ -f "requirements.txt" ]; then
-          pip install -r requirements.txt
-        else
-          pip install -e .
-        fi
+      - name: Install ETL deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r permit_leads/requirements.txt
 
-    - name: Ensure output dirs
-      run: |
-        mkdir -p logs artifacts data
-
-    - name: Preflight secrets
-      id: preflight
-      run: |
-        ok=1
-        for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
-          if [ -z "${!v}" ]; then
-            echo "::error title=$v missing::Add in GitHub → Settings → Secrets and variables → Actions"
-            ok=0
-          else
-            echo "::add-mask::${!v}"
-          fi
-        done
-        echo "ok=$ok" >> "$GITHUB_OUTPUT"
-        [ "$ok" -eq 1 ]
-
-    - name: Preflight Source URL
-      if: ${{ env.HC_ISSUED_PERMITS_URL && steps.preflight.outputs.ok == '1' }}
-      run: |
-        echo "::add-mask::$HC_ISSUED_PERMITS_URL"
-        code=$(curl -sS --fail --max-time 10 --retry 3 -H 'Range: bytes=0-0' -o /dev/null -w "%{http_code}" "$HC_ISSUED_PERMITS_URL" || echo "000")
-        if [ "$code" = "200" ] || [ "$code" = "206" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
-          echo "✅ Source URL accessible (HTTP $code)"
-        else
-          echo "::warning title=Source URL check failed::HTTP $code from source URL"
-        fi
-
-    - name: Supabase REST probe (non-fatal)
-      if: ${{ env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && steps.preflight.outputs.ok == '1' }}
-      id: supa
-      run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Prefer: count=exact, head=true" \
-          "$SUPABASE_URL/rest/v1/leads?select=id&limit=1")
-        echo "http_code=$code" >> "$GITHUB_OUTPUT"
-        if [ "$code" != "200" ] && [ "$code" != "206" ]; then
-          echo "::warning title=Supabase REST check failed::HTTP $code"
-        fi
-
-    - name: Run ETL scraping
-      id: etl_run
-      run: |
-        SINCE="${{ inputs.since }}"; [ -z "$SINCE" ] && SINCE="1d"
-        echo "Running ETL: --since $SINCE"
-
-        # Convert time periods to days for the CLI
-        if [[ "$SINCE" =~ ^([0-9]+)([dhm])$ ]]; then
-          NUM="${BASH_REMATCH[1]}"
-          UNIT="${BASH_REMATCH[2]}"
-          case "$UNIT" in
-            d) DAYS="$NUM" ;;
-            h) DAYS=$(python -c "print(max(1, round($NUM/24)))") ;;
-            m) DAYS=$(python -c "print(max(1, round($NUM/1440)))") ;;
-            *) DAYS="1" ;;
+      - name: Sanity env
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          miss=0
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do [ -z "${!v:-}" ] && echo "MISSING $v" && miss=1; done
+          case "${{ matrix.city }}" in
+            dallas)       [ -z "${DALLAS_ARCGIS_URL:-}" ] && echo "MISSING DALLAS_ARCGIS_URL" && miss=1 ;;
+            austin)       for v in AUSTIN_SODA_APP_TOKEN AUSTIN_DATASET_ID; do [ -z "${!v:-}" ] && echo "MISSING $v" && miss=1; done ;;
+            houston_weekly) [ -z "${HOUSTON_WEEKLY_URL:-}" ] && echo "MISSING HOUSTON_WEEKLY_URL" && miss=1 ;;
+            houston_sold)   [ -z "${HOUSTON_SOLD_URL:-}" ] && echo "MISSING HOUSTON_SOLD_URL" && miss=1 ;;
           esac
-        else
-          DAYS="1"
-        fi
+          exit $miss
 
-        cd ..
-        set +e
-        poetry run python -m permit_leads --jurisdiction tx-harris --days "$DAYS" --formats csv 2>&1 | tee permit_leads/logs/etl_output.log
-        status=${PIPESTATUS[0]}
-        set -e
-        COUNT=$(grep -o "Processed [0-9]\+" permit_leads/logs/etl_output.log | tail -1 | grep -o "[0-9]\+" || echo 0)
-        echo "record_count=$COUNT" >> "$GITHUB_OUTPUT"
-        echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-        echo "Scrape status=$status, records=$COUNT"
+      - name: Preflight (lightweight city check)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          case "${{ matrix.city }}" in
+            dallas)
+              curl -sS --get "$DALLAS_ARCGIS_URL" \
+                --data-urlencode "where=1=1" --data-urlencode "outFields=*" \
+                --data-urlencode "resultRecordCount=1" --data-urlencode "f=json" | head -c 200 | tr -d '\n' && echo
+              ;;
+            austin)
+              curl -sS -H "X-App-Token: ${AUSTIN_SODA_APP_TOKEN}" \
+                "https://data.austintexas.gov/resource/${AUSTIN_DATASET_ID}.json?\$limit=1" | head -c 200 | tr -d '\n' && echo
+              ;;
+            houston_weekly) curl -sS -I "$HOUSTON_WEEKLY_URL" | head -n1 ;;
+            houston_sold)   curl -sS -I "$HOUSTON_SOLD_URL"   | head -n1 ;;
+          esac
 
-      # ✅ Only run ingestion if records > 0 OR force=true
-    - name: Run data ingestion
-      if: ${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}
-      run: |
-        echo "Searching CSVs in artifacts/ ..."
-        shopt -s nullglob
-        CSVs=( artifacts/*.csv )
-        if [ ${#CSVs[@]} -eq 0 ]; then
-          echo "::warning title=No CSV artifacts found::Skipping ingestion"
-          exit 0
-        fi
-        echo "Ingesting ${#CSVs[@]} file(s)"
-        cd ..
-        poetry run python - <<'EOF'
-        import glob, sys
-        sys.path.insert(0, 'backend')
-        try:
-            from app.ingest import ingest_csv_data
-        except Exception as e:
-            print(f"Import error: {e}")
-            sys.exit(1)
+      - name: Run ETL (Python package)
+        run: |
+          # The package docs show: python -m permit_leads --source <source> --days N
+          # Map our matrix -> your module's source names
+          case "${{ matrix.city }}" in
+            dallas)          SRC="city_of_dallas" ;;
+            austin)          SRC="city_of_austin" ;;
+            houston_weekly)  SRC="city_of_houston_weekly" ;;
+            houston_sold)    SRC="city_of_houston_sold" ;;
+          esac
+          python -m permit_leads --source "$SRC" --days "${LOOKBACK_DAYS}" --no-sample
 
-        files = glob.glob('permit_leads/artifacts/*.csv')
-        ok = True
-        for f in files:
-            try:
-                print(f"Ingesting {f}")
-                ingest_csv_data(f)
-            except Exception as e:
-                print(f"Ingestion failed for {f}: {e}")
-                ok = False
-        print("DONE")
-        sys.exit(0 if ok else 1)
-        EOF
+      - name: Create 50 leads from last 365d of permits (RPC)
+        run: |
+          curl -sS "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits_limit" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_limit":50,"p_days":365}' | jq .
 
-    - name: Build leads from fresh permits
-      if: ${{ steps.etl_run.outputs.record_count != '0' || inputs.force == true }}
-      run: |
-        echo "Building leads from fresh permits (last 7 days)..."
-        response=$(curl -sS "$SUPABASE_URL/rest/v1/rpc/upsert_leads_from_permits" \
-          -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-          -H "Content-Type: application/json" \
-          -d '{"p_days": 7}')
-        echo "Lead building response: $response"
-
-        # Extract counts from response if possible
-        if echo "$response" | grep -q "inserted_count\|updated_count\|total_processed"; then
-          echo "✅ Successfully built leads from fresh permits"
-        else
-          echo "⚠️  Lead building completed but response format unexpected"
-        fi
-
-    - name: Upload ETL logs (always)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: etl-logs-${{ github.job }}-${{ github.run_id }}
-        path: |
-          logs/**/*.log
-          artifacts/**/*
-          permit_leads/artifacts/**/*.csv
-          permit_leads/logs/**/*.log
-        if-no-files-found: warn
-        retention-days: 14
-
-    - name: Summary
-      if: always()
-      run: |
-        TIME="${{ inputs.since }}"; [ -z "$TIME" ] && TIME="1d"
-        COUNT="${{ steps.etl_run.outputs.record_count }}"
-        SUPA="${{ steps.supa.outputs.http_code }}"
-        echo "## Nightly ETL Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- Time period: $TIME" >> $GITHUB_STEP_SUMMARY
-        echo "- Records processed: ${COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-        echo "- Supabase REST: ${SUPA:-n/a}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -f logs/etl_output.log ]; then
-          echo "### Tail of logs/etl_output.log" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 25 logs/etl_output.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-        fi
+      - name: Upload ETL artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-${{ matrix.city }}-${{ github.run_id }}
+          path: |
+            logs/**/*
+            artifacts/**/*
+          if-no-files-found: warn
