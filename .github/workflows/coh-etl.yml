@@ -96,6 +96,25 @@ jobs:
           STATUS=$(curl -sS -I -A "LeadLedgerETL/1.0 (+github-actions)" -o /dev/null -w "%{http_code}" "$URL" || true)
           echo "HTTP_STATUS=$STATUS"
           test "$STATUS" = "200" || { echo "❌ Houston page unreachable ($STATUS)"; exit 1; }
+      
+      # Install browsers + OS deps (works with yum/dnf on Amazon Linux 2023)
+      - run: npx playwright install --with-deps chromium
+
+      # Download the XLSX (weekly or sold)
+      - name: Houston weekly download
+        env:
+          HOUSTON_WEEKLY_URL: ${{ secrets.HOUSTON_WEEKLY_XLSX_URL }}
+          HOUSTON_SOLD_URL:   ${{ secrets.HOUSTON_SOLD_PERMITS_URL }}
+          USER_AGENT:         ${{ secrets.USER_AGENT || 'LeadLedgerETL/1.0' }}
+          OUT_DIR:            artifacts/houston
+        run: npx tsx scripts/houston_download.ts weekly
+
+      # (Optional) upload file as artifact for debugging
+      - uses: actions/upload-artifact@v4
+        with:
+          name: houston-xlsx
+          path: artifacts/houston/*.xls*
+          if-no-files-found: error
       - name: Ingest → Upsert → Build Leads
         run: |
           mkdir -p logs artifacts
