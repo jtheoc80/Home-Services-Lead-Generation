@@ -32,7 +32,7 @@ jobs:
           PROJECT_REF: ${{ secrets.PROJECT_REF }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          echo "DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db.${PROJECT_REF}.supabase.co:5432/postgres" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db.${PROJECT_REF}.supabase.co:5432/postgres" >> $GITHUB_ENV
 
       - name: PRs => show diff, Main => push
         env:
