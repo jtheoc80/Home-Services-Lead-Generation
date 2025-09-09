@@ -1,31 +1,17 @@
 # GitHub Agent Setup
 
-This document describes how to set up the Supabase "gh-agent" that reads DB events and talks back to GitHub.
+This document describes how to set up the Supabase "gh-agent" that receives webhooks and integrates with GitHub.
 
 ## Overview
 
-The GitHub Agent consists of:
-1. **Database Outbox**: Event table with triggers on `permits` and `leads` tables
-2. **Supabase Edge Function**: `/functions/v1/gh-agent` that processes events and posts to GitHub
-3. **GitHub Action**: Workflow that invokes the agent periodically
+The GitHub Agent is a Supabase Edge Function that:
+1. **Receives Webhooks**: Accepts webhook payloads from Supabase or external systems
+2. **GitHub Integration**: Creates issues, dispatches workflows, and comments on PRs
+3. **ETL Event Handling**: Specifically handles ETL success/failure events
 
 ## Setup Steps
 
-### 1. Database Setup
-
-Run the SQL setup script to create the outbox infrastructure:
-
-```sql
--- Run this in your Supabase SQL Editor
-\i sql/gh_agent_outbox_setup.sql
-```
-
-This creates:
-- `public.event_outbox` table with indexes
-- Trigger functions for permits and leads
-- Helper functions for event processing
-
-### 2. Supabase Edge Function Deployment
+### 1. Supabase Edge Function Deployment
 
 Deploy the edge function to your Supabase project:
 
@@ -39,85 +25,91 @@ supabase login
 # Link to your project
 supabase link --project-ref YOUR_PROJECT_REF
 
-# Deploy the function
-supabase functions deploy gh-agent
+# Deploy the function (no JWT verification for webhook endpoint)
+supabase functions deploy gh-agent --no-verify-jwt
 ```
 
-### 3. Environment Variables
+### 2. Environment Variables
 
-Configure the following environment variables in your Supabase project:
+Configure the following secrets in your Supabase project:
 
 ```bash
 # Set function secrets
-supabase secrets set AGENT_SECRET=your-secure-secret-here
-supabase secrets set GITHUB_TOKEN=ghp_your-github-token
-supabase secrets set GITHUB_REPOSITORY=owner/repo-name
-
-# Optional: For posting comments to a tracking issue
-supabase secrets set GITHUB_TRACKING_ISSUE_NUMBER=123
+supabase secrets set GH_TOKEN="ghp_your-github-personal-access-token"
+supabase secrets set GH_OWNER="jtheoc80"
+supabase secrets set GH_REPO="Home-Services-Lead-Generation"
+supabase secrets set WEBHOOK_SECRET="your-random-secret"
 ```
 
-### 4. GitHub Repository Secrets
+### 3. GitHub Token Permissions
 
-Configure these secrets in your GitHub repository settings:
-
-- `SUPABASE_FUNCTION_URL`: Full URL to your deployed function (e.g., `https://your-project.supabase.co/functions/v1/gh-agent`)
-- `AGENT_SECRET`: Same secret used in Supabase (for authentication)
-
-### 5. GitHub Token Permissions
-
-The GitHub token needs the following permissions:
-- `repo` scope for repository_dispatch events
-- `issues:write` scope for posting comments (if using tracking issue)
+The GitHub token (`GH_TOKEN`) needs the following permissions:
+- `repo` scope for creating issues and repository dispatch events
+- `issues:write` scope for posting comments
+- `actions:write` scope for dispatching workflows
 
 ## Usage
 
-### Automatic Operation
+### Webhook Endpoint
 
-The agent runs automatically every 15 minutes via GitHub Actions. It:
+Your function will be available at:
+```
+https://your-project.supabase.co/functions/v1/gh-agent
+```
 
-1. Fetches undelivered events from `event_outbox`
-2. Posts to GitHub (either comments or repository_dispatch)
-3. Marks events as delivered
+### Supported Event Types
 
-### Manual Invocation
+The function handles these event types:
 
-You can manually trigger the agent:
+1. **`etl_failed`** - Creates GitHub issue with failure details
+2. **`etl_succeeded`** - Creates GitHub issue with success notification  
+3. **`dispatch_workflow`** - Triggers `.github/workflows/etl.yml` workflow
+4. **`comment_pr`** - Adds comment to specified pull request
+
+### Example Payloads
 
 ```bash
-# Via GitHub Actions UI (workflow_dispatch)
-# Or via API:
+# ETL Failed Event
 curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
   -H "Content-Type: application/json" \
-  -H "x-agent-secret: your-secret"
+  -H "X-Webhook-Secret: your-secret" \
+  -d '{
+    "event": "etl_failed",
+    "etl_id": "run-123",
+    "city": "houston",
+    "days": 7,
+    "details": {"error": "Connection timeout"}
+  }'
+
+# ETL Succeeded Event
+curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: your-secret" \
+  -d '{
+    "event": "etl_succeeded",
+    "city": "dallas"
+  }'
+
+# Dispatch Workflow Event
+curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: your-secret" \
+  -d '{
+    "event": "dispatch_workflow",
+    "city": "austin",
+    "days": 14
+  }'
+
+# Comment on PR Event
+curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: your-secret" \
+  -d '{
+    "event": "comment_pr",
+    "pr_number": 42,
+    "message": "ETL processing completed successfully"
+  }'
 ```
-
-### Testing
-
-Test the outbox triggers by inserting test data:
-
-```sql
--- Test permit trigger
-INSERT INTO gold.permits (permit_id, source_id, address, city, county, permit_type)
-VALUES ('TEST-001', 'test', '123 Test St', 'Test City', 'Test County', 'Building');
-
--- Test lead trigger  
-INSERT INTO public.leads (name, email, source)
-VALUES ('Test Lead', 'test@example.com', 'manual');
-
--- Check outbox
-SELECT * FROM public.event_outbox WHERE delivered_at IS NULL;
-```
-
-## Output Modes
-
-The agent supports two output modes:
-
-### 1. Repository Dispatch Events (Default)
-
-Sends `repository_dispatch` events that can trigger other workflows:
-
-```yaml
 on:
   repository_dispatch:
     types: [permit_created, lead_created]
@@ -125,66 +117,63 @@ on:
 jobs:
   handle-event:
     runs-on: ubuntu-latest
-    steps:
-      - name: Handle permit event
-        if: github.event.action == 'permit_created'
-        run: echo "New permit: ${{ github.event.client_payload.payload.permit_id }}"
-```
+## Response Format
 
-### 2. Issue Comments
+The function returns simple responses:
 
-If `GITHUB_TRACKING_ISSUE_NUMBER` is set, the agent posts formatted comments to that issue instead.
+- **200 OK**: `"ok"` - Event processed successfully
+- **400 Bad Request**: `"unknown event"` - Unsupported event type
+- **403 Forbidden**: `"forbidden"` - Invalid webhook secret
+- **500 Internal Server Error**: `"error: {message}"` - Processing error
 
 ## Monitoring
 
 Monitor the agent via:
 
-1. **GitHub Actions**: Check the `gh-agent` workflow runs
-2. **Supabase Logs**: View function execution logs
-3. **Database**: Query `event_outbox` for pending/failed events
-
-```sql
--- Check event statistics
-SELECT 
-  type,
-  COUNT(*) as total,
-  COUNT(*) FILTER (WHERE delivered_at IS NULL) as pending,
-  COUNT(*) FILTER (WHERE delivered_at IS NOT NULL) as delivered
-FROM public.event_outbox 
-GROUP BY type;
-```
+1. **Supabase Function Logs**: View execution logs in Supabase dashboard
+2. **GitHub Issues**: Check for ETL-related issues created by the agent
+3. **GitHub Actions**: Monitor workflow dispatches in Actions tab
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Events not being created**: Check trigger installation and table names
-2. **Agent fails with 401**: Verify `AGENT_SECRET` matches in both Supabase and GitHub
-3. **GitHub API errors**: Check token permissions and repository name format
-4. **Function timeouts**: Reduce batch size or optimize event processing
+1. **403 Forbidden**: 
+   - Verify `WEBHOOK_SECRET` matches the `X-Webhook-Secret` header
+   - Check if webhook secret is properly configured
 
-### Debug Queries
+2. **GitHub API errors**:
+   - Verify `GH_TOKEN` has correct permissions
+   - Check `GH_OWNER` and `GH_REPO` are correct
+   - Ensure repository exists and token has access
 
-```sql
--- Check recent events
-SELECT * FROM public.event_outbox 
-ORDER BY created_at DESC 
-LIMIT 10;
+3. **Workflow dispatch failures**:
+   - Verify `.github/workflows/etl.yml` exists
+   - Check workflow accepts the inputs being sent
+   - Ensure token has `actions:write` permission
 
--- Check failed deliveries (events older than 1 hour without delivery)
-SELECT * FROM public.event_outbox 
-WHERE delivered_at IS NULL 
-  AND created_at < NOW() - INTERVAL '1 hour';
+### Testing Webhook
 
--- Manual cleanup (if needed)
-DELETE FROM public.event_outbox 
-WHERE delivered_at IS NOT NULL 
-  AND created_at < NOW() - INTERVAL '7 days';
+Test the webhook endpoint:
+
+```bash
+# Test with valid secret
+curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: your-secret" \
+  -d '{"event": "etl_succeeded", "city": "test"}'
+
+# Test with invalid secret (should return 403)
+curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: wrong-secret" \
+  -d '{"event": "etl_succeeded", "city": "test"}'
 ```
 
 ## Security Notes
 
-- The `X-Agent-Secret` header provides authentication for the edge function
-- Use strong, unique secrets and rotate them periodically  
+- The `X-Webhook-Secret` header provides webhook authentication
+- Use strong, unique webhook secrets and rotate them periodically  
 - GitHub tokens should have minimal necessary permissions
-- Consider IP restrictions for production deployments
+- The function is deployed with `--no-verify-jwt` for webhook access
+- Consider additional IP restrictions for production deployments
