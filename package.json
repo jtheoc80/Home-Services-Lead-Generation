@@ -56,7 +56,10 @@
     "test:etl-logging": "tsx scripts/test-etl-logging.ts",
     "houston:etl-and-mint": "tsx scripts/run-houston-etl-and-mint-leads.ts",
     "houston:etl-and-mint:dry-run": "tsx scripts/run-houston-etl-and-mint-leads.ts --dry-run",
-    "houston:validate": "tsx scripts/validate-houston-etl.ts"
+    "houston:validate": "tsx scripts/validate-houston-etl.ts",
+    "dl:houston:weekly": "tsx scripts/houston_download.ts weekly",
+    "dl:houston:sold": "tsx scripts/houston_download.ts sold",
+    "pw:install": "playwright install --with-deps chromium"
   },
   "overrides": {
     "react": "19.1.1",
