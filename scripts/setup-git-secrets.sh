@@ -56,6 +56,10 @@ git secrets --add 'railway_[A-Za-z0-9_-]{32,}'   # Railway API keys
 git secrets --add 'dapi_[A-Za-z0-9_-]{40,}'      # Railway Deploy API keys
 git secrets --add 'rw_[A-Za-z0-9_-]{32,}'        # Railway tokens
 
+# Add custom patterns for general webhook secrets
+echo "Adding webhook secret patterns..."
+git secrets --add 'WEBHOOK_SECRET=[a-f0-9]{64}'   # General webhook secrets (64-char hex)
+
 # Add allowed patterns for placeholder values
 echo "Adding allowed patterns for placeholder values..."
 git secrets --add --allowed 'your_supabase_jwt_secret_here'
@@ -67,6 +71,7 @@ git secrets --add --allowed 'your_twilio_auth_token_here'
 git secrets --add --allowed 'sb-example-key-placeholder'
 git secrets --add --allowed 'vercel_example_token'
 git secrets --add --allowed 'railway_example_key'
+git secrets --add --allowed '6b62cc6f1dedc79d2bd950732c2cabb1d9a89b2c927c23bdfb73954808e784dc'  # Generated webhook secret for examples
 
 # Add allowed patterns for test values (used in documentation and tests)
 echo "Adding allowed patterns for test/documentation examples..."

@@ -49,6 +49,12 @@ This document describes the new environment variables that control export permis
   - Should match the secret configured in Vercel for API route protection
   - Example: `CRON_SECRET=your_secure_random_string_here`
 
+### Webhook Security
+- **`WEBHOOK_SECRET`**: General webhook authentication secret
+  - Used for authenticating webhook requests to your application
+  - Should be a 32+ character random string generated with: `openssl rand -hex 32`
+  - Example: `WEBHOOK_SECRET=6b62cc6f1dedc79d2bd950732c2cabb1d9a89b2c927c23bdfb73954808e784dc`
+
 ## Configuration Files
 
 Add these variables to your environment configuration files:

@@ -98,6 +98,9 @@ python -m unittest tests.test_git_secrets.GitSecretsTest.test_supabase_service_r
 - Deploy API keys: `dapi_[A-Za-z0-9_-]{40,}`
 - Tokens: `rw_[A-Za-z0-9_-]{32,}`
 
+### Webhook Secrets
+- General webhook secrets: `WEBHOOK_SECRET=[a-f0-9]{64}`
+
 ### AWS (Standard)
 - Access keys, secret keys, and session tokens
 
@@ -114,6 +117,7 @@ The following placeholder values are explicitly allowed and won't trigger warnin
 - `sb-example-key-placeholder`
 - `vercel_example_token`
 - `railway_example_key`
+- `6b62cc6f1dedc79d2bd950732c2cabb1d9a89b2c927c23bdfb73954808e784dc` (generated webhook secret for examples)
 
 ## 🚫 What Happens When Secrets Are Detected
 
