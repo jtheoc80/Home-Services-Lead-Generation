@@ -52,4 +52,4 @@ rpc = requests.post(rpc_url, headers=headers, json={"p_limit": 50, "p_days": 365
 if rpc.status_code >= 300:
     raise SystemExit(f"RPC failed: {rpc.status_code} {rpc.text}")
 
-print(json.dumps({"upserted": total, "leads_created": rpc.text}, ensure_ascii=False))
+print(json.dumps({"upserted": total, "leads_created": rpc.json()}, ensure_ascii=False))
