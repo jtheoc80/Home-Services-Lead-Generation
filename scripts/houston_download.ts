@@ -24,10 +24,11 @@ async function downloadFrom(pageUrl: string, containsText: RegExp) {
     if (containsText.test(text)) { link = a; break; }
   }
   if (!link) link = anchors[0];
+  if (!link) throw new Error(`No matching XLS/XLSX link found on ${pageUrl}`);
 
   const [download] = await Promise.all([
-    page.waitForEvent("download", { timeout: 60000 }),
-    link!.click()
+    link.click(),
+    page.waitForEvent("download", { timeout: 60000 })
   ]);
   await fs.mkdir(OUT_DIR, { recursive: true });
   const suggested = download.suggestedFilename();
