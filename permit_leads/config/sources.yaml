@@ -1,4 +1,10 @@
 # Texas permits configuration with multi-city coverage
+#
+# Note: ArcGIS endpoints require explicit date_unit configuration:
+# - date_unit: "date" => uses ISSUEDDATE >= DATE '2024-09-01' format
+# - date_unit: "ms_epoch" => uses ISSUEDDATE > 1724800000000 (millisecond epoch) format
+# Default is "date" if not specified.
+#
 sources:
   # HARRIS COUNTY — Issued Permits (ArcGIS) — contains ISSUEDDATE and PERMITNUMBER
   - name: Harris County Issued Permits (ArcGIS)
@@ -7,6 +13,7 @@ sources:
     updated_field: "ISSUEDDATE"
     primary_key: "PERMITNUMBER"
     date_field: "ISSUEDDATE"
+    date_unit: "date"  # Use DATE format: ISSUEDDATE >= DATE '2024-09-01' (not epoch-ms)
     out_fields: "*"
     mappings:
       permit_number: "PERMITNUMBER"
@@ -36,6 +43,29 @@ sources:
       value: "estimated_cost"
       applicant: "contractor_name"
 
+  # DALLAS — Building Permits (ArcGIS) — Future endpoint (currently disabled)
+  # 
+  # When enabling this, verify if the ISSUEDDATE field is in epoch-ms or DATE format,
+  # and set date_unit accordingly.
+  #
+  # Example configuration:
+  #   - name: Dallas Building Permits (ArcGIS)
+  #     type: arcgis_feature_service
+  #     url: "${DALLAS_ARCGIS_URL}"  # Set this to actual ArcGIS FeatureServer endpoint
+  #     updated_field: "ISSUEDDATE"
+  #     primary_key: "PERMITNUMBER"
+  #     date_field: "ISSUEDDATE"
+  #     date_unit: "date"  # Change to "ms_epoch" if ISSUEDDATE uses millisecond timestamps
+  #     out_fields: "*"
+  #     mappings:
+  #       permit_number: "PERMITNUMBER"
+  #       issued_date: "ISSUEDDATE"
+  #       address: "FULLADDRESS"
+  #       description: "DESCRIPTION"
+  #       status: "STATUS"
+  #       work_class: "WORKCLASS"
+  #       category: "CATEGORY"
+
   # AUSTIN — Building Permits (Socrata) — Austin Open Data Portal
   - name: Austin Building Permits (Socrata)
     type: socrata
@@ -62,6 +92,7 @@ sources:
     updated_field: "IssueDate"
     primary_key: "PermitNumber"
     date_field: "IssueDate"
+    date_unit: "date"  # Use DATE format: IssueDate >= DATE '2024-09-01' (not epoch-ms)
     out_fields: "*"
     mappings:
       permit_number: "PermitNumber"
@@ -99,6 +130,7 @@ sources:
     updated_field: "GAL_REC_DATE"
     primary_key: "ID"
     date_field: "GAL_REC_DATE"
+    date_unit: "date"  # Use DATE format: GAL_REC_DATE >= DATE '2024-09-01' (not epoch-ms)
     out_fields: "*"
     mappings:
       permit_number: "ID"
