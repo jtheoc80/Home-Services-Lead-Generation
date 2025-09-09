@@ -57,6 +57,7 @@ For detailed instructions on manual triggers, reviewing changes, and rollback pr
 - [Frontend Setup](frontend/README.md) - Next.js application setup and configuration
 - [Backend API](backend/README.md) - ML scoring and feedback system
 - [ETL Pipeline](permit_leads/README.md) - Permit scraping and processing
+- [Webhook Secret Setup](docs/WEBHOOK_SECRET_SETUP.md) - Generate and configure webhook secrets for Supabase edge functions
 - [GitHub Actions Runbook](docs/github-actions-runbook.md) - Workflow setup and troubleshooting
 - [Nightly ETL Guardian Bot](docs/nightly-etl-bot.md) - Manual trigger and rollback guide
 - [Copilot Allowlist Request](COPILOT_ALLOWLIST_REQUEST.md) - Required URL patterns for GitHub Copilot coding agent
