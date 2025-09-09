@@ -13,9 +13,16 @@ from .html_table_adapter import HTMLTableAdapter
 from .accela_html_adapter import AccelaHTMLAdapter
 
 __all__ = [
-    'SourceAdapter', 'BaseAdapter',
-    'ArcGISAdapter', 'AccelaAdapter', 'OpenGovAdapter', 'HTMLAdapter', 
-    'SocrataAdapter', 'SimpleSocrataAdapter',
-    'ArcGISFeatureServiceAdapter', 'TPIAAdapter', 
-    'HTMLTableAdapter', 'AccelaHTMLAdapter'
+    "SourceAdapter",
+    "BaseAdapter",
+    "ArcGISAdapter",
+    "AccelaAdapter",
+    "OpenGovAdapter",
+    "HTMLAdapter",
+    "SocrataAdapter",
+    "SimpleSocrataAdapter",
+    "ArcGISFeatureServiceAdapter",
+    "TPIAAdapter",
+    "HTMLTableAdapter",
+    "AccelaHTMLAdapter",
 ]
