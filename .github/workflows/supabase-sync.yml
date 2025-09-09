@@ -23,7 +23,7 @@ jobs:
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          echo "DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db.${PROJECT_REF}.supabase.co:5432/postgres" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db.${PROJECT_REF}.supabase.co:5432/postgres?sslmode=require" >> $GITHUB_ENV
 
       - name: Link project
         run: supabase link --project-ref "$PROJECT_REF"
