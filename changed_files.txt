@@ -1,0 +1,4 @@
+GITHUB_AGENT_SETUP.md
+supabase/functions/gh-agent/index.ts
+supabase/functions/gh-agent/index.ts.backup
+verify_gh_agent_deployment.sh
