@@ -1,6 +1,7 @@
 # Simple dedupe using dedupe_key if present; else fuzzy on address+zip with rapidfuzz.
 # Usage: python scripts/agents/dedupe_records.py < artifacts/geocoded.ndjson > artifacts/final.ndjson
-import sys, json
+import sys
+import json
 from rapidfuzz import fuzz
 
 rows = [json.loads(l) for l in sys.stdin]
@@ -20,9 +21,11 @@ for i, r in enumerate(rows):
         for k, gid in list(seen.items())[-500:]:
             # compare end of key string; cheap fuzzy
             if fuzz.partial_ratio(k, (r.get("address") or "")[:60].lower()) > 92:
-                matched = gid; break
+                matched = gid
+                break
         if not matched:
-            group_id += 1; matched = group_id
+            group_id += 1
+            matched = group_id
         r["dupe_group_id"] = matched
 
 for r in rows:
