@@ -15,8 +15,8 @@ jobs:
         run: |
           python - <<'PY'
           import os, requests, datetime, sys
-          today = datetime.date.today().isoformat()
-          url = f"{os.environ['SUPABASE_URL']}/rest/v1/permits?select=count&issue_date=gte.{today}"
+          yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+          url = f"{os.environ['SUPABASE_URL']}/rest/v1/permits?select=count&issue_date=gte.{yesterday}"
           h = {"apikey":os.environ["SUPABASE_SERVICE_ROLE_KEY"],
                "Authorization":"Bearer "+os.environ["SUPABASE_SERVICE_ROLE_KEY"],
                "Prefer":"count=exact"}
