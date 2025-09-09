@@ -36,10 +36,10 @@ def run_command(command, description):
 
 
 def check_python_version():
-    """Check if Python version is 3.11 or higher."""
+    """Check if Python version is 3.10 or higher."""
     version = sys.version_info
-    if version.major < 3 or (version.major == 3 and version.minor < 11):
-        print(f"❌ Python 3.11+ required, but found Python {version.major}.{version.minor}")
+    if version.major < 3 or (version.major == 3 and version.minor < 10):
+        print(f"❌ Python 3.10+ required, but found Python {version.major}.{version.minor}")
         return False
     print(f"✅ Python {version.major}.{version.minor}.{version.micro} is compatible")
     return True
