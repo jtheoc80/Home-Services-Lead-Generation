@@ -44,24 +44,27 @@ sources:
       applicant: "contractor_name"
 
   # DALLAS — Building Permits (ArcGIS) — Future endpoint (currently disabled)
-  # Note: When enabling this, verify if ISSUEDDATE field is epoch-ms or DATE format
+  # 
+  # When enabling this, verify if the ISSUEDDATE field is in epoch-ms or DATE format,
   # and set date_unit accordingly.
-  # - name: Dallas Building Permits (ArcGIS)
-  #   type: arcgis_feature_service
-  #   url: "${DALLAS_ARCGIS_URL}"  # Set this to actual ArcGIS FeatureServer endpoint
-  #   updated_field: "ISSUEDDATE"
-  #   primary_key: "PERMITNUMBER"
-  #   date_field: "ISSUEDDATE"
-  #   date_unit: "date"  # Change to "ms_epoch" if ISSUEDDATE uses millisecond timestamps
-  #   out_fields: "*"
-  #   mappings:
-  #     permit_number: "PERMITNUMBER"
-  #     issued_date: "ISSUEDDATE"
-  #     address: "FULLADDRESS"
-  #     description: "DESCRIPTION"
-  #     status: "STATUS"
-  #     work_class: "WORKCLASS"
-  #     category: "CATEGORY"
+  #
+  # Example configuration:
+  #   - name: Dallas Building Permits (ArcGIS)
+  #     type: arcgis_feature_service
+  #     url: "${DALLAS_ARCGIS_URL}"  # Set this to actual ArcGIS FeatureServer endpoint
+  #     updated_field: "ISSUEDDATE"
+  #     primary_key: "PERMITNUMBER"
+  #     date_field: "ISSUEDDATE"
+  #     date_unit: "date"  # Change to "ms_epoch" if ISSUEDDATE uses millisecond timestamps
+  #     out_fields: "*"
+  #     mappings:
+  #       permit_number: "PERMITNUMBER"
+  #       issued_date: "ISSUEDDATE"
+  #       address: "FULLADDRESS"
+  #       description: "DESCRIPTION"
+  #       status: "STATUS"
+  #       work_class: "WORKCLASS"
+  #       category: "CATEGORY"
 
   # AUSTIN — Building Permits (Socrata) — Austin Open Data Portal
   - name: Austin Building Permits (Socrata)
