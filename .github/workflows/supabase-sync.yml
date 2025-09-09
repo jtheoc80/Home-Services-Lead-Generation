@@ -1,0 +1,45 @@
+name: "Supabase: link & sync"
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  db:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_REF:              ${{ secrets.PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN:    ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      DATABASE_URL:             ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+
+      - name: Build DATABASE_URL from DB_PASSWORD (if needed)
+        if: ${{ !secrets.DATABASE_URL }}
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db.${PROJECT_REF}.supabase.co:5432/postgres" >> $GITHUB_ENV
+
+      - name: Link project
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: PRs => diff, main => push
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            supabase db diff --db-url "$DATABASE_URL" || true
+          else
+            supabase db push --db-url "$DATABASE_URL" --debug
+          fi
+
+      - name: Upload CLI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-cli-logs-${{ github.run_id }}
+          path: ~/.supabase/logs
+          if-no-files-found: ignore
