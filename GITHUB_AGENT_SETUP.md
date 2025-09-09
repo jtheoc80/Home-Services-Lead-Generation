@@ -66,10 +66,52 @@ The function handles these event types:
 3. **`dispatch_workflow`** - Triggers `.github/workflows/etl.yml` workflow
 4. **`comment_pr`** - Adds comment to specified pull request
 
+### Payload Formats
+
+The function accepts **two payload formats**:
+
+#### 1. Custom Agent Payload (Original Format)
+Direct event payload with explicit event types:
+
+```json
+{
+  "event": "etl_failed",
+  "etl_id": "run-123", 
+  "city": "houston",
+  "days": 7,
+  "details": {"error": "Connection timeout"}
+}
+```
+
+#### 2. DB Webhook Payload (New Format)
+Standard Supabase DB webhook format that gets automatically transformed:
+
+```json
+{
+  "type": "etl_run",
+  "table": "etl_runs", 
+  "record": {
+    "id": "run-456",
+    "city": "houston",
+    "lookback_days": 14,
+    "status": "failed",
+    "details": {"error": "Connection timeout"}
+  }
+}
+```
+
+**Transformation Rules:**
+- `record.status === 'failed'` → `event: 'etl_failed'`
+- `record.status !== 'failed'` → `event: 'etl_succeeded'`  
+- `record.id` → `etl_id`
+- `record.city` → `city`
+- `record.lookback_days` → `days`
+- `record.details` → `details`
+
 ### Example Payloads
 
 ```bash
-# ETL Failed Event
+# ETL Failed Event (Custom Format)
 curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
   -H "Content-Type: application/json" \
   -H "X-Webhook-Secret: your-secret" \
@@ -79,6 +121,22 @@ curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
     "city": "houston",
     "days": 7,
     "details": {"error": "Connection timeout"}
+  }'
+
+# ETL Failed Event (DB Webhook Format)
+curl -X POST "https://your-project.supabase.co/functions/v1/gh-agent" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: your-secret" \
+  -d '{
+    "type": "etl_run",
+    "table": "etl_runs",
+    "record": {
+      "id": "run-456", 
+      "city": "houston",
+      "lookback_days": 14,
+      "status": "failed",
+      "details": {"error": "Connection timeout"}
+    }
   }'
 
 # ETL Succeeded Event
