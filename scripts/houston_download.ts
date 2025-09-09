@@ -3,10 +3,16 @@ import { chromium } from "playwright";
 import * as fs from "fs/promises";
 import * as path from "path";
 
-const WEEKLY_URL = process.env.HOUSTON_WEEKLY_URL!;
-const SOLD_URL   = process.env.HOUSTON_SOLD_URL!;
+const WEEKLY_URL = process.env.HOUSTON_WEEKLY_URL;
+const SOLD_URL   = process.env.HOUSTON_SOLD_URL;
 const OUT_DIR    = process.env.OUT_DIR || "artifacts/houston";
 
+if (!WEEKLY_URL) {
+  throw new Error("Missing required environment variable: HOUSTON_WEEKLY_URL");
+}
+if (!SOLD_URL) {
+  throw new Error("Missing required environment variable: HOUSTON_SOLD_URL");
+}
 async function downloadFrom(pageUrl: string, containsText: RegExp) {
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({ acceptDownloads: true, userAgent: process.env.USER_AGENT || "LeadETL/1.0" });
