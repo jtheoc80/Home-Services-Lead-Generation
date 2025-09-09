@@ -29,39 +29,39 @@ except ImportError:
 def export_yesterday_csv(output_path: str = "data/yesterday.csv") -> int:
     """
     Export yesterday's permit data to CSV.
-    
+
     Args:
         output_path: Path where to save the CSV file
-        
+
     Returns:
         Number of records exported
     """
     # Calculate yesterday's date
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).date()
-    
+
     # Ensure output directory exists
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Try to get data from Supabase first, then fallback to local sources
     records = []
-    
+
     # Method 1: Try Supabase if credentials available
-    if os.getenv('SUPABASE_URL') and os.getenv('SUPABASE_SERVICE_ROLE_KEY'):
+    if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
         records = _fetch_from_supabase(yesterday)
-    
+
     # Method 2: Fallback to local SQLite databases if Supabase fails
     if not records:
         records = _fetch_from_local_db(yesterday)
-    
+
     # Method 3: Generate sample data if no real data available
     if not records:
         print(f"No data found for {yesterday}, generating sample data for validation")
         records = _generate_sample_data(yesterday)
-    
+
     # Write to CSV
     _write_csv(output_file, records)
-    
+
     print(f"Exported {len(records)} records to {output_path}")
     return len(records)
 
@@ -71,15 +71,15 @@ def _fetch_from_supabase(target_date) -> List[Dict[str, Any]]:
     try:
         if not SupabaseSink:
             return []
-            
+
         # Use SupabaseSink to query data
         sink = SupabaseSink()
         # Note: This is a simplified approach - in practice you'd need to implement
         # a proper query method in SupabaseSink for reading data
-        
+
         # For now, return empty to fall back to other methods
         return []
-        
+
     except Exception as e:
         print(f"Failed to fetch from Supabase: {e}")
         return []
@@ -88,14 +88,10 @@ def _fetch_from_supabase(target_date) -> List[Dict[str, Any]]:
 def _fetch_from_local_db(target_date) -> List[Dict[str, Any]]:
     """Fetch permit data from local SQLite databases."""
     records = []
-    
+
     # Look for SQLite databases in common locations
-    db_paths = [
-        "permit_leads/permits.db",
-        "permits.db", 
-        "data/permits.db"
-    ]
-    
+    db_paths = ["permit_leads/permits.db", "permits.db", "data/permits.db"]
+
     for db_path in db_paths:
         if Path(db_path).exists():
             try:
@@ -105,7 +101,7 @@ def _fetch_from_local_db(target_date) -> List[Dict[str, Any]]:
             except Exception as e:
                 print(f"Failed to query {db_path}: {e}")
                 continue
-    
+
     return records
 
 
@@ -113,7 +109,7 @@ def _query_sqlite_db(db_path: str, target_date) -> List[Dict[str, Any]]:
     """Query SQLite database for yesterday's permits."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    
+
     # Query for permits from target date
     query = """
         SELECT 
@@ -126,23 +122,25 @@ def _query_sqlite_db(db_path: str, target_date) -> List[Dict[str, Any]]:
         ORDER BY issue_date DESC
         LIMIT 1000
     """
-    
-    rows = conn.execute(query, [target_date.isoformat(), target_date.isoformat()]).fetchall()
+
+    rows = conn.execute(
+        query, [target_date.isoformat(), target_date.isoformat()]
+    ).fetchall()
     conn.close()
-    
+
     return [dict(row) for row in rows]
 
 
 def _generate_sample_data(target_date) -> List[Dict[str, Any]]:
     """Generate sample permit data for validation when no real data is available."""
-    
+
     sample_permits = [
         {
             "jurisdiction": "Harris County",
             "permit_id": f"HC-{target_date.strftime('%Y%m%d')}-001",
             "address": "123 Main St, Houston, TX 77001",
             "description": "Single family residence - new construction",
-            "work_class": "New Construction", 
+            "work_class": "New Construction",
             "category": "Residential",
             "status": "Issued",
             "issue_date": target_date.isoformat(),
@@ -161,10 +159,10 @@ def _generate_sample_data(target_date) -> List[Dict[str, Any]]:
             "owner_kind": "Individual",
             "trade_tags": "construction,residential",
             "budget_band": "High",
-            "start_by_estimate": (target_date + timedelta(days=30)).isoformat()
+            "start_by_estimate": (target_date + timedelta(days=30)).isoformat(),
         },
         {
-            "jurisdiction": "Dallas County", 
+            "jurisdiction": "Dallas County",
             "permit_id": f"DAL-{target_date.strftime('%Y%m%d')}-002",
             "address": "456 Oak Ave, Dallas, TX 75201",
             "description": "HVAC system replacement",
@@ -187,10 +185,10 @@ def _generate_sample_data(target_date) -> List[Dict[str, Any]]:
             "owner_kind": "Individual",
             "trade_tags": "hvac,mechanical",
             "budget_band": "Medium",
-            "start_by_estimate": (target_date + timedelta(days=14)).isoformat()
-        }
+            "start_by_estimate": (target_date + timedelta(days=14)).isoformat(),
+        },
     ]
-    
+
     return sample_permits
 
 
@@ -198,27 +196,46 @@ def _write_csv(output_path: Path, records: List[Dict[str, Any]]):
     """Write records to CSV file."""
     if not records:
         # Write empty CSV with headers
-        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             headers = [
-                "jurisdiction", "permit_id", "address", "description", "work_class", 
-                "category", "status", "issue_date", "applicant", "owner", "value", 
-                "is_residential", "scraped_at", "latitude", "longitude", "apn", 
-                "year_built", "heated_sqft", "lot_size", "land_use", "owner_kind", 
-                "trade_tags", "budget_band", "start_by_estimate"
+                "jurisdiction",
+                "permit_id",
+                "address",
+                "description",
+                "work_class",
+                "category",
+                "status",
+                "issue_date",
+                "applicant",
+                "owner",
+                "value",
+                "is_residential",
+                "scraped_at",
+                "latitude",
+                "longitude",
+                "apn",
+                "year_built",
+                "heated_sqft",
+                "lot_size",
+                "land_use",
+                "owner_kind",
+                "trade_tags",
+                "budget_band",
+                "start_by_estimate",
             ]
             writer.writerow(headers)
         return
-    
+
     # Get all unique fieldnames from records
     fieldnames = set()
     for record in records:
         fieldnames.update(record.keys())
-    
+
     # Sort fieldnames for consistent output
     fieldnames = sorted(fieldnames)
-    
-    with open(output_path, 'w', newline='', encoding='utf-8') as f:
+
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for record in records:
@@ -236,25 +253,27 @@ def _write_csv(output_path: Path, records: List[Dict[str, Any]]):
 def main():
     """Command line interface."""
     import argparse
-    
-    parser = argparse.ArgumentParser(description="Export yesterday's permit data to CSV")
+
+    parser = argparse.ArgumentParser(
+        description="Export yesterday's permit data to CSV"
+    )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="data/yesterday.csv",
-        help="Output CSV file path (default: data/yesterday.csv)"
+        help="Output CSV file path (default: data/yesterday.csv)",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
-    
+
     args = parser.parse_args()
-    
+
     if args.verbose:
         import logging
+
         logging.basicConfig(level=logging.DEBUG)
-    
+
     try:
         count = export_yesterday_csv(args.output)
         print(f"Successfully exported {count} records")
