@@ -36,6 +36,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - run: npm run pw:install
       
       - name: Sanity check required env
         run: |
@@ -96,6 +97,25 @@ jobs:
           STATUS=$(curl -sS -I -A "LeadLedgerETL/1.0 (+github-actions)" -o /dev/null -w "%{http_code}" "$URL" || true)
           echo "HTTP_STATUS=$STATUS"
           test "$STATUS" = "200" || { echo "❌ Houston page unreachable ($STATUS)"; exit 1; }
+          
+      # Download weekly (or sold)
+      - name: Houston weekly download
+        env:
+          HOUSTON_WEEKLY_URL: ${{ secrets.HOUSTON_WEEKLY_URL }}
+          HOUSTON_SOLD_URL:   ${{ secrets.HOUSTON_SOLD_URL }}
+          USER_AGENT:         ${{ secrets.USER_AGENT }}
+          OUT_DIR:            artifacts/houston
+        run: npm run dl:houston:weekly
+
+      # Optional: parse + upsert in Node (skip if your Python ETL handles it)
+      - name: Parse + upsert to Supabase (Node)
+        if: ${{ env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY }}
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OUT_DIR:                   artifacts/houston
+        run: npx tsx scripts/houston_parse_and_upsert.ts
+        
       - name: Ingest → Upsert → Build Leads
         run: |
           mkdir -p logs artifacts
@@ -108,6 +128,14 @@ jobs:
           if test -f logs/etl-summary.json; then
             cat logs/etl-summary.json >> "$GITHUB_STEP_SUMMARY"
           fi
+      # Upload the file(s) for debugging
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: houston-xlsx-${{ github.run_id }}
+          path: artifacts/houston/*.xls*
+          if-no-files-found: warn
+          
       - name: Upload ETL logs (always)
         if: always()
         uses: actions/upload-artifact@v4
