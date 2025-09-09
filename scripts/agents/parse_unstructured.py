@@ -1,6 +1,6 @@
 # Light parser for XLS/XLSX/CSV/HTML into NDJSON.
 # Usage: python scripts/agents/parse_unstructured.py <input_path> <source_name> > artifacts/parsed/<source>.ndjson
-import sys, os, json, pandas as pd
+import sys, json, pandas as pd
 from pathlib import Path
 
 inp = Path(sys.argv[1]) if len(sys.argv) > 1 else None
