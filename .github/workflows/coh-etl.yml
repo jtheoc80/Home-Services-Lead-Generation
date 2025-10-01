@@ -30,7 +30,7 @@ jobs:
       HOUSTON_SOLD_PERMITS_URL: ${{ secrets.HOUSTON_SOLD_PERMITS_URL }}
       DAYS: ${{ vars.DAYS || '7' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with: 
           node-version: '20'
@@ -177,7 +177,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       ARCHIVE_WEEKS: ${{ github.event.inputs.archive_weeks || '12' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with: 
           node-version: '20'
