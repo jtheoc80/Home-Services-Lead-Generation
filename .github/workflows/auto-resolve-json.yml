@@ -75,7 +75,7 @@ jobs:
             core.setOutput('head_sha', pr.head.sha);
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ steps.pr-details.outputs.head_ref }}
           fetch-depth: 0
