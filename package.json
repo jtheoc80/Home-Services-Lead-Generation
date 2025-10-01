@@ -71,7 +71,7 @@
     "frontend"
   ],
   "dependencies": {
-    "@supabase/supabase-js": "^2.55.0",
+    "@supabase/supabase-js": "^2.58.0",
     "@types/pg": "^8.15.5",
     "axios": "^1.11.0",
     "cheerio": "^1.1.2",
@@ -82,12 +82,12 @@
     "pg": "^8.16.3",
     "playwright": "^1.40.0",
     "semver": "^7.7.2",
-    "undici": "^7.15.0",
+    "undici": "^7.16.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.0.0",
-    "@playwright/test": "^1.54.2",
+    "@playwright/test": "^1.55.1",
     "@redocly/cli": "^2.0.8",
     "globby": "^14.0.0",
     "tsx": "^4.20.5",
