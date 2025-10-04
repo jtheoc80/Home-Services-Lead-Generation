@@ -4,7 +4,7 @@ export const revalidate = 0
 import { createServerSupabase } from '@/lib/supabase/clients'
 
 export default async function LeadsPage() {
-  const sb = createServerSupabase()
+  const sb = await createServerSupabase()
   const { data, error } = await sb
     .from('leads')
     .select('id,name,trade,county,status,lead_score,created_at')

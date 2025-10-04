@@ -12,8 +12,8 @@ export function createBrowserSupabase() {
 }
 
 // Server-side client for server components using SSR package
-export function createServerSupabase() {
-  const cookieStore = cookies()
+export async function createServerSupabase() {
+  const cookieStore = await cookies()
   
   return createServerClient(url, anon, {
     cookies: {

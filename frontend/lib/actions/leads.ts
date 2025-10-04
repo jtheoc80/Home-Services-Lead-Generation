@@ -9,7 +9,7 @@ export type { Lead } from '@/types/supabase';
 export async function getLeads(): Promise<{ data: Lead[] | null; error: string | null }> {
   try {
     // Query leads table with relevant fields for the demo
-    const supabase = createServerSupabase();
+    const supabase = await createServerSupabase();
     const { data: leads, error } = await supabase
       .from('leads')
       .select('id, name, phone, email, address, city, state, county, status, source, lead_score, value, created_at')
