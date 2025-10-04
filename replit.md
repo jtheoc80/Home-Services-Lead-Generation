@@ -18,6 +18,9 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 - Fixed county filtering with mapping (houston→harris, harris→harris, dallas→dallas, austin→travis)
 - Resolved React duplicate key warnings in county selector
 - Dashboard queries updated to work with remote Supabase schema constraints
+- Fixed Next.js React Server Components errors by disabling dev indicators
+- Added CSV export functionality to dashboard (Export CSV button in header)
+- Configured deployment for Replit Autoscale (not Vercel)
 
 ## Project Architecture
 
@@ -85,9 +88,34 @@ Required secrets (already configured):
 - Remote Supabase database uses minimal schema
 - Dashboard queries optimized for remote schema: `id, name, trade, county, status, value, lead_score, created_at, address, zipcode`
 
+## Lead Delivery System
+Currently, leads are delivered through:
+- **CSV Export**: Dashboard has an "Export CSV" button that downloads filtered leads
+- **Manual Access**: Users view leads directly in the dashboard with filtering by region
+
+**Future Enhancement Options:**
+- Email notifications for new hot leads (requires email integration setup - Resend/SendGrid/Gmail)
+- Automated email digests (daily/weekly lead summaries)
+- Webhook integrations to send leads to external CRMs
+- SMS notifications for urgent high-value leads
+
+**Note on Email Integration:**
+User declined email integration during setup. To add email notifications in the future:
+1. Use search_integrations tool to find email connectors (Resend recommended)
+2. Set up the integration via Replit UI
+3. Implement notification logic in ingestion scripts or scheduled jobs
+
+## Deployment
+- **Platform**: Replit Autoscale (Cloud Run) - NOT Vercel
+- **Build Command**: `cd frontend && npm install && npm run build`
+- **Run Command**: `cd frontend && npm start`
+- **Port Mapping**: 5000 → 80
+- To deploy: Click "Publish" button in Replit or use `replit deployment create`
+- Environment variables are automatically transferred from development to production
+
 ## Next Steps / TODO
 - Re-enable authentication after full site configuration
 - Validate ingestion scripts against production Supabase instance
 - Consider separating Houston city permits from Harris County permits if data sources allow
-- Add lead export functionality
 - Implement lead status management (New → Qualified → Won)
+- Set up automated email notifications (when user is ready)

@@ -49,6 +49,43 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
   const [selectedCounties, setSelectedCounties] = useState<string[]>(['houston', 'harris', 'dallas', 'austin']);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const handleExportLeads = async () => {
+    try {
+      const countyMap: Record<string, string> = {
+        'houston': 'harris',
+        'harris': 'harris',
+        'dallas': 'dallas',
+        'austin': 'travis'
+      };
+      
+      const params = new URLSearchParams();
+      if (selectedCounties.length > 0 && selectedCounties.length < 4) {
+        const mappedCounties = selectedCounties.map(c => countyMap[c.toLowerCase()] || c);
+        const uniqueCounties = [...new Set(mappedCounties)];
+        params.append('counties', uniqueCounties.join(','));
+      }
+      
+      const response = await fetch(`/api/export?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export leads. Please try again.');
+    }
+  };
+
   // Enhanced leads with computed fields for UI compatibility
   const enhancedLeads = useMemo(() => {
     return leads?.map(lead => ({
@@ -160,13 +197,24 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
           title="Texas Lead Dashboard"
           subtitle="Intelligent home services lead generation across the Lone Star State"
         >
-          <button
-            onClick={() => router.push('/leads/new')}
-            className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Lead
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportLeads}
+              className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export CSV
+            </button>
+            <button
+              onClick={() => router.push('/leads/new')}
+              className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Lead
+            </button>
+          </div>
         </DashboardHeader>
 
         {/* Stats Grid */}

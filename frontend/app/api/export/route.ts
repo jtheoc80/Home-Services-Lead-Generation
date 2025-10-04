@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters for filtering
     const searchParams = request.nextUrl.searchParams;
-    const county = searchParams.get('county');
+    const countiesParam = searchParams.get('counties');
     const status = searchParams.get('status');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -20,8 +20,14 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     // Apply filters
-    if (county) {
-      query = query.ilike('county', `%${county}%`);
+    if (countiesParam) {
+      const counties = countiesParam.split(',').map(c => c.trim()).filter(Boolean);
+      if (counties.length === 1) {
+        query = query.ilike('county', `%${counties[0]}%`);
+      } else if (counties.length > 1) {
+        const orConditions = counties.map(c => `county.ilike.%${c}%`).join(',');
+        query = query.or(orConditions);
+      }
     }
     if (status) {
       query = query.eq('status', status);
