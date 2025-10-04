@@ -46,7 +46,7 @@ function formatRelativeTime(dateString: string): string {
 
 export default function DashboardClient({ leads, initialError }: DashboardClientProps) {
   const router = useRouter();
-  const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'dallas', 'travis']);
+  const [selectedCounties, setSelectedCounties] = useState<string[]>(['houston', 'harris', 'dallas', 'austin']);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Enhanced leads with computed fields for UI compatibility
@@ -75,10 +75,17 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
   const stats = useMemo(() => {
     if (!enhancedLeads) return { total: 0, newCount: 0, qualified: 0, won: 0, avgScore: 0, totalValue: 0 };
     
+    const countyMap: Record<string, string> = {
+      'houston': 'harris',
+      'harris': 'harris',
+      'dallas': 'dallas',
+      'austin': 'travis'
+    };
+    
     const filteredLeads = enhancedLeads.filter(lead => 
       selectedCounties.length === 0 ||
       selectedCounties.some(county => 
-        lead.county?.toLowerCase().includes(county)
+        lead.county?.toLowerCase().includes(countyMap[county.toLowerCase()] || county)
       )
     );
     
@@ -99,10 +106,17 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
   const filteredLeads = useMemo(() => {
     if (!enhancedLeads) return [];
     
+    const countyMap: Record<string, string> = {
+      'houston': 'harris',
+      'harris': 'harris',
+      'dallas': 'dallas',
+      'austin': 'travis'
+    };
+    
     return enhancedLeads.filter(lead => {
       const matchesCounty = selectedCounties.length === 0 || 
         selectedCounties.some(county => 
-          lead.county?.toLowerCase().includes(county)
+          lead.county?.toLowerCase().includes(countyMap[county.toLowerCase()] || county)
         );
       const matchesSearch = !searchTerm || 
         lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

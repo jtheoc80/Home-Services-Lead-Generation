@@ -10,10 +10,10 @@ interface TexasCountyProps {
 }
 
 const TEXAS_COUNTIES = [
-  { name: "Harris County (Houston)", code: "harris", population: "4.7M", permits: 2847 },
-  { name: "Dallas County", code: "dallas", population: "2.6M", permits: 1543 },
-  { name: "Travis County (Austin)", code: "travis", population: "1.3M", permits: 892 },
-  { name: "Fort Bend County", code: "fortbend", population: "822K", permits: 689 }
+  { name: "Houston", code: "houston", population: "2.3M", permits: 1847 },
+  { name: "Harris County", code: "harris", population: "4.7M", permits: 2847 },
+  { name: "Dallas", code: "dallas", population: "2.6M", permits: 1543 },
+  { name: "Austin", code: "austin", population: "1.0M", permits: 892 }
 ];
 
 export default function TexasCountySelector({
