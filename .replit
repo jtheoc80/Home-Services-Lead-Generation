@@ -9,7 +9,7 @@ packages = ["glibcLocales", "libxcrypt", "libyaml"]
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd frontend && npm start"]
-build = ["bash", "-c", "npm install && npm run build"]
+build = ["bash", "-c", "cd frontend && npm install && npm run build"]
 
 [workflows]
 runButton = "Project"
@@ -38,7 +38,3 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 42611
-externalPort = 3000

@@ -4,8 +4,8 @@
   "type": "module",
   "description": "LeadLedgerPro - Home Services Lead Generation Platform",
   "scripts": {
-    "build": "npm --prefix frontend ci && npm --prefix frontend run build",
-    "build:frontend": "npm --prefix frontend ci && npm --prefix frontend run build",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "build:frontend": "npm --prefix frontend install && npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
     "lint": "cd frontend && npm run lint",
     "typecheck": "cd frontend && npx tsc --noEmit",
