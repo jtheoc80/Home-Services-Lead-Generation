@@ -4,7 +4,7 @@
   "type": "module",
   "description": "LeadLedgerPro - Home Services Lead Generation Platform",
   "scripts": {
-    "build": "echo 'noop: use npm run build:frontend for frontend builds or npm run api:serve for backend development'",
+    "build": "npm --prefix frontend ci && npm --prefix frontend run build",
     "build:frontend": "npm --prefix frontend ci && npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
     "lint": "cd frontend && npm run lint",
@@ -73,6 +73,7 @@
   "dependencies": {
     "@jest/globals": "^30.2.0",
     "@supabase/supabase-js": "^2.58.0",
+    "@tailwindcss/postcss": "^4.1.14",
     "@types/pg": "^8.15.5",
     "axios": "^1.12.2",
     "cheerio": "^1.1.2",
