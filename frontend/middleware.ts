@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Protected routes that require authentication
-const protectedRoutes = ['/dashboard', '/leads']
+// Temporarily disabled until full site configuration is complete
+const protectedRoutes: string[] = []
 
 // Routes that are allowed in test mode without authentication
 const testModeAllowedRoutes = ['/leads/new', '/leads-test']
