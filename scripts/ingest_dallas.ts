@@ -1,0 +1,129 @@
+#!/usr/bin/env tsx
+/**
+ * Dallas Permit Ingestion
+ * Fetches permits from Dallas Open Data API and creates leads
+ */
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+interface DallasPermit {
+  permit?: string;
+  permit_number?: string;
+  contractor?: string;
+  owner?: string;
+  applicant?: string;
+  address?: string;
+  project_address?: string;
+  zip?: string;
+  zip_code?: string;
+  work_type?: string;
+  permit_type?: string;
+  valuation?: string | number;
+  value?: string | number;
+  issue_date?: string;
+}
+
+function normalizeTradeType(trade: string): string {
+  const t = (trade || '').toLowerCase();
+  if (t.includes('electric')) return 'Electrical';
+  if (t.includes('plumb')) return 'Plumbing';
+  if (t.includes('hvac') || t.includes('mech') || t.includes('air')) return 'HVAC';
+  if (t.includes('roof')) return 'Roofing';
+  if (t.includes('pool')) return 'Pool';
+  return 'General';
+}
+
+function parseValue(val: any): number {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  return parseInt(String(val).replace(/[^0-9]/g, '')) || 0;
+}
+
+function calculateLeadScore(value: number): number {
+  if (value >= 20000) return 90;
+  if (value >= 10000) return 75;
+  if (value >= 5000) return 60;
+  return 50;
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 80) return 'Hot';
+  if (score >= 65) return 'Warm';
+  return 'Cold';
+}
+
+async function fetchDallasPermits(limit: number = 10): Promise<DallasPermit[]> {
+  try {
+    const response = await fetch(
+      `https://www.dallasopendata.com/resource/e7gq-4sah.json?$limit=${limit}&$order=issue_date DESC`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+
+    if (!response.ok) {
+      console.log(`Dallas API returned ${response.status}`);
+      return [];
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('Dallas API error:', error.message);
+    return [];
+  }
+}
+
+export async function ingestDallasLeads(limit: number = 10) {
+  console.log(`📡 Fetching ${limit} Dallas permits...`);
+  
+  const permits = await fetchDallasPermits(limit);
+  
+  if (permits.length === 0) {
+    console.log('⚠️  No Dallas permits fetched');
+    return { success: false, count: 0, errors: ['No permits from Dallas API'] };
+  }
+
+  console.log(`✅ Fetched ${permits.length} Dallas permits\n`);
+
+  const leads = permits.map((p, idx) => {
+    const value = parseValue(p.valuation || p.value);
+    const score = calculateLeadScore(value);
+    
+    return {
+      external_permit_id: p.permit || p.permit_number || `DAL-${Date.now()}-${idx}`,
+      name: p.contractor || p.owner || p.applicant || 'Unknown Contractor',
+      address: p.address || p.project_address || '',
+      zipcode: p.zip || p.zip_code || '',
+      county: 'Dallas',
+      trade: normalizeTradeType(p.work_type || p.permit_type || ''),
+      value: value,
+      lead_score: score,
+      score_label: getScoreLabel(score),
+      status: 'new',
+      source: 'dallas_open_data'
+    };
+  });
+
+  const { data, error } = await supabase
+    .from('leads')
+    .insert(leads)
+    .select();
+
+  if (error) {
+    console.error('❌ Insert error:', error.message);
+    return { success: false, count: 0, errors: [error.message] };
+  }
+
+  console.log(`✅ Inserted ${data?.length || 0} Dallas leads`);
+  return { success: true, count: data?.length || 0, leads: data };
+}
+
+if (require.main === module) {
+  ingestDallasLeads(10)
+    .then(result => {
+      console.log('\n🎉 Dallas ingestion complete!');
+      console.log(`📊 ${result.count} leads created`);
+    })
+    .catch(console.error);
+}
