@@ -9,7 +9,7 @@ async function fetchLeads() {
     const supabase = createServiceClient();
     const { data: leads, error } = await supabase
       .from('leads')
-      .select('id, name, trade, county, status, value, lead_score, created_at, address, zipcode')
+      .select('id, name, trade, county, status, value, lead_score, created_at, address, zipcode, external_permit_id')
       .order('created_at', { ascending: false });
     
     if (error) {

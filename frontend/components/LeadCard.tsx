@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapPin, Building, Phone, Mail } from 'lucide-react';
-import { Lead } from '../../types/supabase';
+import { Lead } from '../types/leads';
 
 interface FeedbackData {
   rating: 'thumbs_up' | 'thumbs_down' | null;
@@ -88,6 +88,11 @@ export default function LeadCard({
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {lead.address || lead.name || 'Unnamed Lead'}
             </h3>
+            {lead.external_permit_id && (
+              <div className="text-xs text-gray-500 mb-1">
+                Permit #: {lead.external_permit_id}
+              </div>
+            )}
             <div className="flex items-center space-x-4 text-xs text-gray-600 mb-2">
               {lead.city && lead.state && (
                 <div className="flex items-center space-x-1">

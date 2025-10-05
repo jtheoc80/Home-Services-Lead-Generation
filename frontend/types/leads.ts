@@ -25,6 +25,7 @@ export interface Lead {
   score_label?: string | null;
   value?: number | null;
   permit_id?: string | null;
+  external_permit_id?: string | null;
   county_population?: number | null;
   user_id?: string | null;
 }

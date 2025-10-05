@@ -6,18 +6,23 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 ## Project Status (Updated: October 5, 2025)
 - ✅ Multi-region support: Houston, Harris County, Dallas, Austin
 - ✅ Homepage displays real-time stats from Supabase database
-- ⚠️ Regional permit ingestion scripts (blocked by schema issues)
+- ✅ Automated scheduled ingestion service running every 6 hours
 - ✅ Authentication temporarily disabled (dashboard accessible without login)
-- ✅ Dashboard displaying leads with filtering by region
+- ✅ Dashboard displaying leads with filtering by region and permit numbers
 - ✅ Lead scoring system (Hot/Warm/Cold based on project value)
 
 ## Recent Changes
 **October 5, 2025:**
+- ✅ Added external_permit_id field to dashboard, Lead type, LeadCard component, and CSV export
+- ✅ Fixed LeadCard import to use correct type definition from '../types/leads'
+- ✅ CSV export now includes permit numbers (external_permit_id column)
+- ✅ LeadCard compact view displays "Permit #: [number]" for each lead
+- ✅ Successfully ingested 20+ leads with permit numbers (Houston and Austin)
+- ✅ Automated scheduled ingestion service set up (runs every 6 hours)
 - ✅ Homepage now displays real-time statistics from Supabase instead of hardcoded data
 - ✅ Created `/api/stats` endpoint to fetch live metrics (active counties, total leads, qualified leads, success rate)
 - ✅ Added proper error handling for API responses with res.ok validation
 - ✅ Updated Texas Counties section to show real lead counts per region
-- ⚠️ Ingestion scripts blocked by remote Supabase schema issue (jurisdiction field mismatch)
 
 **October 4, 2025:**
 - Added Dallas and Austin permit ingestion scripts
@@ -48,6 +53,8 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 - **API Routes**: 
   - `/frontend/app/api/ingest-region/route.ts` - Regional ingestion endpoint
   - `/frontend/app/api/stats/route.ts` - Live statistics endpoint (active counties, total leads, qualified leads, success rate)
+  - `/frontend/app/api/export/route.ts` - CSV export with external_permit_id
+- **Scheduled Service**: `scripts/scheduled-ingestion.ts` - Runs every 6 hours to ingest new permits
 
 ### Database (Supabase PostgreSQL)
 - **Tables**:
@@ -96,7 +103,8 @@ Required secrets (already configured):
 ## Known Schema Differences
 - Local dev database has `city`, `state` columns
 - Remote Supabase database uses minimal schema
-- Dashboard queries optimized for remote schema: `id, name, trade, county, status, value, lead_score, created_at, address, zipcode`
+- Dashboard queries optimized for remote schema: `id, name, trade, county, status, value, lead_score, created_at, address, zipcode, external_permit_id`
+- Ingestion scripts generate unique permit IDs using format: `{SOURCE}-{TIMESTAMP}-{INDEX}` (e.g., HOU-1759627520699-001)
 
 ## Lead Delivery System
 Currently, leads are delivered through:
