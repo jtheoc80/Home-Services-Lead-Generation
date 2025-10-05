@@ -271,14 +271,14 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
           <div className="lg:col-span-2">
             <Card className="p-6">
               <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="flex items-center space-x-2">
                     <Clock className="w-5 h-5 text-brand-600" />
                     <h3 className="text-xl font-semibold text-gray-900">Recent Leads</h3>
                     <span className="text-sm text-gray-500">({filteredLeads.length})</span>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     {/* Sort Dropdown */}
                     <select
                       value={sortBy}
@@ -291,14 +291,14 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
                     </select>
 
                     {/* Search */}
-                    <div className="relative">
+                    <div className="relative flex-1 sm:flex-none">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                       <input
                         type="text"
                         placeholder="Search leads..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 w-48"
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 w-full sm:w-48"
                       />
                     </div>
                   </div>
