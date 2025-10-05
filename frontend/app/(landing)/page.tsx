@@ -142,7 +142,7 @@ export default function HomePage() {
                 Intelligent Home Services Lead Generation
               </h1>
               
-              <p className="text-xl text-white/95 leading-relaxed">
+              <p className="text-xl text-white leading-relaxed">
                 Automatically scrape and enrich public building permit data across Texas. 
                 Get exclusive leads with intelligent scoring before your competition even knows they exist.
               </p>
@@ -170,15 +170,15 @@ export default function HomePage() {
               <Card variant="glass" className="p-8 backdrop-blur-xl bg-white/15 border-white/25">
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-white mb-2">Live Platform Stats</h3>
-                  <p className="text-white/90">Real-time data from Texas</p>
+                  <p className="text-white">Real-time data from Texas</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {displayStats.map((stat, index) => (
                     <div key={index} className="bg-white/15 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20">
-                      <div className="text-white/80 mb-2">{stat.icon}</div>
+                      <div className="text-white mb-2">{stat.icon}</div>
                       <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-                      <div className="text-sm text-white/90">{stat.label}</div>
+                      <div className="text-sm text-white">{stat.label}</div>
                     </div>
                   ))}
                 </div>
@@ -310,7 +310,7 @@ export default function HomePage() {
             <h2 className="text-4xl lg:text-5xl font-bold text-white">
               Ready to Transform Your Lead Generation?
             </h2>
-            <p className="text-xl text-white/95 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-white max-w-2xl mx-auto leading-relaxed">
               Join contractors across Texas who are already using our platform to identify 
               high-value opportunities before their competition.
             </p>
