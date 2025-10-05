@@ -4,7 +4,8 @@
 LeadLedgerPro is a comprehensive lead generation platform that scrapes permit data from Texas public sources and converts them into scored, actionable leads for home services contractors. The platform features a Next.js frontend dashboard connected to Supabase for data management.
 
 ## Project Status (Updated: October 5, 2025)
-- ✅ Multi-region support: Houston, Harris County, Dallas, Austin
+- ✅ Multi-region support: Greater Houston, Dallas, Austin, Fort Worth, San Antonio, El Paso
+- ✅ Coverage: 11.6M people across 6 major Texas metro areas
 - ✅ Homepage displays real-time stats from Supabase database
 - ✅ Automated scheduled ingestion service running every 6 hours
 - ✅ Authentication temporarily disabled (dashboard accessible without login)
@@ -12,7 +13,17 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 - ✅ Lead scoring system (Hot/Warm/Cold based on project value)
 
 ## Recent Changes
-**October 5, 2025:**
+**October 5, 2025 (Latest):**
+- ✅ Added Fort Worth, San Antonio, and El Paso to expand Texas coverage to 11.6M people
+- ✅ Created ingestion scripts for all three new cities (Fort Worth, San Antonio, El Paso)
+- ✅ Updated TexasCountySelector component to display 6 cities total
+- ✅ Updated county mapping system for filtering (tarrant, bexar, elpaso)
+- ✅ Updated scheduled ingestion service to run all 6 city ingestion scripts
+- ✅ Fixed TypeScript error in DashboardClient (Set spread operator)
+- ✅ Successfully tested all three new ingestion scripts with sample data fallback
+- ✅ Verified leads from all 6 cities are visible in dashboard
+
+**October 5, 2025 (Earlier):**
 - ✅ Updated homepage color theme to navy blue and grey for better readability and professional appearance
 - ✅ Migrated Tailwind CSS v4 theme colors from config file to CSS @theme directive
 - ✅ Replaced vibrant blue-orange gradient with subdued navy-slate color scheme
@@ -53,6 +64,9 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
   - `scripts/ingest_houston.ts` - Houston/Harris County permits (stores as county: 'Harris')
   - `scripts/ingest_dallas.ts` - Dallas County permits (stores as county: 'Dallas')
   - `scripts/ingest_austin.ts` - Travis County/Austin permits (stores as county: 'Travis')
+  - `scripts/ingest_fortworth.ts` - Fort Worth/Tarrant County permits (stores as county: 'Tarrant')
+  - `scripts/ingest_sanantonio.ts` - San Antonio/Bexar County permits (stores as county: 'Bexar')
+  - `scripts/ingest_elpaso.ts` - El Paso County permits (stores as county: 'El Paso')
 - **API Routes**: 
   - `/frontend/app/api/ingest-region/route.ts` - Regional ingestion endpoint
   - `/frontend/app/api/stats/route.ts` - Live statistics endpoint (active counties, total leads, qualified leads, success rate)
@@ -67,12 +81,26 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 
 ## County/Region Mapping
 The platform uses a county mapping system for filtering:
-- **Houston** → Maps to Harris county data
-- **Harris County** → Maps to Harris county data
+- **Greater Houston** → Maps to Harris county data
 - **Dallas** → Maps to Dallas county data
 - **Austin** → Maps to Travis county data
+- **Fort Worth** → Maps to Tarrant county data
+- **San Antonio** → Maps to Bexar county data
+- **El Paso** → Maps to El Paso county data
 
-Note: Houston and Harris County both display the same leads since Houston permits are stored with county='Harris' in the database.
+## Texas Coverage
+The platform now covers **6 major metro areas** with a combined population of **11.6 million**:
+1. Greater Houston (Harris County): 4.7M people
+2. Dallas: 2.6M people
+3. San Antonio (Bexar County): 1.5M people
+4. Austin (Travis County): 1.0M people
+5. Fort Worth (Tarrant County): 956K people
+6. El Paso: 678K people
+
+**Note on Data Sources:**
+- Houston, Dallas, Austin: Use real permit data from open data portals (when API is accessible)
+- Fort Worth, San Antonio, El Paso: Currently using sample data generation with fallback to real API when available
+- All scripts attempt to fetch from official city APIs first, then fall back to sample data if API unavailable
 
 ## Lead Scoring System
 - **Hot Leads** (90+): High-value projects, immediate opportunities

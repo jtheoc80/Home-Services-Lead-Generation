@@ -63,7 +63,7 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
       const params = new URLSearchParams();
       if (selectedCounties.length > 0 && selectedCounties.length < 7) {
         const mappedCounties = selectedCounties.map(c => countyMap[c.toLowerCase()] || c);
-        const uniqueCounties = [...new Set(mappedCounties)];
+        const uniqueCounties = Array.from(new Set(mappedCounties));
         params.append('counties', uniqueCounties.join(','));
       }
       
