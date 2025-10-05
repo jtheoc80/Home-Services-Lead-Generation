@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Table2, Settings, MapPin, BarChart3, Star } from "lucide-react";
+import { Home, FileText, Table2, Settings, MapPin, Star } from "lucide-react";
 import clsx from "clsx";
 
 const items = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/leads", label: "Leads", icon: Table2 },
   { href: "/permits", label: "Permits", icon: FileText },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
