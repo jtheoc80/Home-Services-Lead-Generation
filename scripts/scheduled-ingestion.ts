@@ -21,6 +21,7 @@ async function runScheduledIngestion() {
   console.log(`⏰ Next run in 6 hours\n`);
   
   await runIngestionScript('ingest_houston.ts');
+  await runIngestionScript('ingest_dallas.ts');
   await runIngestionScript('ingest_austin.ts');
   
   console.log(`\n✅ Scheduled ingestion cycle complete\n`);

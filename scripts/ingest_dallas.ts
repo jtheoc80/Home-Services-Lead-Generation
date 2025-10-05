@@ -16,14 +16,17 @@ interface DallasPermit {
   owner?: string;
   applicant?: string;
   address?: string;
+  street_address?: string;
   project_address?: string;
   zip?: string;
   zip_code?: string;
   work_type?: string;
+  work_description?: string;
   permit_type?: string;
   valuation?: string | number;
   value?: string | number;
   issue_date?: string;
+  issued_date?: string;
 }
 
 function normalizeTradeType(trade: string): string {
@@ -58,7 +61,7 @@ function getScoreLabel(score: number): string {
 async function fetchDallasPermits(limit: number = 10): Promise<DallasPermit[]> {
   try {
     const response = await fetch(
-      `https://www.dallasopendata.com/resource/e7gq-4sah.json?$limit=${limit}&$order=issue_date DESC`,
+      `https://www.dallasopendata.com/resource/e7gq-4sah.json?$limit=${limit}&$order=issued_date DESC`,
       { signal: AbortSignal.timeout(15000) }
     );
 
@@ -91,12 +94,12 @@ export async function ingestDallasLeads(limit: number = 10) {
     const score = calculateLeadScore(value);
     
     return {
-      external_permit_id: p.permit || p.permit_number || `DAL-${Date.now()}-${idx}`,
+      external_permit_id: p.permit_number || p.permit || `DAL-${Date.now()}-${String(idx).padStart(3, '0')}`,
       name: p.contractor || p.owner || p.applicant || 'Unknown Contractor',
-      address: p.address || p.project_address || '',
-      zipcode: p.zip || p.zip_code || '',
+      address: p.street_address || p.address || p.project_address || '',
+      zipcode: p.zip_code || p.zip || '',
       county: 'Dallas',
-      trade: normalizeTradeType(p.work_type || p.permit_type || ''),
+      trade: normalizeTradeType(p.work_description || p.work_type || p.permit_type || ''),
       value: value,
       lead_score: score,
       score_label: getScoreLabel(score),
