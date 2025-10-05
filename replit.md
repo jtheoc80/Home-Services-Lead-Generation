@@ -3,14 +3,22 @@
 ## Overview
 LeadLedgerPro is a comprehensive lead generation platform that scrapes permit data from Texas public sources and converts them into scored, actionable leads for home services contractors. The platform features a Next.js frontend dashboard connected to Supabase for data management.
 
-## Project Status (Updated: October 4, 2025)
+## Project Status (Updated: October 5, 2025)
 - ✅ Multi-region support: Houston, Harris County, Dallas, Austin
-- ✅ Regional permit ingestion scripts operational
+- ✅ Homepage displays real-time stats from Supabase database
+- ⚠️ Regional permit ingestion scripts (blocked by schema issues)
 - ✅ Authentication temporarily disabled (dashboard accessible without login)
 - ✅ Dashboard displaying leads with filtering by region
 - ✅ Lead scoring system (Hot/Warm/Cold based on project value)
 
 ## Recent Changes
+**October 5, 2025:**
+- ✅ Homepage now displays real-time statistics from Supabase instead of hardcoded data
+- ✅ Created `/api/stats` endpoint to fetch live metrics (active counties, total leads, qualified leads, success rate)
+- ✅ Added proper error handling for API responses with res.ok validation
+- ✅ Updated Texas Counties section to show real lead counts per region
+- ⚠️ Ingestion scripts blocked by remote Supabase schema issue (jurisdiction field mismatch)
+
 **October 4, 2025:**
 - Added Dallas and Austin permit ingestion scripts
 - Updated TexasCountySelector to display exactly 4 regions: Houston, Harris County, Dallas, Austin
@@ -37,7 +45,9 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
   - `scripts/ingest_houston.ts` - Houston/Harris County permits (stores as county: 'Harris')
   - `scripts/ingest_dallas.ts` - Dallas County permits (stores as county: 'Dallas')
   - `scripts/ingest_austin.ts` - Travis County/Austin permits (stores as county: 'Travis')
-- **API Routes**: `/frontend/app/api/ingest-region/route.ts` - Regional ingestion endpoint
+- **API Routes**: 
+  - `/frontend/app/api/ingest-region/route.ts` - Regional ingestion endpoint
+  - `/frontend/app/api/stats/route.ts` - Live statistics endpoint (active counties, total leads, qualified leads, success rate)
 
 ### Database (Supabase PostgreSQL)
 - **Tables**:
