@@ -15,7 +15,7 @@ export async function GET() {
       supabase
         .from('leads')
         .select('county')
-        .in('county', ['Harris', 'Dallas', 'Travis'])
+        .in('county', ['Harris', 'Dallas', 'Travis', 'Tarrant', 'Bexar', 'El Paso'])
     ]);
 
     if (leadsResult.error) throw leadsResult.error;
