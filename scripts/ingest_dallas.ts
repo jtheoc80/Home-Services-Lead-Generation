@@ -119,11 +119,14 @@ export async function ingestDallasLeads(limit: number = 10) {
   return { success: true, count: data?.length || 0, leads: data };
 }
 
-if (require.main === module) {
-  ingestDallasLeads(10)
-    .then(result => {
-      console.log('\n🎉 Dallas ingestion complete!');
-      console.log(`📊 ${result.count} leads created`);
-    })
-    .catch(console.error);
-}
+// Run if executed directly
+ingestDallasLeads(10)
+  .then(result => {
+    console.log('\n🎉 Dallas ingestion complete!');
+    console.log(`📊 ${result.count} leads created`);
+    process.exit(0);
+  })
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
