@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Search, Settings, User, ChevronDown, MapPin, Clock, Zap } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 
 export default function Topbar() {
   const [showNotifications, setShowNotifications] = useState(false);
-  const currentHour = new Date().getHours();
+  const [greeting, setGreeting] = useState("Good day");
   
-  const getGreeting = () => {
-    if (currentHour < 12) return "Good morning";
-    if (currentHour < 17) return "Good afternoon";
-    return "Good evening";
-  };
+  useEffect(() => {
+    const currentHour = new Date().getHours();
+    if (currentHour < 12) setGreeting("Good morning");
+    else if (currentHour < 17) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+  }, []);
 
   return (
     <header className="h-16 bg-white/80 backdrop-blur-sm border-b border-gray-200/50 flex items-center sticky top-0 z-40">
@@ -20,7 +21,7 @@ export default function Topbar() {
         {/* Left Section */}
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600 font-medium">{getGreeting()}</span>
+            <span className="text-sm text-gray-600 font-medium">{greeting}</span>
             <span className="text-lg">👋</span>
           </div>
           
