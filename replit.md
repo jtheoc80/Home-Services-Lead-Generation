@@ -13,7 +13,19 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 - ✅ Lead scoring system (Hot/Warm/Cold based on project value)
 
 ## Recent Changes
-**October 5, 2025 (Latest):**
+**October 5, 2025 (Latest - Owner/Contractor Separation):**
+- ✅ Added database fields: contractor_name, owner_name, lead_type, phone, email
+- ✅ Updated all 6 ingestion scripts to separate owner from contractor data
+- ✅ Owner names prioritized over contractor names for lead generation (higher value)
+- ✅ Lead types automatically set: "owner" (property owner), "contractor" (company), "unknown" (fallback)
+- ✅ Updated Lead type, LeadCard UI, and CSV export to display owner/contractor information
+- ✅ Restored permit ID display on LeadCard (was accidentally removed during update)
+- ⏳ Known Issue: Supabase Cloud PostgREST schema cache takes 1-2 minutes to refresh automatically
+- ⏳ Frontend queries may show "column does not exist" error until schema cache refreshes
+- ✅ Ingestion service successfully inserting leads with new fields (backend working)
+- ✅ Researched premium contact enrichment: Requires custom API integration (Clearbit/Hunter.io/Apollo.io)
+
+**October 5, 2025 (City Expansion):**
 - ✅ Added Fort Worth, San Antonio, and El Paso to expand Texas coverage to 11.6M people
 - ✅ Created ingestion scripts for all three new cities (Fort Worth, San Antonio, El Paso)
 - ✅ Updated TexasCountySelector component to display 6 cities total
@@ -135,8 +147,25 @@ Required secrets (already configured):
 ## Known Schema Differences
 - Local dev database has `city`, `state` columns
 - Remote Supabase database uses minimal schema
-- Dashboard queries optimized for remote schema: `id, name, trade, county, status, value, lead_score, created_at, address, zipcode, external_permit_id`
+- Dashboard queries optimized for remote schema: `id, name, owner_name, contractor_name, lead_type, trade, county, status, value, lead_score, score_label, created_at, address, zipcode, external_permit_id, phone, email`
 - Ingestion scripts generate unique permit IDs using format: `{SOURCE}-{TIMESTAMP}-{INDEX}` (e.g., HOU-1759627520699-001)
+
+## Known Issues & Workarounds
+
+### Supabase PostgREST Schema Cache Delay
+**Issue:** After adding new database columns, Supabase Cloud's PostgREST schema cache may not immediately reflect changes. Frontend queries can show "column does not exist" errors even though the columns exist in the database.
+
+**Cause:** On Supabase Cloud, PostgREST is managed by Supabase and the `NOTIFY pgrst, 'reload schema'` command doesn't work. The schema cache refreshes automatically but with a delay.
+
+**Workaround:** 
+1. **Wait 1-2 minutes** - The schema cache should auto-refresh
+2. Backend operations (SQL inserts, scheduled ingestion) work immediately
+3. Frontend queries will succeed once cache propagates
+4. For urgent fixes: Restart the Supabase project via dashboard (if available)
+
+**References:**
+- [PostgREST Issue #2791](https://github.com/PostgREST/postgrest/issues/2791)
+- [Supabase Discussion #3186](https://github.com/orgs/supabase/discussions/3186)
 
 ## Lead Delivery System
 Currently, leads are delivered through:
