@@ -13,6 +13,9 @@ LeadLedgerPro is a comprehensive lead generation platform that scrapes permit da
 
 ## Recent Changes
 **October 5, 2025:**
+- ✅ Updated homepage color theme to navy blue and grey for better readability and professional appearance
+- ✅ Migrated Tailwind CSS v4 theme colors from config file to CSS @theme directive
+- ✅ Replaced vibrant blue-orange gradient with subdued navy-slate color scheme
 - ✅ Added external_permit_id field to dashboard, Lead type, LeadCard component, and CSV export
 - ✅ Fixed LeadCard import to use correct type definition from '../types/leads'
 - ✅ CSV export now includes permit numbers (external_permit_id column)
@@ -87,6 +90,7 @@ Scoring based on:
 - Separate components for maintainability
 - TypeScript for type safety
 - Minimal temporary/debug files
+- Navy blue and grey color theme for better readability (not vibrant colors)
 
 ## Environment Configuration
 Required secrets (already configured):

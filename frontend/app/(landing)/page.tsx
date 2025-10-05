@@ -123,26 +123,26 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section - Split Layout */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-texas-600">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-600/90 to-texas-600/90"></div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-navy-800 via-navy-900 to-slate-900">
+        <div className="absolute inset-0 bg-gradient-to-br from-navy-800/95 to-slate-900/95"></div>
         <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
         
         <div className="relative mx-auto max-w-7xl px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left: Hero Content */}
             <div className="space-y-8">
-              <Badge variant="score" size="lg" className="animate-bounce-gentle">
+              <Badge variant="score" size="lg" className="bg-navy-600/30 text-navy-100 border-navy-500">
                 <Star className="w-4 h-4 mr-2" />
                 Texas #1 Lead Generation Platform
               </Badge>
               
-              <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
+              <h1 className="text-5xl lg:text-6xl font-bold text-white">
                 Intelligent Home Services Lead Generation
               </h1>
               
-              <p className="text-xl text-white/90 leading-relaxed">
+              <p className="text-xl text-slate-300 leading-relaxed">
                 Automatically scrape and enrich public building permit data across Texas. 
                 Get exclusive leads with intelligent scoring before your competition even knows they exist.
               </p>
@@ -150,7 +150,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button 
                   onClick={() => (location.href = "/dashboard")}
-                  className="inline-flex items-center justify-center px-8 py-4 bg-white text-brand-700 font-semibold rounded-2xl hover:bg-gray-100 transition-all duration-300 shadow-soft-xl group"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-navy-600 text-white font-semibold rounded-lg hover:bg-navy-500 transition-all duration-300 shadow-lg group"
                 >
                   View Dashboard
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -158,7 +158,7 @@ export default function HomePage() {
                 
                 <button 
                   onClick={() => (location.href = "/leads")}
-                  className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-brand-700 transition-all duration-300"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-slate-400 text-slate-200 font-semibold rounded-lg hover:bg-slate-800 hover:border-slate-300 transition-all duration-300"
                 >
                   Browse Leads
                 </button>
@@ -167,18 +167,18 @@ export default function HomePage() {
 
             {/* Right: Live Stats Card */}
             <div className="lg:block">
-              <Card variant="glass" className="p-8 backdrop-blur-xl bg-white/10 border-white/20">
+              <Card variant="glass" className="p-8 backdrop-blur-xl bg-slate-800/40 border-slate-700/50">
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-white mb-2">Live Platform Stats</h3>
-                  <p className="text-white/80">Real-time data from Texas</p>
+                  <p className="text-slate-300">Real-time data from Texas</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {displayStats.map((stat, index) => (
-                    <div key={index} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-                      <div className="text-white/60 mb-2">{stat.icon}</div>
+                    <div key={index} className="bg-slate-700/30 backdrop-blur-sm rounded-lg p-4 text-center border border-slate-600/30">
+                      <div className="text-slate-400 mb-2">{stat.icon}</div>
                       <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-                      <div className="text-sm text-white/70">{stat.label}</div>
+                      <div className="text-sm text-slate-300">{stat.label}</div>
                     </div>
                   ))}
                 </div>
@@ -215,15 +215,15 @@ export default function HomePage() {
                     className="p-6 text-center group h-full"
                   >
                     <div className="space-y-4">
-                      <div className="w-16 h-16 mx-auto bg-texas-100 rounded-2xl flex items-center justify-center group-hover:bg-texas-200 transition-colors">
-                        <MapPin className="w-8 h-8 text-texas-600" />
+                      <div className="w-16 h-16 mx-auto bg-navy-100 rounded-2xl flex items-center justify-center group-hover:bg-navy-200 transition-colors">
+                        <MapPin className="w-8 h-8 text-navy-600" />
                       </div>
                       
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-2">{county.name}</h3>
                         <p className="text-sm text-gray-600 mb-3">Pop: {county.population}</p>
                         
-                        <Badge variant="texas" size="sm">
+                        <Badge variant="default" size="sm" className="bg-navy-100 text-navy-700">
                           {loading ? '...' : permits.toLocaleString()} leads
                         </Badge>
                       </div>
@@ -251,10 +251,10 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Large Featured Card */}
             <div className="lg:row-span-2">
-              <Card hover className="p-8 h-full bg-gradient-to-br from-brand-50 to-texas-50 group">
+              <Card hover className="p-8 h-full bg-gradient-to-br from-navy-50 to-slate-100 group">
                 <div className="space-y-6 h-full flex flex-col">
-                  <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center group-hover:bg-brand-200 transition-colors">
-                    <div className="text-brand-600">
+                  <div className="w-16 h-16 bg-navy-200 rounded-2xl flex items-center justify-center group-hover:bg-navy-300 transition-colors">
+                    <div className="text-navy-700">
                       {features[0].icon}
                     </div>
                   </div>
@@ -268,8 +268,8 @@ export default function HomePage() {
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="flex items-center text-brand-600 font-semibold group-hover:gap-2 transition-all">
+                  <div className="pt-4 border-t border-slate-200">
+                    <div className="flex items-center text-navy-700 font-semibold group-hover:gap-2 transition-all">
                       <span>Learn more</span>
                       <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -282,8 +282,8 @@ export default function HomePage() {
             {features.slice(1).map((feature, index) => (
               <Card key={index} hover className="p-6 group">
                 <div className="space-y-4">
-                  <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center group-hover:bg-brand-200 transition-colors">
-                    <div className="text-brand-600">
+                  <div className="w-12 h-12 bg-navy-100 rounded-xl flex items-center justify-center group-hover:bg-navy-200 transition-colors">
+                    <div className="text-navy-600">
                       {feature.icon}
                     </div>
                   </div>
@@ -304,13 +304,13 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-brand-600 to-texas-600">
+      <section className="py-20 bg-gradient-to-r from-navy-800 to-navy-900">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <div className="space-y-8">
             <h2 className="text-4xl lg:text-5xl font-bold text-white">
               Ready to Transform Your Lead Generation?
             </h2>
-            <p className="text-xl text-white/90 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
               Join contractors across Texas who are already using our platform to identify 
               high-value opportunities before their competition.
             </p>
@@ -318,7 +318,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
                 onClick={() => (location.href = "/dashboard")}
-                className="inline-flex items-center justify-center px-8 py-4 bg-white text-brand-700 font-semibold rounded-2xl hover:bg-gray-100 transition-all duration-300 shadow-soft-xl"
+                className="inline-flex items-center justify-center px-8 py-4 bg-navy-600 text-white font-semibold rounded-lg hover:bg-navy-500 transition-all duration-300 shadow-lg"
               >
                 <CheckCircle className="w-5 h-5 mr-2" />
                 Get Started Now
@@ -326,7 +326,7 @@ export default function HomePage() {
               
               <button 
                 onClick={() => (location.href = "/leads-test")}
-                className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-brand-700 transition-all duration-300"
+                className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-slate-400 text-slate-200 font-semibold rounded-lg hover:bg-slate-800 hover:border-slate-300 transition-all duration-300"
               >
                 Try Demo
               </button>

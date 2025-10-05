@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 @theme {
-  --color-brand-50: #f1f6ff;
-  --color-brand-100: #e3eeff;
-  --color-brand-200: #c6daff;
-  --color-brand-300: #9fbfff;
-  --color-brand-400: #6e9aff;
-  --color-brand-500: #3d74ff;
-  --color-brand-600: #2a57db;
-  --color-brand-700: #1e40b5;
-  --color-brand-800: #183591;
-  --color-brand-900: #152d78;
+  --color-navy-50: #f0f4f8;
+  --color-navy-100: #d9e2ec;
+  --color-navy-200: #bcccdc;
+  --color-navy-300: #9fb3c8;
+  --color-navy-400: #829ab1;
+  --color-navy-500: #627d98;
+  --color-navy-600: #486581;
+  --color-navy-700: #334e68;
+  --color-navy-800: #243b53;
+  --color-navy-900: #102a43;
   
-  --color-texas-50: #fef7ee;
-  --color-texas-100: #fdedd3;
-  --color-texas-200: #fbd7a5;
-  --color-texas-300: #f8bb6d;
-  --color-texas-400: #f59532;
-  --color-texas-500: #f2760b;
-  --color-texas-600: #e35c05;
-  --color-texas-700: #bc4507;
-  --color-texas-800: #96360e;
-  --color-texas-900: #792e0f;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
   
   --color-success-50: #ecfdf5;
   --color-success-100: #d1fae5;
@@ -75,7 +75,6 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -95,19 +94,16 @@ body {
   background: #94a3b8;
 }
 
-/* Smooth transitions */
 * {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Focus styles */
 *:focus-visible {
-  outline: 2px solid #3d74ff;
+  outline: 2px solid #486581;
   outline-offset: 2px;
 }
 
-/* Enhanced animations */
 @keyframes shimmer {
   0% {
     background-position: -200px 0;
@@ -128,24 +124,13 @@ body {
   animation: shimmer 2s infinite;
 }
 
-/* Glass morphism utility */
 .glass {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Texas gradient utilities */
-.texas-gradient {
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #dc2626 100%);
-}
-
-.brand-gradient {
-  background: linear-gradient(135deg, #3d74ff 0%, #6366f1 50%, #8b5cf6 100%);
-}
-
-/* Text selection */
 ::selection {
-  background-color: rgba(61, 116, 255, 0.2);
+  background-color: rgba(72, 101, 129, 0.2);
   color: inherit;
 }
