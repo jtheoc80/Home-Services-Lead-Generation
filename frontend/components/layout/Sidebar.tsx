@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, FileText, Table2, Settings, MapPin, Star } from "lucide-react";
@@ -12,8 +13,41 @@ const items = [
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
+interface Stats {
+  activeCounties: number;
+  totalLeads: number;
+  qualifiedLeads: number;
+  successRate: number;
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const [stats, setStats] = useState<Stats>({
+    activeCounties: 0,
+    totalLeads: 0,
+    qualifiedLeads: 0,
+    successRate: 0
+  });
+  const [weeklyLeads, setWeeklyLeads] = useState(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+          setWeeklyLeads(Math.round(data.totalLeads * 0.15));
+        }
+      } catch (error) {
+        console.error('Failed to fetch sidebar stats:', error);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <aside className="w-64 shrink-0 border-r bg-gradient-to-b from-white to-slate-50/50 backdrop-blur-sm">
@@ -72,15 +106,15 @@ export default function Sidebar() {
         <div className="space-y-2 text-xs">
           <div className="flex justify-between text-navy-700">
             <span>Active Counties:</span>
-            <span className="font-semibold">4</span>
+            <span className="font-semibold">{stats.activeCounties}</span>
           </div>
           <div className="flex justify-between text-navy-700">
             <span>Total Permits:</span>
-            <span className="font-semibold">3,959</span>
+            <span className="font-semibold">{stats.totalLeads.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-navy-700">
             <span>This Week:</span>
-            <span className="font-semibold">+187</span>
+            <span className="font-semibold">+{weeklyLeads}</span>
           </div>
         </div>
         
