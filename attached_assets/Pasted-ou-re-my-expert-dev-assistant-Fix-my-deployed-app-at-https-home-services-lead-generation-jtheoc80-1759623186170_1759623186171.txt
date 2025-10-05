@@ -1,0 +1,110 @@
+ou’re my expert dev assistant. Fix my deployed app at https://home-services-lead-generation-jtheoc80.replit.app/
+ so it renders properly (right now it shows raw Markdown-looking text / unstyled content). Treat this as a Next.js + Tailwind + Supabase project. Do a full diagnosis and then apply the fixes.
+
+Goals
+
+Make / render as styled HTML (no literal #/## Markdown).
+
+Ensure Tailwind loads and hydrates on the client.
+
+Add a JSON health route at /api/health → { "status": "ok" }.
+
+Bind to process.env.PORT and 0.0.0.0 so Replit serves correctly.
+
+Keep server-only secrets out of client bundles.
+
+Acceptance Criteria
+
+npm install completes without fatal peer-dep errors.
+
+npm run build succeeds (no TS/ESLint blockers).
+
+npm run start (or dev) serves / and /api/health (200, expected JSON).
+
+Tailwind utilities affect elements on / (prove with a visible Tailwind-styled banner).
+
+Routes /, /leads, /login do not 404 and are styled.
+
+No console errors for missing CSS/JS from /_next/*.
+
+Fix Checklist (do these even if you have to create files)
+
+Package scripts & Node
+
+In package.json:
+
+"dev": "next dev -p $PORT -H 0.0.0.0",
+
+"build": "next build",
+
+"start": "next start -p $PORT -H 0.0.0.0".
+
+Set Node LTS: "engines": { "node": ">=18 <=20" }.
+
+Replit config
+
+.replit: run = "npm run dev" (or start if you prefer).
+
+Ensure replit.nix supports Node 18/20.
+
+Tailwind wiring
+
+Install/configure: tailwindcss, postcss, autoprefixer.
+
+tailwind.config.js → valid content globs:
+
+./app/**/*.{js,ts,jsx,tsx,mdx}
+
+./pages/**/*.{js,ts,jsx,tsx,mdx}
+
+./components/**/*.{js,ts,jsx,tsx,mdx}
+
+globals.css has @tailwind base; @tailwind components; @tailwind utilities;
+
+Import globals.css once in the root (app/layout.tsx for App Router OR pages/_app.tsx for Pages Router).
+
+Markdown/MDX rendering
+
+If content is meant to be MDX: configure @next/mdx and include md/mdx in pageExtensions.
+
+If content is plain Markdown: use react-markdown + remark-gfm in components to render it (do NOT output raw strings with ##).
+
+Health route
+
+App Router: app/api/health/route.ts returns NextResponse.json({ status: "ok" }).
+
+Pages Router: pages/api/health.ts returns the same JSON.
+
+Hydration & assets
+
+Remove incorrect basePath/assetPrefix from next.config.js unless truly needed.
+
+Verify /_next/* assets are 200 in devtools Network.
+
+Supabase (don’t leak secrets)
+
+Create lib/supabase.ts for browser client (uses NEXT_PUBLIC_*).
+
+Create lib/supabaseAdmin.ts for server-only (uses service key).
+
+Never expose service key to client.
+
+Optional: in /api/health, perform a minimal “select 1” if envs are present.
+
+Env scaffolding
+
+Generate .env.example with:
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=   # server only
+NEXT_PUBLIC_SITE_URL=
+
+
+Add runtime checks that log missing envs clearly (without crashing the whole app).
+
+After you finish
+
+Post a concise changelog: files edited, key fixes, and any remaining TODOs or missing envs.
+
+Confirm the acceptance criteria pass and the homepage is visibly styled.
