@@ -10,14 +10,19 @@ export interface Lead {
   updated_at?: string;
   source?: string | null;
   name?: string | null;
+  contractor_name?: string | null;
+  owner_name?: string | null;
+  lead_type?: string | null;
   phone?: string | null;
   email?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
   zip?: string | null;
+  zipcode?: string | null;
   status?: string | null;
   service?: string | null; // Maps to permit_type in permits context
+  trade?: string | null;
   county?: string | null;
   metadata?: any; // JSONB field
   // Enhanced fields for dashboard

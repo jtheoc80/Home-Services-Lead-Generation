@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Building, Phone, Mail } from 'lucide-react';
+import { MapPin, Building, Phone, Mail, User, HardHat } from 'lucide-react';
 import { Lead } from '../types/leads';
 
 interface FeedbackData {
@@ -88,6 +88,20 @@ export default function LeadCard({
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {lead.address || lead.name || 'Unnamed Lead'}
             </h3>
+            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-1">
+              {lead.owner_name && (
+                <div className="flex items-center space-x-1">
+                  <User className="w-3 h-3" />
+                  <span className="font-medium">{lead.owner_name}</span>
+                </div>
+              )}
+              {lead.contractor_name && (
+                <div className="flex items-center space-x-1">
+                  <HardHat className="w-3 h-3" />
+                  <span>{lead.contractor_name}</span>
+                </div>
+              )}
+            </div>
             {lead.external_permit_id && (
               <div className="text-xs text-gray-500 mb-1">
                 Permit #: {lead.external_permit_id}
@@ -100,8 +114,8 @@ export default function LeadCard({
                   <span>{lead.city}, {lead.state}</span>
                 </div>
               )}
-              {lead.service && (
-                <span>{lead.service}</span>
+              {lead.service || lead.trade && (
+                <span>{lead.service || lead.trade}</span>
               )}
             </div>
             <div className="flex items-center justify-between">
@@ -193,10 +207,37 @@ export default function LeadCard({
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        {lead.permit_id && (
+        {lead.owner_name && (
+          <div>
+            <span className="font-medium text-gray-500">Property Owner:</span>
+            <p className="text-gray-900 flex items-center space-x-1">
+              <User className="w-4 h-4 inline text-blue-600" />
+              <span>{lead.owner_name}</span>
+            </p>
+          </div>
+        )}
+
+        {lead.contractor_name && (
+          <div>
+            <span className="font-medium text-gray-500">Contractor:</span>
+            <p className="text-gray-900 flex items-center space-x-1">
+              <HardHat className="w-4 h-4 inline text-amber-600" />
+              <span>{lead.contractor_name}</span>
+            </p>
+          </div>
+        )}
+
+        {lead.lead_type && (
+          <div>
+            <span className="font-medium text-gray-500">Lead Type:</span>
+            <p className="text-gray-900 capitalize">{lead.lead_type}</p>
+          </div>
+        )}
+
+        {(lead.permit_id || lead.external_permit_id) && (
           <div>
             <span className="font-medium text-gray-500">Permit ID:</span>
-            <p className="text-gray-900">{lead.permit_id}</p>
+            <p className="text-gray-900">{lead.external_permit_id || lead.permit_id}</p>
           </div>
         )}
         
@@ -204,6 +245,13 @@ export default function LeadCard({
           <span className="font-medium text-gray-500">Value:</span>
           <p className="text-gray-900">{formatCurrency(lead.value)}</p>
         </div>
+
+        {lead.trade && (
+          <div>
+            <span className="font-medium text-gray-500">Trade:</span>
+            <p className="text-gray-900">{lead.trade}</p>
+          </div>
+        )}
         
         <div>
           <span className="font-medium text-gray-500">Created:</span>
