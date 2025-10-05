@@ -76,6 +76,7 @@ export default function HomePage() {
     countyBreakdown: {}
   });
   const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({ biz: '', email: '', county: '' });
 
   useEffect(() => {
     fetch('/api/stats')
@@ -92,6 +93,12 @@ export default function HomePage() {
         setLoading(false);
       });
   }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    alert(`Thanks ${formData.biz}! Check ${formData.email} for demo access.`);
+    setFormData({ biz: '', email: '', county: '' });
+  };
 
   const displayStats = [
     { 
@@ -122,7 +129,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section - Split Layout */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-navy-600 via-navy-700 to-slate-700">
         <div className="absolute inset-0 bg-gradient-to-br from-navy-600/90 to-slate-700/90"></div>
         <div className="absolute inset-0" style={{
@@ -132,56 +139,89 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-7xl px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left: Hero Content */}
-            <div className="space-y-8">
-              <Badge variant="score" size="lg" className="bg-white/20 text-white border-white/30">
-                <Star className="w-4 h-4 mr-2" />
-                Texas #1 Lead Generation Platform
-              </Badge>
-              
+            <div className="space-y-6">
               <h1 className="text-5xl lg:text-6xl font-bold text-white">
-                Intelligent Home Services Lead Generation
+                Beat competitors to new permits across Texas
               </h1>
               
-              <p className="text-xl text-white leading-relaxed">
-                Automatically scrape and enrich public building permit data across Texas. 
-                Get exclusive leads with intelligent scoring before your competition even knows they exist.
+              <p className="text-xl text-white/90 leading-relaxed">
+                We scrape & score building permits nightly so you get high-value homeowner leads first—Houston, Dallas, Austin and more.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button 
-                  onClick={() => (location.href = "/dashboard")}
-                  className="inline-flex items-center justify-center px-8 py-4 bg-white text-navy-700 font-semibold rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-lg group"
-                >
-                  View Dashboard
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </button>
-                
-                <button 
-                  onClick={() => (location.href = "/leads")}
-                  className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-white/80 text-white font-semibold rounded-lg hover:bg-white/10 hover:border-white transition-all duration-300"
-                >
-                  Browse Leads
-                </button>
+              <div className="flex flex-wrap gap-3">
+                <span className="inline-flex items-center px-4 py-2 bg-white/20 text-white rounded-lg border border-white/30 text-sm backdrop-blur-sm">
+                  ⭐ 4.9/5 from early users
+                </span>
+                <span className="inline-flex items-center px-4 py-2 bg-white/20 text-white rounded-lg border border-white/30 text-sm backdrop-blur-sm">
+                  ⚡ Nightly updates @ 6:00 AM UTC
+                </span>
+                <span className="inline-flex items-center px-4 py-2 bg-white/20 text-white rounded-lg border border-white/30 text-sm backdrop-blur-sm">
+                  🔒 Supabase RLS & JWT
+                </span>
               </div>
             </div>
 
-            {/* Right: Live Stats Card */}
+            {/* Right: Lead Form */}
             <div className="lg:block">
-              <Card variant="glass" className="p-8 backdrop-blur-xl bg-white/15 border-white/25">
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">Live Platform Stats</h3>
-                  <p className="text-white">Real-time data from Texas</p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {displayStats.map((stat, index) => (
-                    <div key={index} className="bg-white/15 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20">
-                      <div className="text-white mb-2">{stat.icon}</div>
-                      <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-                      <div className="text-sm text-white">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
+              <Card className="p-8 bg-white shadow-2xl">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Try the live demo</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="sr-only">Business name</label>
+                    <input
+                      name="biz"
+                      type="text"
+                      placeholder="Business name"
+                      required
+                      value={formData.biz}
+                      onChange={(e) => setFormData({...formData, biz: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="sr-only">Email</label>
+                    <input
+                      name="email"
+                      type="email"
+                      placeholder="Work email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="sr-only">County</label>
+                    <select
+                      name="county"
+                      required
+                      value={formData.county}
+                      onChange={(e) => setFormData({...formData, county: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500"
+                    >
+                      <option value="">Select county</option>
+                      <option value="Harris">Harris</option>
+                      <option value="Dallas">Dallas</option>
+                      <option value="Travis">Travis</option>
+                      <option value="Tarrant">Tarrant</option>
+                      <option value="Bexar">Bexar</option>
+                      <option value="El Paso">El Paso</option>
+                    </select>
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    className="w-full px-8 py-4 bg-navy-600 text-white font-semibold rounded-lg hover:bg-navy-700 transition-all duration-300 shadow-lg"
+                  >
+                    Get Leads
+                  </button>
+                  
+                  <p className="text-sm text-gray-600 text-center">
+                    No spam. We'll send a demo login + sample leads.
+                  </p>
+                </form>
               </Card>
             </div>
           </div>
