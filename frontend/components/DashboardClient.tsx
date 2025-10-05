@@ -191,15 +191,15 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      <div className="mx-auto max-w-7xl p-6 space-y-8">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-8">
         <DashboardHeader
           title="Texas Lead Dashboard"
           subtitle="Intelligent home services lead generation across the Lone Star State"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <button
               onClick={handleExportLeads}
-              className="inline-flex items-center px-6 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
+              className="inline-flex items-center justify-center px-4 sm:px-6 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -208,7 +208,7 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
             </button>
             <button
               onClick={() => router.push('/leads/new')}
-              className="inline-flex items-center px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+              className="inline-flex items-center justify-center px-4 sm:px-6 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create New Lead

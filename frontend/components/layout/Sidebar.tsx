@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Table2, Settings, MapPin, Star } from "lucide-react";
+import { Home, FileText, Table2, Settings, MapPin, Star, X } from "lucide-react";
 import clsx from "clsx";
 
 const items = [
@@ -20,7 +20,11 @@ interface Stats {
   successRate: number;
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+export default function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const [stats, setStats] = useState<Stats>({
     activeCounties: 0,
@@ -50,18 +54,31 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-64 shrink-0 border-r bg-gradient-to-b from-white to-slate-50/50 backdrop-blur-sm">
-      <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200/50">
-        <div className="relative">
-          <div className="size-10 rounded-2xl bg-gradient-to-br from-navy-600 via-navy-700 to-slate-700 shadow-soft animate-float" />
-          <Star className="absolute inset-0 m-auto w-5 h-5 text-white" />
-        </div>
-        <div className="leading-tight">
-          <div className="font-bold tracking-tight bg-gradient-to-r from-navy-700 to-slate-700 bg-clip-text text-transparent">
-            LeadLedgerPro
+    <aside className="w-64 h-screen shrink-0 border-r bg-gradient-to-b from-white to-slate-50/50 backdrop-blur-sm overflow-y-auto">
+      {/* Header with Close Button for Mobile */}
+      <div className="h-16 flex items-center justify-between gap-3 px-6 border-b border-slate-200/50">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="size-10 rounded-2xl bg-gradient-to-br from-navy-600 via-navy-700 to-slate-700 shadow-soft animate-float" />
+            <Star className="absolute inset-0 m-auto w-5 h-5 text-white" />
           </div>
-          <div className="text-xs text-slate-500 font-medium">Texas Edition</div>
+          <div className="leading-tight">
+            <div className="font-bold tracking-tight bg-gradient-to-r from-navy-700 to-slate-700 bg-clip-text text-transparent">
+              LeadLedgerPro
+            </div>
+            <div className="text-xs text-slate-500 font-medium">Texas Edition</div>
+          </div>
         </div>
+        
+        {/* Close button for mobile */}
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-600" />
+          </button>
+        )}
       </div>
       
       <nav className="p-4 space-y-2">
@@ -72,6 +89,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={clsx(
                 "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 group",
                 isActive
@@ -126,7 +144,7 @@ export default function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-4 left-4 right-4 text-center">
+      <div className="mt-8 mb-4 px-4 text-center">
         <div className="text-xs text-gray-400">
           <div className="font-medium">Version 2.0</div>
           <div>Greater Houston • Dallas • Austin</div>

@@ -71,21 +71,21 @@ export default function LeadsPageClient({ leads, error }: LeadsPageClientProps) 
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="space-y-4 sm:space-y-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">All Leads</h1>
-          <p className="text-slate-600 mt-1">Manage and track your lead pipeline</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">All Leads</h1>
+          <p className="text-slate-600 mt-1 text-sm sm:text-base">Manage and track your lead pipeline</p>
         </div>
-        <button className="inline-flex items-center px-6 py-3 bg-navy-600 text-white rounded-xl font-medium hover:bg-navy-700 transition-all duration-200 shadow-soft">
+        <button className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-navy-600 text-white rounded-xl font-medium hover:bg-navy-700 transition-all duration-200 shadow-soft text-sm sm:text-base">
           <Download className="w-4 h-4 mr-2" />
           Export All
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <Card className="p-4 border-l-4 border-navy-600">
           <div className="flex items-center justify-between">
             <div>
@@ -136,9 +136,9 @@ export default function LeadsPageClient({ leads, error }: LeadsPageClientProps) 
       </div>
 
       {/* Filters */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-[250px]">
+      <Card className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+          <div className="flex-1 min-w-full sm:min-w-[250px]">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
               <input
@@ -151,8 +151,8 @@ export default function LeadsPageClient({ leads, error }: LeadsPageClientProps) 
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-500" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="w-4 h-4 text-slate-500 hidden sm:block" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -180,8 +180,8 @@ export default function LeadsPageClient({ leads, error }: LeadsPageClientProps) 
 
       {/* Leads Table */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-navy-50 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-navy-700 uppercase tracking-wider">Lead</th>
