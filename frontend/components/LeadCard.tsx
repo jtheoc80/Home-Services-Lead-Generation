@@ -143,153 +143,150 @@ export default function LeadCard({
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {lead.address || lead.name || 'Unnamed Lead'}
-            </h3>
-            <div className="flex items-center space-x-3">
-              {/* Lead Score */}
-              {lead.lead_score && (
-                <span className={`px-2 py-1 rounded-full text-sm font-medium ${getScoreColor(lead.lead_score)}`}>
-                  Score: {lead.lead_score}
+    <div className="border-2 border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 bg-white hover:border-navy-300">
+      {/* Top Banner - Score, Status, and Lead Type */}
+      <div className="bg-gradient-to-r from-navy-50 to-slate-50 px-6 py-3 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {/* Lead Score with Label */}
+            {lead.lead_score && (
+              <div className="flex items-center space-x-2">
+                <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${getScoreColor(lead.lead_score)}`}>
+                  {lead.lead_score}
                 </span>
-              )}
-              
-              {/* Lead Score Label */}
-              {lead.score_label && (
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                  {lead.score_label}
-                </span>
-              )}
-            </div>
+                {lead.score_label && (
+                  <span className="px-2 py-1 rounded-md text-xs font-semibold bg-gray-700 text-white uppercase tracking-wide">
+                    {lead.score_label}
+                  </span>
+                )}
+              </div>
+            )}
+            
+            {/* Lead Type Badge */}
+            {lead.lead_type && (
+              <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 capitalize border border-blue-200">
+                {lead.lead_type} Lead
+              </span>
+            )}
           </div>
           
-          {feedback?.submitted && (
-            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-2 ${
-              feedback.rating === 'thumbs_up' 
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
-              Feedback submitted: {feedback.rating === 'thumbs_up' ? 'Good lead' : 'Poor lead'}
-            </div>
-          )}
-          
-          <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-            {lead.city && lead.state && (
-              <div className="flex items-center space-x-1">
-                <MapPin className="w-4 h-4" />
-                <span>{lead.city}, {lead.state}</span>
-              </div>
-            )}
-            {lead.service && (
-              <div className="flex items-center space-x-1">
-                <Building className="w-4 h-4" />
-                <span>{lead.service}</span>
-              </div>
-            )}
-            {lead.phone && (
-              <div className="flex items-center space-x-1">
-                <Phone className="w-4 h-4" />
-                <span>{lead.phone}</span>
-              </div>
-            )}
-            {lead.email && (
-              <div className="flex items-center space-x-1">
-                <Mail className="w-4 h-4" />
-                <span>{lead.email}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        {lead.owner_name && (
-          <div>
-            <span className="font-medium text-gray-500">Property Owner:</span>
-            <p className="text-gray-900 flex items-center space-x-1">
-              <User className="w-4 h-4 inline text-blue-600" />
-              <span>{lead.owner_name}</span>
-            </p>
-          </div>
-        )}
-
-        {lead.contractor_name && (
-          <div>
-            <span className="font-medium text-gray-500">Contractor:</span>
-            <p className="text-gray-900 flex items-center space-x-1">
-              <HardHat className="w-4 h-4 inline text-amber-600" />
-              <span>{lead.contractor_name}</span>
-            </p>
-          </div>
-        )}
-
-        {lead.lead_type && (
-          <div>
-            <span className="font-medium text-gray-500">Lead Type:</span>
-            <p className="text-gray-900 capitalize">{lead.lead_type}</p>
-          </div>
-        )}
-
-        {(lead.permit_id || lead.external_permit_id) && (
-          <div>
-            <span className="font-medium text-gray-500">Permit ID:</span>
-            <p className="text-gray-900">{lead.external_permit_id || lead.permit_id}</p>
-          </div>
-        )}
-        
-        <div>
-          <span className="font-medium text-gray-500">Value:</span>
-          <p className="text-gray-900">{formatCurrency(lead.value)}</p>
-        </div>
-
-        {lead.trade && (
-          <div>
-            <span className="font-medium text-gray-500">Trade:</span>
-            <p className="text-gray-900">{lead.trade}</p>
-          </div>
-        )}
-        
-        <div>
-          <span className="font-medium text-gray-500">Created:</span>
-          <p className="text-gray-900">{formatDate(lead.created_at)}</p>
-        </div>
-        
-        <div>
-          <span className="font-medium text-gray-500">Status:</span>
-          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
+          {/* Status */}
+          <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase ${getStatusColor(lead.status)}`}>
             {lead.status || 'new'}
           </span>
         </div>
-        
-        {lead.county && (
-          <div>
-            <span className="font-medium text-gray-500">County:</span>
-            <p className="text-gray-900">{lead.county}</p>
-          </div>
-        )}
-        
-        {lead.source && (
-          <div>
-            <span className="font-medium text-gray-500">Source:</span>
-            <p className="text-gray-900">{lead.source}</p>
-          </div>
-        )}
+      </div>
 
-        {lead.county_population && (
-          <div>
-            <span className="font-medium text-gray-500">County Pop:</span>
-            <p className="text-gray-900">{lead.county_population.toLocaleString()}</p>
+      <div className="p-6">
+        {/* Address and Location */}
+        <div className="mb-4">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            {lead.address || lead.name || 'Unnamed Lead'}
+          </h3>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+            {lead.county && (
+              <div className="flex items-center space-x-1">
+                <MapPin className="w-4 h-4 text-navy-600" />
+                <span className="font-medium">{lead.county} County</span>
+              </div>
+            )}
+            {lead.zipcode && (
+              <span className="text-gray-500">ZIP: {lead.zipcode}</span>
+            )}
+            {formatRelativeTime(lead.created_at) && (
+              <span className="text-gray-400">• {formatRelativeTime(lead.created_at)}</span>
+            )}
           </div>
-        )}
+        </div>
 
-        {lead.updated_at && (
-          <div>
-            <span className="font-medium text-gray-500">Updated:</span>
-            <p className="text-gray-900">{formatDate(lead.updated_at)}</p>
+        {/* Main Content Grid - Owner/Contractor and Key Details */}
+        <div className="grid md:grid-cols-2 gap-6 mb-4">
+          {/* Left Column - Contact Information */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contact Information</h4>
+            
+            {lead.owner_name && (
+              <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-blue-600 mb-0.5">Property Owner</div>
+                  <div className="text-sm font-semibold text-gray-900 truncate">{lead.owner_name}</div>
+                  {lead.phone && (
+                    <div className="flex items-center space-x-1 mt-1 text-xs text-gray-600">
+                      <Phone className="w-3 h-3" />
+                      <span>{lead.phone}</span>
+                    </div>
+                  )}
+                  {lead.email && (
+                    <div className="flex items-center space-x-1 mt-1 text-xs text-gray-600">
+                      <Mail className="w-3 h-3" />
+                      <span className="truncate">{lead.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {lead.contractor_name && (
+              <div className="flex items-start space-x-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center flex-shrink-0">
+                  <HardHat className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-amber-600 mb-0.5">Contractor</div>
+                  <div className="text-sm font-semibold text-gray-900 truncate">{lead.contractor_name}</div>
+                </div>
+              </div>
+            )}
+
+            {!lead.owner_name && !lead.contractor_name && (
+              <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-500">
+                <User className="w-4 h-4" />
+                <span>Contact information not available</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Permit Details */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Permit Details</h4>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Permit Value */}
+              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                <div className="text-xs font-medium text-green-600 mb-1">Project Value</div>
+                <div className="text-lg font-bold text-green-700">{formatCurrency(lead.value)}</div>
+              </div>
+
+              {/* Trade */}
+              {lead.trade && (
+                <div className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                  <div className="text-xs font-medium text-purple-600 mb-1">Trade</div>
+                  <div className="text-sm font-semibold text-purple-700 truncate">{lead.trade}</div>
+                </div>
+              )}
+
+              {/* Permit ID */}
+              {(lead.permit_id || lead.external_permit_id) && (
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 col-span-2">
+                  <div className="text-xs font-medium text-gray-500 mb-1">Permit ID</div>
+                  <div className="text-sm font-mono text-gray-700">{lead.external_permit_id || lead.permit_id}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Feedback Section */}
+        {feedback?.submitted && (
+          <div className={`mb-4 inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
+            feedback.rating === 'thumbs_up' 
+              ? 'bg-green-100 text-green-800 border border-green-200'
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            Feedback: {feedback.rating === 'thumbs_up' ? '👍 Good lead' : '👎 Poor lead'}
           </div>
         )}
       </div>
