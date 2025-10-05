@@ -18,6 +18,9 @@ export async function GET() {
         .in('county', ['Harris', 'Dallas', 'Travis'])
     ]);
 
+    console.log('Supabase leadsResult:', { count: leadsResult.count, dataLength: leadsResult.data?.length, error: leadsResult.error });
+    console.log('Supabase countyStats:', { dataLength: countyStats.data?.length, error: countyStats.error });
+
     if (leadsResult.error) throw leadsResult.error;
 
     const totalLeads = leadsResult.count || 0;
