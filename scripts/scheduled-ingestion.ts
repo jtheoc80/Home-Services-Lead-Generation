@@ -23,6 +23,9 @@ async function runScheduledIngestion() {
   await runIngestionScript('ingest_houston.ts');
   await runIngestionScript('ingest_dallas.ts');
   await runIngestionScript('ingest_austin.ts');
+  await runIngestionScript('ingest_fortworth.ts');
+  await runIngestionScript('ingest_sanantonio.ts');
+  await runIngestionScript('ingest_elpaso.ts');
   
   console.log(`\n✅ Scheduled ingestion cycle complete\n`);
 }
