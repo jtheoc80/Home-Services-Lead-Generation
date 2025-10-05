@@ -48,6 +48,8 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
   const router = useRouter();
   const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'dallas', 'austin', 'tarrant', 'bexar', 'elpaso']);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'score' | 'newest' | 'value'>('newest');
+  const [selectedLeadTypes, setSelectedLeadTypes] = useState<string[]>([]);
 
   const handleExportLeads = async () => {
     try {
@@ -158,7 +160,7 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
       'elpaso': 'el paso'
     };
     
-    return enhancedLeads.filter(lead => {
+    let filtered = enhancedLeads.filter(lead => {
       const matchesCounty = selectedCounties.length === 0 || 
         selectedCounties.some(county => 
           lead.county?.toLowerCase().includes(countyMap[county.toLowerCase()] || county)
@@ -166,11 +168,31 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
       const matchesSearch = !searchTerm || 
         lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.tradeType?.toLowerCase().includes(searchTerm.toLowerCase());
+        lead.tradeType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.owner_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.contractor_name?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      return matchesCounty && matchesSearch;
+      const matchesLeadType = selectedLeadTypes.length === 0 ||
+        selectedLeadTypes.includes(lead.lead_type || 'unknown');
+      
+      return matchesCounty && matchesSearch && matchesLeadType;
     });
-  }, [enhancedLeads, selectedCounties, searchTerm]);
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'score':
+          return (b.lead_score || b.score || 0) - (a.lead_score || a.score || 0);
+        case 'value':
+          return (b.value || b.permitValue || 0) - (a.value || a.permitValue || 0);
+        case 'newest':
+        default:
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+    });
+
+    return filtered;
+  }, [enhancedLeads, selectedCounties, searchTerm, sortBy, selectedLeadTypes]);
 
   // Show error state
   if (initialError) {
@@ -248,26 +270,76 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
           {/* Right Column - Recent Leads */}
           <div className="lg:col-span-2">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-brand-600" />
-                  <h3 className="text-xl font-semibold text-gray-900">Recent Leads</h3>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search leads..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                    />
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-5 h-5 text-brand-600" />
+                    <h3 className="text-xl font-semibold text-gray-900">Recent Leads</h3>
+                    <span className="text-sm text-gray-500">({filteredLeads.length})</span>
                   </div>
-                  <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    <Filter className="w-4 h-4" />
-                  </button>
+                  
+                  <div className="flex items-center gap-2">
+                    {/* Sort Dropdown */}
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as 'score' | 'newest' | 'value')}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="score">Highest Score</option>
+                      <option value="value">Highest Value</option>
+                    </select>
+
+                    {/* Search */}
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search leads..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 w-48"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lead Type Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-gray-600 font-medium">Lead Type:</span>
+                  {['owner', 'contractor', 'unknown'].map(type => {
+                    const isSelected = selectedLeadTypes.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedLeadTypes(selectedLeadTypes.filter(t => t !== type));
+                          } else {
+                            setSelectedLeadTypes([...selectedLeadTypes, type]);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          isSelected
+                            ? 'bg-brand-600 text-white border-brand-600'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {type === 'owner' && '👤 '}
+                        {type === 'contractor' && '🔨 '}
+                        {type === 'unknown' && '❓ '}
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </button>
+                    );
+                  })}
+                  {selectedLeadTypes.length > 0 && (
+                    <button
+                      onClick={() => setSelectedLeadTypes([])}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               </div>
 
