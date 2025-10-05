@@ -35,6 +35,19 @@ const CONTRACTORS = [
   { name: 'Houston Electrical Solutions', trade: 'Electrical' }
 ];
 
+const OWNERS = [
+  'John Smith',
+  'Sarah Martinez',
+  'Michael Johnson',
+  'Emily Davis',
+  'David Rodriguez',
+  'Jennifer Lee',
+  'Christopher Brown',
+  'Amanda Wilson',
+  'Robert Taylor',
+  'Lisa Anderson'
+];
+
 function calculateLeadScore(value: number): number {
   if (value >= 20000) return 90;
   if (value >= 10000) return 75;
@@ -61,6 +74,7 @@ export async function ingestHoustonLeads(limit: number = 10) {
 
   for (let i = 0; i < limit; i++) {
     const contractor = CONTRACTORS[i % CONTRACTORS.length];
+    const owner = OWNERS[i % OWNERS.length];
     const address = HOUSTON_ADDRESSES[i % HOUSTON_ADDRESSES.length];
     const zipcode = address.match(/\d{5}/)?.[0] || '77002';
     const value = generateRandomValue();
@@ -68,7 +82,10 @@ export async function ingestHoustonLeads(limit: number = 10) {
 
     leads.push({
       external_permit_id: `HOU-${timestamp}-${String(i + 1).padStart(3, '0')}`,
-      name: contractor.name,
+      name: owner,
+      contractor_name: contractor.name,
+      owner_name: owner,
+      lead_type: 'owner',
       address: address,
       zipcode: zipcode,
       county: 'Harris',

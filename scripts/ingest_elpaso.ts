@@ -122,14 +122,32 @@ export async function ingestElPasoLeads(limit: number = 10) {
   console.log(`✅ Generated ${permits.length} El Paso permits`);
 
   const leads = permits.map((p, idx) => {
-    const value = parseValue(
-      p.Valuation || p.VALUATION
-    );
+    const value = parseValue(p.Valuation || p.VALUATION);
     const score = calculateLeadScore(value);
+    
+    const contractorName = p.ContractorName || p.CONTRACTOR_NAME || null;
+    const ownerName = p.OwnerName || p.OWNER_NAME || null;
+    
+    let leadType = 'unknown';
+    let primaryName = 'Unknown';
+    
+    if (ownerName && contractorName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (ownerName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (contractorName) {
+      leadType = 'contractor';
+      primaryName = contractorName;
+    }
     
     return {
       external_permit_id: p.PermitNumber || p.PERMIT_NUMBER || `ELP-${Date.now()}-${String(idx).padStart(3, '0')}`,
-      name: p.ContractorName || p.CONTRACTOR_NAME || p.OwnerName || p.OWNER_NAME || 'Unknown Contractor',
+      name: primaryName,
+      contractor_name: contractorName,
+      owner_name: ownerName,
+      lead_type: leadType,
       address: p.Address || p.ADDRESS || '',
       zipcode: p.Zip || p.ZIP || '',
       county: 'El Paso',

@@ -112,9 +112,29 @@ export async function ingestFortWorthLeads(limit: number = 10) {
     const value = parseValue(p.valuation || p.project_value);
     const score = calculateLeadScore(value);
     
+    const contractorName = p.contractor_name || null;
+    const ownerName = p.owner_name || null;
+    
+    let leadType = 'unknown';
+    let primaryName = 'Unknown';
+    
+    if (ownerName && contractorName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (ownerName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (contractorName) {
+      leadType = 'contractor';
+      primaryName = contractorName;
+    }
+    
     return {
       external_permit_id: p.permit_number || `FTW-${Date.now()}-${String(idx).padStart(3, '0')}`,
-      name: p.contractor_name || p.owner_name || 'Unknown Contractor',
+      name: primaryName,
+      contractor_name: contractorName,
+      owner_name: ownerName,
+      lead_type: leadType,
       address: p.work_address || p.address || '',
       zipcode: p.zip_code || p.zip || '',
       county: 'Tarrant',

@@ -93,9 +93,29 @@ export async function ingestDallasLeads(limit: number = 10) {
     const value = parseValue(p.valuation || p.value);
     const score = calculateLeadScore(value);
     
+    const contractorName = p.contractor || null;
+    const ownerName = p.owner || p.applicant || null;
+    
+    let leadType = 'unknown';
+    let primaryName = 'Unknown';
+    
+    if (ownerName && contractorName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (ownerName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (contractorName) {
+      leadType = 'contractor';
+      primaryName = contractorName;
+    }
+    
     return {
       external_permit_id: p.permit_number || p.permit || `DAL-${Date.now()}-${String(idx).padStart(3, '0')}`,
-      name: p.contractor || p.owner || p.applicant || 'Unknown Contractor',
+      name: primaryName,
+      contractor_name: contractorName,
+      owner_name: ownerName,
+      lead_type: leadType,
       address: p.street_address || p.address || p.project_address || '',
       zipcode: p.zip_code || p.zip || '',
       county: 'Dallas',

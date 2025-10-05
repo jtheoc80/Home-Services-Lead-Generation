@@ -124,9 +124,29 @@ export async function ingestSanAntonioLeads(limit: number = 10) {
     const value = parseValue(p.VALUATION || p.VALUE);
     const score = calculateLeadScore(value);
     
+    const contractorName = p.CONTRACTOR_NAME || p.CONTRACTOR || null;
+    const ownerName = p.OWNER_NAME || p.OWNER || null;
+    
+    let leadType = 'unknown';
+    let primaryName = 'Unknown';
+    
+    if (ownerName && contractorName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (ownerName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (contractorName) {
+      leadType = 'contractor';
+      primaryName = contractorName;
+    }
+    
     return {
       external_permit_id: p.PERMIT_NUMBER || p.PERMIT_NO || `SAT-${Date.now()}-${String(idx).padStart(3, '0')}`,
-      name: p.CONTRACTOR_NAME || p.CONTRACTOR || p.OWNER_NAME || p.OWNER || 'Unknown Contractor',
+      name: primaryName,
+      contractor_name: contractorName,
+      owner_name: ownerName,
+      lead_type: leadType,
       address: p.WORK_ADDRESS || p.ADDRESS || '',
       zipcode: p.ZIP_CODE || p.ZIP || '',
       county: 'Bexar',

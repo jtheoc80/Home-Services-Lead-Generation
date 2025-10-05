@@ -89,9 +89,29 @@ export async function ingestAustinLeads(limit: number = 10) {
     const value = parseValue(p.const_cost || p.valuation);
     const score = calculateLeadScore(value);
     
+    const contractorName = p.contractor_name || null;
+    const ownerName = p.owner_name || p.applicant_name || null;
+    
+    let leadType = 'unknown';
+    let primaryName = 'Unknown';
+    
+    if (ownerName && contractorName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (ownerName) {
+      leadType = 'owner';
+      primaryName = ownerName;
+    } else if (contractorName) {
+      leadType = 'contractor';
+      primaryName = contractorName;
+    }
+    
     return {
       external_permit_id: p.permit_number || `AUS-${Date.now()}-${idx}`,
-      name: p.contractor_name || p.applicant_name || p.owner_name || 'Unknown Contractor',
+      name: primaryName,
+      contractor_name: contractorName,
+      owner_name: ownerName,
+      lead_type: leadType,
       address: p.address || p.project_address || '',
       zipcode: p.zip_code || p.zipcode || '',
       county: 'Travis',
