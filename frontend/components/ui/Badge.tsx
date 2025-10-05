@@ -23,12 +23,12 @@ export default function Badge({
   };
 
   const variantClasses = {
-    default: "bg-gray-100 text-gray-800 border border-gray-200",
+    default: "bg-slate-100 text-slate-800 border border-slate-200",
     success: "bg-success-100 text-success-800 border border-success-200",
     warning: "bg-warning-100 text-warning-800 border border-warning-200",
     danger: "bg-danger-100 text-danger-800 border border-danger-200",
-    texas: "bg-texas-100 text-texas-800 border border-texas-200",
-    score: "bg-gradient-to-r from-success-500 to-brand-500 text-white border-0 shadow-soft"
+    texas: "bg-navy-100 text-navy-800 border border-navy-200",
+    score: "bg-gradient-to-r from-success-500 to-navy-600 text-white border-0 shadow-soft"
   };
 
   return (

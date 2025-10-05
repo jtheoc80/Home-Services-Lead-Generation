@@ -14,9 +14,9 @@ export default function Button({
       className={clsx(
         "h-9 px-4 rounded-lg text-sm font-medium transition",
         variant === "primary" &&
-          "bg-brand-600 text-white hover:bg-brand-700",
+          "bg-navy-600 text-white hover:bg-navy-700",
         variant === "ghost" &&
-          "text-gray-700 hover:bg-gray-100",
+          "text-slate-700 hover:bg-slate-100",
         className
       )}
     />

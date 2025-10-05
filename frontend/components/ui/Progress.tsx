@@ -16,11 +16,11 @@ export function Progress({
   const clampedValue = Math.min(Math.max(value, 0), 100);
 
   const colorClasses = {
-    default: "bg-brand-500",
+    default: "bg-navy-500",
     success: "bg-success-500",
     warning: "bg-warning-500",
     danger: "bg-danger-500",
-    texas: "bg-texas-500"
+    texas: "bg-navy-600"
   };
 
   return (

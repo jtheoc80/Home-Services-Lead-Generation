@@ -45,29 +45,29 @@ export default function TexasCountySelector({
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <MapPin className="w-5 h-5 text-texas-600" />
+          <MapPin className="w-5 h-5 text-navy-600" />
           <h3 className="text-lg font-semibold text-gray-900">Texas Counties</h3>
         </div>
         <button
           onClick={toggleAll}
-          className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+          className="text-sm text-navy-600 hover:text-navy-700 font-medium"
         >
           {selectedCounties.length === TEXAS_COUNTIES.length ? 'Deselect All' : 'Select All'}
         </button>
       </div>
 
       {showStats && (
-        <div className="mb-4 p-3 bg-texas-50 rounded-lg border border-texas-200">
+        <div className="mb-4 p-3 bg-navy-50 rounded-lg border border-slate-200">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Selected Counties:</span>
-              <span className="ml-2 font-semibold text-texas-700">
+              <span className="text-slate-600">Selected Counties:</span>
+              <span className="ml-2 font-semibold text-navy-700">
                 {selectedCounties.length}
               </span>
             </div>
             <div>
-              <span className="text-gray-600">Active Permits:</span>
-              <span className="ml-2 font-semibold text-texas-700">
+              <span className="text-slate-600">Active Permits:</span>
+              <span className="ml-2 font-semibold text-navy-700">
                 {totalPermits.toLocaleString()}
               </span>
             </div>
@@ -86,16 +86,16 @@ export default function TexasCountySelector({
               className={clsx(
                 "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all duration-200",
                 isSelected
-                  ? "bg-texas-50 border-texas-300 shadow-soft"
-                  : "bg-white border-gray-200 hover:bg-gray-50"
+                  ? "bg-navy-50 border-navy-300 shadow-soft"
+                  : "bg-white border-slate-200 hover:bg-slate-50"
               )}
             >
               <div className="flex items-center space-x-3">
                 <div className={clsx(
                   "w-5 h-5 rounded border-2 flex items-center justify-center",
                   isSelected
-                    ? "bg-texas-600 border-texas-600"
-                    : "border-gray-300"
+                    ? "bg-navy-600 border-navy-600"
+                    : "border-slate-300"
                 )}>
                   {isSelected && <Check className="w-3 h-3 text-white" />}
                 </div>

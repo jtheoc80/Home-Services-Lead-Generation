@@ -42,11 +42,11 @@ export default function Topbar() {
         {/* Center Section - Search */}
         <div className="hidden lg:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search leads, permits, counties..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white transition-colors"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-navy-500 focus:border-navy-500 focus:bg-white transition-colors"
             />
           </div>
         </div>
@@ -56,13 +56,13 @@ export default function Topbar() {
           {/* Quick Stats */}
           <div className="hidden xl:flex items-center space-x-4">
             <div className="flex items-center space-x-2 text-sm">
-              <MapPin className="w-4 h-4 text-texas-600" />
-              <span className="text-gray-600">4 Counties</span>
+              <MapPin className="w-4 h-4 text-navy-600" />
+              <span className="text-slate-600">4 Counties</span>
             </div>
             
             <div className="flex items-center space-x-2 text-sm">
-              <Zap className="w-4 h-4 text-brand-600" />
-              <span className="text-gray-600">24 New</span>
+              <Zap className="w-4 h-4 text-navy-600" />
+              <span className="text-slate-600">24 New</span>
             </div>
           </div>
 
@@ -85,24 +85,24 @@ export default function Topbar() {
                 </div>
                 
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                  <div className="px-4 py-3 hover:bg-slate-50 cursor-pointer">
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-brand-500 rounded-full mt-2"></div>
+                      <div className="w-2 h-2 bg-navy-500 rounded-full mt-2"></div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">New high-score lead</p>
-                        <p className="text-xs text-gray-600">Johnson Residence - Score: 87</p>
-                        <p className="text-xs text-gray-400">2 minutes ago</p>
+                        <p className="text-xs text-slate-600">Johnson Residence - Score: 87</p>
+                        <p className="text-xs text-slate-400">2 minutes ago</p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                  <div className="px-4 py-3 hover:bg-slate-50 cursor-pointer">
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-texas-500 rounded-full mt-2"></div>
+                      <div className="w-2 h-2 bg-navy-500 rounded-full mt-2"></div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">Harris County sync complete</p>
-                        <p className="text-xs text-gray-600">187 new permits processed</p>
-                        <p className="text-xs text-gray-400">1 hour ago</p>
+                        <p className="text-xs text-slate-600">187 new permits processed</p>
+                        <p className="text-xs text-slate-400">1 hour ago</p>
                       </div>
                     </div>
                   </div>
@@ -120,7 +120,7 @@ export default function Topbar() {
                 </div>
                 
                 <div className="px-4 py-2 border-t border-gray-100">
-                  <button className="text-sm text-brand-600 hover:text-brand-700 font-medium">
+                  <button className="text-sm text-navy-600 hover:text-navy-700 font-medium">
                     View all notifications
                   </button>
                 </div>
@@ -142,10 +142,10 @@ export default function Topbar() {
             
             <div className="relative group">
               <button className="flex items-center space-x-2 p-1 rounded-xl hover:bg-gray-100 transition-colors">
-                <div className="size-8 rounded-xl bg-gradient-to-br from-brand-500 to-texas-500 text-white grid place-items-center font-semibold text-sm shadow-soft">
+                <div className="size-8 rounded-xl bg-gradient-to-br from-navy-600 to-navy-700 text-white grid place-items-center font-semibold text-sm shadow-soft">
                   TC
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
+                <ChevronDown className="w-4 h-4 text-slate-600 group-hover:text-slate-900" />
               </button>
               
               {/* Dropdown would go here */}

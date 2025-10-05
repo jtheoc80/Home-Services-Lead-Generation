@@ -21,8 +21,8 @@ export default function Card({
   const variantClasses = {
     default: "bg-white border-gray-200 shadow-soft",
     glass: "bg-white/80 backdrop-blur-sm border-white/20 shadow-soft-lg",
-    gradient: "bg-gradient-to-br from-brand-500 to-brand-600 border-brand-400 text-white shadow-glow",
-    texas: "bg-gradient-to-br from-texas-500 to-texas-600 border-texas-400 text-white shadow-texas-glow"
+    gradient: "bg-gradient-to-br from-navy-600 to-navy-700 border-navy-500 text-white shadow-glow",
+    texas: "bg-gradient-to-br from-navy-600 to-navy-700 border-navy-500 text-white shadow-glow"
   };
 
   const hoverClasses = hover ? "hover:shadow-soft-xl hover:scale-[1.02] cursor-pointer" : "";
