@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import StatCard from "@/components/ui/StatCard";
 import Badge from "@/components/ui/Badge";
@@ -18,12 +18,13 @@ import {
   CheckCircle
 } from "lucide-react";
 
-const stats = [
-  { label: "Active Counties", value: "4", icon: <MapPin className="w-6 h-6" />, variant: "texas" as const },
-  { label: "Total Permits", value: "3,959", icon: <Building className="w-6 h-6" />, variant: "default" as const },
-  { label: "Qualified Leads", value: "847", icon: <Target className="w-6 h-6" />, variant: "success" as const },
-  { label: "Success Rate", value: "89%", icon: <TrendingUp className="w-6 h-6" />, variant: "warning" as const }
-];
+interface Stats {
+  activeCounties: number;
+  totalLeads: number;
+  qualifiedLeads: number;
+  successRate: number;
+  countyBreakdown: Record<string, number>;
+}
 
 const features = [
   {
@@ -59,14 +60,65 @@ const features = [
 ];
 
 const texasCounties = [
-  { name: "Harris County", permits: 2847, population: "4.7M" },
-  { name: "Fort Bend County", permits: 689, population: "822K" },
-  { name: "Brazoria County", permits: 234, population: "372K" },
-  { name: "Galveston County", permits: 189, population: "342K" }
+  { name: "Houston", county: "Harris", population: "4.7M" },
+  { name: "Harris County", county: "Harris", population: "4.7M" },
+  { name: "Dallas", county: "Dallas", population: "7.6M" },
+  { name: "Austin", county: "Travis", population: "2.3M" }
 ];
 
 export default function HomePage() {
   const [selectedCounty, setSelectedCounty] = useState<string>('');
+  const [stats, setStats] = useState<Stats>({
+    activeCounties: 0,
+    totalLeads: 0,
+    qualifiedLeads: 0,
+    successRate: 0,
+    countyBreakdown: {}
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch stats');
+        return res.json();
+      })
+      .then(data => {
+        setStats(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch stats:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const displayStats = [
+    { 
+      label: "Active Counties", 
+      value: loading ? "..." : String(stats.activeCounties), 
+      icon: <MapPin className="w-6 h-6" />, 
+      variant: "texas" as const 
+    },
+    { 
+      label: "Total Leads", 
+      value: loading ? "..." : stats.totalLeads.toLocaleString(), 
+      icon: <Building className="w-6 h-6" />, 
+      variant: "default" as const 
+    },
+    { 
+      label: "Qualified Leads", 
+      value: loading ? "..." : stats.qualifiedLeads.toLocaleString(), 
+      icon: <Target className="w-6 h-6" />, 
+      variant: "success" as const 
+    },
+    { 
+      label: "Success Rate", 
+      value: loading ? "..." : `${stats.successRate}%`, 
+      icon: <TrendingUp className="w-6 h-6" />, 
+      variant: "warning" as const 
+    }
+  ];
 
   return (
     <div className="min-h-screen">
@@ -128,7 +180,7 @@ export default function HomePage() {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
+            {displayStats.map((stat, index) => (
               <StatCard
                 key={index}
                 label={stat.label}
@@ -154,34 +206,37 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {texasCounties.map((county, index) => (
-              <div
-                key={index}
-                onClick={() => setSelectedCounty(county.name.toLowerCase().replace(' county', ''))}
-                className="cursor-pointer"
-              >
-                <Card 
-                  variant="glass" 
-                  hover 
-                  className="p-6 text-center group"
+            {texasCounties.map((county, index) => {
+              const permits = stats.countyBreakdown[county.county] || 0;
+              return (
+                <div
+                  key={index}
+                  onClick={() => setSelectedCounty(county.name.toLowerCase().replace(' county', ''))}
+                  className="cursor-pointer"
                 >
-                <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-texas-100 rounded-2xl flex items-center justify-center group-hover:bg-texas-200 transition-colors">
-                    <MapPin className="w-8 h-8 text-texas-600" />
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">{county.name}</h3>
-                    <p className="text-sm text-gray-600 mb-3">Population: {county.population}</p>
+                  <Card 
+                    variant="glass" 
+                    hover 
+                    className="p-6 text-center group"
+                  >
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-texas-100 rounded-2xl flex items-center justify-center group-hover:bg-texas-200 transition-colors">
+                      <MapPin className="w-8 h-8 text-texas-600" />
+                    </div>
                     
-                    <Badge variant="texas" size="sm">
-                      {county.permits.toLocaleString()} active permits
-                    </Badge>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">{county.name}</h3>
+                      <p className="text-sm text-gray-600 mb-3">Population: {county.population}</p>
+                      
+                      <Badge variant="texas" size="sm">
+                        {loading ? '...' : permits.toLocaleString()} active leads
+                      </Badge>
+                    </div>
                   </div>
+                </Card>
                 </div>
-              </Card>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
