@@ -23,6 +23,10 @@ author = "agent"
 task = "workflow.run"
 args = "Frontend Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Lead Ingestion Service"
+
 [[workflows.workflow]]
 name = "Frontend Server"
 author = "agent"
@@ -34,6 +38,17 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "Lead Ingestion Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd scripts && tsx scheduled-ingestion.ts"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [[ports]]
 localPort = 5000
