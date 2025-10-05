@@ -122,90 +122,85 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* Hero Section - Split Layout */}
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-texas-600">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-600/90 to-texas-600/90"></div>
         <div className="absolute inset-0" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
         
-        <div className="relative mx-auto max-w-7xl px-6 py-24 text-center">
-          <div className="space-y-8">
-            <div className="space-y-4">
+        <div className="relative mx-auto max-w-7xl px-6 py-20">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Hero Content */}
+            <div className="space-y-8">
               <Badge variant="score" size="lg" className="animate-bounce-gentle">
                 <Star className="w-4 h-4 mr-2" />
                 Texas #1 Lead Generation Platform
               </Badge>
               
-              <h1 className="text-6xl font-bold bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
-                Lead Generation
+              <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
+                Intelligent Home Services Lead Generation
               </h1>
               
-              <p className="mx-auto max-w-3xl text-xl text-white/90 leading-relaxed">
+              <p className="text-xl text-white/90 leading-relaxed">
                 Automatically scrape and enrich public building permit data across Texas. 
                 Get exclusive leads with intelligent scoring before your competition even knows they exist.
               </p>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => (location.href = "/dashboard")}
+                  className="inline-flex items-center justify-center px-8 py-4 bg-white text-brand-700 font-semibold rounded-2xl hover:bg-gray-100 transition-all duration-300 shadow-soft-xl group"
+                >
+                  View Dashboard
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </button>
+                
+                <button 
+                  onClick={() => (location.href = "/leads")}
+                  className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-brand-700 transition-all duration-300"
+                >
+                  Browse Leads
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button 
-                onClick={() => (location.href = "/dashboard")}
-                className="inline-flex items-center px-8 py-4 bg-white text-brand-700 font-semibold rounded-2xl hover:bg-gray-100 transition-all duration-300 shadow-soft-xl group"
-              >
-                View Dashboard
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </button>
-              
-              <button 
-                onClick={() => (location.href = "/leads")}
-                className="inline-flex items-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-brand-700 transition-all duration-300"
-              >
-                Browse Leads
-              </button>
+            {/* Right: Live Stats Card */}
+            <div className="lg:block">
+              <Card variant="glass" className="p-8 backdrop-blur-xl bg-white/10 border-white/20">
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-bold text-white mb-2">Live Platform Stats</h3>
+                  <p className="text-white/80">Real-time data from Texas</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {displayStats.map((stat, index) => (
+                    <div key={index} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+                      <div className="text-white/60 mb-2">{stat.icon}</div>
+                      <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
+                      <div className="text-sm text-white/70">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Texas Counties Section - Horizontal Scroll on Mobile */}
       <section className="py-16 bg-gray-50">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Real Numbers from Real Data
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Live statistics from our automated permit scraping and lead scoring system across Texas
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayStats.map((stat, index) => (
-              <StatCard
-                key={index}
-                label={stat.label}
-                value={stat.value}
-                icon={stat.icon}
-                variant={stat.variant}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Texas Counties Section */}
-      <section className="py-16 bg-white">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
+          <div className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Statewide Texas Coverage
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 max-w-2xl">
               Currently covering major Texas metropolitan areas with expansion planned for Austin, San Antonio, and Dallas
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {texasCounties.map((county, index) => {
               const permits = stats.countyBreakdown[county.county] || 0;
               return (
@@ -217,23 +212,23 @@ export default function HomePage() {
                   <Card 
                     variant="glass" 
                     hover 
-                    className="p-6 text-center group"
+                    className="p-6 text-center group h-full"
                   >
-                  <div className="space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-texas-100 rounded-2xl flex items-center justify-center group-hover:bg-texas-200 transition-colors">
-                      <MapPin className="w-8 h-8 text-texas-600" />
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">{county.name}</h3>
-                      <p className="text-sm text-gray-600 mb-3">Population: {county.population}</p>
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 mx-auto bg-texas-100 rounded-2xl flex items-center justify-center group-hover:bg-texas-200 transition-colors">
+                        <MapPin className="w-8 h-8 text-texas-600" />
+                      </div>
                       
-                      <Badge variant="texas" size="sm">
-                        {loading ? '...' : permits.toLocaleString()} active leads
-                      </Badge>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-2">{county.name}</h3>
+                        <p className="text-sm text-gray-600 mb-3">Pop: {county.population}</p>
+                        
+                        <Badge variant="texas" size="sm">
+                          {loading ? '...' : permits.toLocaleString()} leads
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
                 </div>
               );
             })}
@@ -241,20 +236,50 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
+      {/* Features Section - 2-Column Asymmetric Layout */}
+      <section className="py-16 bg-white">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
+          <div className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Advanced Lead Generation Features
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 max-w-2xl">
               Everything you need to identify, score, and convert high-quality home service leads
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Large Featured Card */}
+            <div className="lg:row-span-2">
+              <Card hover className="p-8 h-full bg-gradient-to-br from-brand-50 to-texas-50 group">
+                <div className="space-y-6 h-full flex flex-col">
+                  <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center group-hover:bg-brand-200 transition-colors">
+                    <div className="text-brand-600">
+                      {features[0].icon}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                      {features[0].title}
+                    </h3>
+                    <p className="text-gray-600 text-lg leading-relaxed">
+                      {features[0].description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex items-center text-brand-600 font-semibold group-hover:gap-2 transition-all">
+                      <span>Learn more</span>
+                      <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Regular Feature Cards */}
+            {features.slice(1).map((feature, index) => (
               <Card key={index} hover className="p-6 group">
                 <div className="space-y-4">
                   <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center group-hover:bg-brand-200 transition-colors">
@@ -279,13 +304,13 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-brand-600 to-texas-600">
+      <section className="py-20 bg-gradient-to-r from-brand-600 to-texas-600">
         <div className="mx-auto max-w-4xl px-6 text-center">
-          <div className="space-y-6">
-            <h2 className="text-4xl font-bold text-white">
+          <div className="space-y-8">
+            <h2 className="text-4xl lg:text-5xl font-bold text-white">
               Ready to Transform Your Lead Generation?
             </h2>
-            <p className="text-xl text-white/90 max-w-2xl mx-auto">
+            <p className="text-xl text-white/90 max-w-2xl mx-auto leading-relaxed">
               Join contractors across Texas who are already using our platform to identify 
               high-value opportunities before their competition.
             </p>
@@ -293,7 +318,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
                 onClick={() => (location.href = "/dashboard")}
-                className="inline-flex items-center px-8 py-4 bg-white text-brand-700 font-semibold rounded-2xl hover:bg-gray-100 transition-all duration-300 shadow-soft-xl"
+                className="inline-flex items-center justify-center px-8 py-4 bg-white text-brand-700 font-semibold rounded-2xl hover:bg-gray-100 transition-all duration-300 shadow-soft-xl"
               >
                 <CheckCircle className="w-5 h-5 mr-2" />
                 Get Started Now
@@ -301,7 +326,7 @@ export default function HomePage() {
               
               <button 
                 onClick={() => (location.href = "/leads-test")}
-                className="inline-flex items-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-brand-700 transition-all duration-300"
+                className="inline-flex items-center justify-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-2xl hover:bg-white hover:text-brand-700 transition-all duration-300"
               >
                 Try Demo
               </button>
