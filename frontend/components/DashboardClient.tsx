@@ -46,7 +46,7 @@ function formatRelativeTime(dateString: string): string {
 
 export default function DashboardClient({ leads, initialError }: DashboardClientProps) {
   const router = useRouter();
-  const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'dallas', 'austin']);
+  const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'dallas', 'austin', 'tarrant', 'bexar', 'elpaso']);
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleExportLeads = async () => {
@@ -54,11 +54,14 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
       const countyMap: Record<string, string> = {
         'harris': 'harris',
         'dallas': 'dallas',
-        'austin': 'travis'
+        'austin': 'travis',
+        'tarrant': 'tarrant',
+        'bexar': 'bexar',
+        'elpaso': 'el paso'
       };
       
       const params = new URLSearchParams();
-      if (selectedCounties.length > 0 && selectedCounties.length < 4) {
+      if (selectedCounties.length > 0 && selectedCounties.length < 7) {
         const mappedCounties = selectedCounties.map(c => countyMap[c.toLowerCase()] || c);
         const uniqueCounties = [...new Set(mappedCounties)];
         params.append('counties', uniqueCounties.join(','));
@@ -115,7 +118,10 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
       'houston': 'harris',
       'harris': 'harris',
       'dallas': 'dallas',
-      'austin': 'travis'
+      'austin': 'travis',
+      'tarrant': 'tarrant',
+      'bexar': 'bexar',
+      'elpaso': 'el paso'
     };
     
     const filteredLeads = enhancedLeads.filter(lead => 
@@ -146,7 +152,10 @@ export default function DashboardClient({ leads, initialError }: DashboardClient
       'houston': 'harris',
       'harris': 'harris',
       'dallas': 'dallas',
-      'austin': 'travis'
+      'austin': 'travis',
+      'tarrant': 'tarrant',
+      'bexar': 'bexar',
+      'elpaso': 'el paso'
     };
     
     return enhancedLeads.filter(lead => {

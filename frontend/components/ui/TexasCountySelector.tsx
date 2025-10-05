@@ -12,7 +12,10 @@ interface TexasCountyProps {
 const TEXAS_COUNTIES = [
   { name: "Greater Houston", code: "harris", population: "4.7M", permits: 2847 },
   { name: "Dallas", code: "dallas", population: "2.6M", permits: 1543 },
-  { name: "Austin", code: "austin", population: "1.0M", permits: 892 }
+  { name: "Austin", code: "austin", population: "1.0M", permits: 892 },
+  { name: "Fort Worth", code: "tarrant", population: "956K", permits: 0 },
+  { name: "San Antonio", code: "bexar", population: "1.5M", permits: 0 },
+  { name: "El Paso", code: "elpaso", population: "678K", permits: 0 }
 ];
 
 export default function TexasCountySelector({
