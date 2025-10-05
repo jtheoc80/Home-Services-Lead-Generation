@@ -46,13 +46,12 @@ function formatRelativeTime(dateString: string): string {
 
 export default function DashboardClient({ leads, initialError }: DashboardClientProps) {
   const router = useRouter();
-  const [selectedCounties, setSelectedCounties] = useState<string[]>(['houston', 'harris', 'dallas', 'austin']);
+  const [selectedCounties, setSelectedCounties] = useState<string[]>(['harris', 'dallas', 'austin']);
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleExportLeads = async () => {
     try {
       const countyMap: Record<string, string> = {
-        'houston': 'harris',
         'harris': 'harris',
         'dallas': 'dallas',
         'austin': 'travis'

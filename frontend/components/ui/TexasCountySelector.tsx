@@ -10,8 +10,7 @@ interface TexasCountyProps {
 }
 
 const TEXAS_COUNTIES = [
-  { name: "Houston", code: "houston", population: "2.3M", permits: 1847 },
-  { name: "Harris County", code: "harris", population: "4.7M", permits: 2847 },
+  { name: "Greater Houston", code: "harris", population: "4.7M", permits: 2847 },
   { name: "Dallas", code: "dallas", population: "2.6M", permits: 1543 },
   { name: "Austin", code: "austin", population: "1.0M", permits: 892 }
 ];

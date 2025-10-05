@@ -129,7 +129,7 @@ export default function Sidebar() {
       <div className="absolute bottom-4 left-4 right-4 text-center">
         <div className="text-xs text-gray-400">
           <div className="font-medium">Version 2.0</div>
-          <div>Houston • Dallas • Austin</div>
+          <div>Greater Houston • Dallas • Austin</div>
         </div>
       </div>
     </aside>
