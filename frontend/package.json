@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@stripe/stripe-js": "^7.9.0",
+    "@stripe/stripe-js": "^8.0.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.58.0",
     "@tailwindcss/postcss": "^4.1.14",
