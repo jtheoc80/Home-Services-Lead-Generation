@@ -64,7 +64,7 @@ twilio = "^7.0.0"
 prometheus-client = "^0.22.1"
 
 # Payment processing
-stripe = "^8.0.0"
+stripe = "^13.0.1"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
