@@ -78,7 +78,7 @@ black = "^23.0.0"
 mypy = "^1.0.0"
 
 # OpenAPI and client generation
-openapi-python-client = "^0.15.0"
+openapi-python-client = "^0.26.1"
 
 [tool.poetry.group.test.dependencies]
 # Additional test dependencies
