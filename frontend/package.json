@@ -27,7 +27,7 @@
     "stripe": "^18.5.0",
     "tailwind-merge": "^3.3.1",
     "uuid": "^13.0.0",
-    "zod": "^4.1.11"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/papaparse": "^5.3.16",
