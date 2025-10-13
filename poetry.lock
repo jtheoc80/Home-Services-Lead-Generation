@@ -1866,14 +1866,14 @@ files = [
 
 [[package]]
 name = "realtime"
-version = "2.7.0"
+version = "2.22.0"
 description = ""
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "realtime-2.7.0-py3-none-any.whl", hash = "sha256:d55a278803529a69d61c7174f16563a9cfa5bacc1664f656959694481903d99c"},
-    {file = "realtime-2.7.0.tar.gz", hash = "sha256:6b9434eeba8d756c8faf94fc0a32081d09f250d14d82b90341170602adbb019f"},
+    {file = "realtime-2.22.0-py3-none-any.whl", hash = "sha256:a599b7450f876f4ebe95aa1ccb3f3128ac8bea7e468950dc947708e2e3779015"},
+    {file = "realtime-2.22.0.tar.gz", hash = "sha256:116b331bcf34bf604e38edf6ac85d89cb7f98a9e973fd0c54a6baaeaee7404f7"},
 ]
 
 [package.dependencies]
