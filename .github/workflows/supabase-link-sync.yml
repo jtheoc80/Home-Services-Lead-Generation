@@ -16,7 +16,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
